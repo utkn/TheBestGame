@@ -57,10 +57,12 @@ impl Window for EquipmentWindow {
     ) {
         egui::Window::new("Equipment")
             .id(self.window_id())
-            .anchor(egui::Align2::RIGHT_TOP, (-10., 150.))
+            .anchor(egui::Align2::RIGHT_TOP, (-10., 120.))
             .collapsible(false)
-            .fixed_size((150., 90.))
+            .title_bar(false)
+            .fixed_size((140., 90.))
             .resizable(false)
+            // .frame(egui::Frame::none())
             .show(ctx, |ui| {
                 ui.set_width(ui.available_width());
                 ui.set_height(ui.available_height());
@@ -90,7 +92,7 @@ impl Window for StorageWindow {
         ui_cmds: &mut StateCommands,
         ui_state: &mut UiState,
     ) {
-        let window_width = 150.;
+        let window_width = 140.;
         let is_player_storage = game_state
             .select_one::<(Controller,)>(&self.storage_entity)
             .is_some();
@@ -112,7 +114,7 @@ impl Window for StorageWindow {
             if let Some((x, y)) = position_with_active_storage {
                 win = win.fixed_pos((x as f32 + 30., y + 10.));
             } else {
-                win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 290.));
+                win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 270.));
             }
         } else {
             let storage_pos = game_state
@@ -155,7 +157,9 @@ impl Window for NeedsWindow {
             .id(self.window_id())
             .anchor(egui::Align2::RIGHT_TOP, (-10., 10.))
             .collapsible(false)
-            .fixed_size((150., 90.))
+            .title_bar(false)
+            .fixed_size((140., 90.))
+            // .frame(egui::Frame::none())
             .resizable(false)
             .show(ctx, |ui| {
                 ui.set_width(ui.available_width());

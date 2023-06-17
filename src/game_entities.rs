@@ -58,7 +58,7 @@ pub fn create_item(cmds: &mut StateCommands, pos: Position, name: Name) -> Entit
         CollisionState::default(),
         Interactable::new(InteractionType::ContactRequiredOneShot),
         Item,
-        Equippable::new([EquipmentSlot::Head]),
+        Equippable::new([EquipmentSlot::LeftHand]),
     )
         .create(cmds)
 }

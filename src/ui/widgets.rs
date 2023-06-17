@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use notan::egui;
 
 use crate::{
@@ -24,7 +25,10 @@ impl<'a> egui::Widget for ItemWidget<'a> {
         } else {
             "unknown"
         };
-        let draggable_btn = ui.add(egui::Button::new(name).sense(egui::Sense::drag()));
+        let draggable_btn = egui::Button::new(name.chars().take(3).join(""))
+            .min_size(egui::Vec2 { x: 30., y: 30. })
+            .sense(egui::Sense::drag());
+        let draggable_btn = ui.add(draggable_btn);
         if draggable_btn.drag_started() {
             if let Some(egui::Pos2 { x, y }) = draggable_btn.interact_pointer_pos() {
                 self.3.item_drag.start(*self.0, (x, y));
@@ -53,7 +57,7 @@ impl<'a> egui::Widget for EquipmentSlotWidget<'a> {
                 if let Some(item) = self.1 {
                     ui.add(ItemWidget(item, self.2, self.3, self.4))
                 } else {
-                    ui.label("o")
+                    ui.add(egui::Button::new("").min_size(egui::Vec2 { x: 30., y: 30. }))
                 }
             })
             .response
@@ -98,7 +102,7 @@ impl<'a> egui::Widget for EquipmentWidget<'a> {
                                     self.3,
                                 ));
                             } else {
-                                ui.label("<>");
+                                ui.label("");
                             }
                         }
                         ui.end_row();
