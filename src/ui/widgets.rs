@@ -4,6 +4,7 @@ use crate::{
     core::*,
     equipment::{Equipment, EquipmentSlot},
     item::Item,
+    needs::Needs,
     storage::Storage,
 };
 
@@ -123,6 +124,29 @@ impl<'a> egui::Widget for StorageWidget<'a> {
                     storage.0.iter().for_each(|item| {
                         ui.add(ItemWidget(item, self.1, self.2, self.3));
                     });
+                }
+            })
+            .response
+    }
+}
+
+pub(super) struct NeedsWidget<'a>(
+    pub(super) &'a EntityRef,
+    pub(super) &'a State,
+    pub(super) &'a mut StateCommands,
+    pub(super) &'a mut UiState,
+);
+
+impl<'a> egui::Widget for NeedsWidget<'a> {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        egui::Grid::new(format!("Needs[{:?}]", self.0))
+            .show(ui, |ui| {
+                if let Some((needs,)) = self.1.select_one::<(Needs,)>(self.0) {
+                    needs.0.iter().for_each(|(need_type, need_status)| {
+                        ui.label(format!("{:?}", need_type));
+                        ui.label(format!("{}/{}", need_status.curr, need_status.max));
+                        ui.end_row();
+                    })
                 }
             })
             .response

@@ -6,6 +6,7 @@ use game_entities::{create_chest, create_item, create_player};
 use interaction::*;
 use item::{ItemPickupSystem, ItemTransferSystem};
 use misc_systems::*;
+use needs::*;
 use notan::{
     draw::{CreateDraw, DrawShapes},
     egui::EguiPluginSugar,
@@ -20,6 +21,7 @@ mod game_entities;
 mod interaction;
 mod item;
 mod misc_systems;
+mod needs;
 mod physics;
 mod storage;
 mod ui;
@@ -47,6 +49,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(ItemTransferSystem);
     world.register_system(ItemPickupSystem);
     world.register_system(AnchorPositionSystem);
+    world.register_system(NeedsSystem::default());
     // Initialize the scene for debugging.
     world.update_with(|_, cmds| {
         create_player(cmds, Position { x: 0., y: 0. });

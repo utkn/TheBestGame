@@ -29,6 +29,7 @@ impl<'a> UiBuilder<'a> {
 
     fn build(&mut self, game_state: &'a State) -> HashMap<egui::Id, WindowType> {
         let player_entity = EntityRef::new(0, 0);
+        self.add_window(NeedsWindow(player_entity));
         self.add_window(EquipmentWindow(player_entity));
         self.add_window(StorageWindow {
             title: "Backpack",

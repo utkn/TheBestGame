@@ -3,6 +3,7 @@ use crate::{
     equipment::{Equipment, EquipmentSlot, Equippable},
     interaction::{Interactable, InteractionType, ProximityInteractor},
     item::Item,
+    needs::{NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
     storage::Storage,
 };
@@ -21,6 +22,12 @@ pub fn create_player(cmds: &mut StateCommands, pos: Position) -> EntityRef {
         ProximityInteractor::default(),
         Storage::default(),
         Equipment::default(),
+        Needs::new([
+            (NeedType::Health, NeedStatus::with_max(100)),
+            (NeedType::Sanity, NeedStatus::with_max(100)),
+            (NeedType::Hunger, NeedStatus::with_zero(100)),
+            (NeedType::Thirst, NeedStatus::with_zero(100)),
+        ]),
     )
         .create(cmds)
 }
