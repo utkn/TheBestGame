@@ -1,5 +1,5 @@
 use crate::{
-    core::{primitive_components::Position, *},
+    core::*,
     equipment::{EquipEntityReq, Equipment, Equippable, UnequipEntityReq},
     interaction::InteractionStartedEvt,
     storage::{Storage, StoreEntityReq, UnstoreEntityReq},

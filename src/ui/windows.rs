@@ -1,8 +1,9 @@
 use notan::egui;
 
-use crate::core::primitive_components::Position;
-use crate::core::{EntityRef, State, StateCommands};
+use crate::core::{Controller, EntityRef, EntityRefBag, Position, State, StateCommands};
+use crate::interaction::Interactable;
 use crate::item::ItemLocation;
+use crate::storage::Storage;
 
 use super::widgets::*;
 use super::UiState;
@@ -26,20 +27,18 @@ impl From<Option<WindowType>> for ItemLocation {
 pub trait Window {
     fn window_id(&self) -> egui::Id;
     fn window_type(&self) -> WindowType;
-    fn requested_pos(&self) -> (f32, f32);
-    fn size(&self) -> (f32, f32);
     fn add_into(
         &mut self,
         ctx: &egui::Context,
-        pos: (f32, f32),
+        game_state: &State,
         ui_cmds: &mut StateCommands,
         ui_state: &mut UiState,
     );
 }
 
-pub(super) struct EquipmentWindow<'a>(pub(super) EntityRef, pub(super) &'a State);
+pub(super) struct EquipmentWindow(pub(super) EntityRef);
 
-impl<'a> Window for EquipmentWindow<'a> {
+impl Window for EquipmentWindow {
     fn window_id(&self) -> egui::Id {
         format!("EquipmentWindow[{:?}]", self.0).into()
     }
@@ -51,72 +50,84 @@ impl<'a> Window for EquipmentWindow<'a> {
     fn add_into(
         &mut self,
         ctx: &egui::Context,
-        pos: (f32, f32),
+        game_state: &State,
         ui_cmds: &mut StateCommands,
         ui_state: &mut UiState,
     ) {
         egui::Window::new("Equipment")
             .id(self.window_id())
-            .fixed_size(self.size())
-            .title_bar(false)
+            .anchor(egui::Align2::RIGHT_TOP, (-10., 10.))
             .collapsible(false)
+            .fixed_size((150., 90.))
+            .resizable(false)
             .show(ctx, |ui| {
                 ui.set_width(ui.available_width());
                 ui.set_height(ui.available_height());
-                ui.add(EquipmentWidget(&self.0, self.1, ui_cmds, ui_state));
+                ui.add(EquipmentWidget(&self.0, game_state, ui_cmds, ui_state));
             });
-    }
-
-    fn requested_pos(&self) -> (f32, f32) {
-        self.1
-            .select_one::<(Position,)>(&self.0)
-            .map(|(pos,)| (pos.x, pos.y))
-            .unwrap_or_default()
-    }
-
-    fn size(&self) -> (f32, f32) {
-        (200., 100.)
     }
 }
 
-pub(super) struct StorageWindow<'a>(pub(super) EntityRef, pub(super) &'a State);
+pub(super) struct StorageWindow {
+    pub(super) title: &'static str,
+    pub(super) storage_entity: EntityRef,
+}
 
-impl<'a> Window for StorageWindow<'a> {
+impl Window for StorageWindow {
     fn window_id(&self) -> egui::Id {
-        format!("StorageWindow[{:?}]", self.0).into()
+        format!("StorageWindow[{:?}]", self.storage_entity).into()
     }
 
     fn window_type(&self) -> WindowType {
-        WindowType::Storage(self.0)
+        WindowType::Storage(self.storage_entity)
     }
 
     fn add_into(
         &mut self,
         ctx: &egui::Context,
-        pos: (f32, f32),
+        game_state: &State,
         ui_cmds: &mut StateCommands,
         ui_state: &mut UiState,
     ) {
-        egui::Window::new("Storage")
+        let window_width = 150.;
+        let is_player_storage = game_state
+            .select_one::<(Controller,)>(&self.storage_entity)
+            .is_some();
+        let mut win = egui::Window::new(self.title)
             .id(self.window_id())
-            .fixed_size(self.size())
-            .title_bar(false)
             .collapsible(false)
-            .show(ctx, |ui| {
-                ui.set_width(ui.available_width());
-                ui.set_height(ui.available_height());
-                ui.add(StorageWidget(&self.0, self.1, ui_cmds, ui_state))
-            });
-    }
-
-    fn requested_pos(&self) -> (f32, f32) {
-        self.1
-            .select_one::<(Position,)>(&self.0)
-            .map(|(pos,)| (pos.x, pos.y))
-            .unwrap_or_default()
-    }
-
-    fn size(&self) -> (f32, f32) {
-        (100., 100.)
+            .default_width(window_width)
+            .resizable(false);
+        // Get the active storages, i.e., the storages that are being interacted by this storage.
+        let active_storages = game_state
+            .select::<(Storage, Position, Interactable)>()
+            .filter(|(_, (_, _, interactable))| interactable.actors.contains(&self.storage_entity));
+        // Calculate the position through them.
+        let position_with_active_storage = active_storages
+            .map(|(_, (_, pos, _))| ((pos.x + window_width).ceil() as i32, pos.y))
+            .max_by_key(|(x, _)| *x);
+        // Handle alignment & positioning.
+        if is_player_storage {
+            if let Some((x, y)) = position_with_active_storage {
+                win = win.fixed_pos((x as f32 + 30., y + 10.));
+            } else {
+                win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 150.));
+            }
+        } else {
+            let storage_pos = game_state
+                .select_one::<(Position,)>(&self.storage_entity)
+                .map(|(pos,)| *pos)
+                .unwrap_or_default();
+            win = win.fixed_pos((storage_pos.x + 10., storage_pos.y + 10.));
+        }
+        win.show(ctx, |ui| {
+            ui.set_width(ui.available_width());
+            ui.add(StorageWidget(
+                &self.storage_entity,
+                game_state,
+                ui_cmds,
+                ui_state,
+            ))
+        });
     }
 }

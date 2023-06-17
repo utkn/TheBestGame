@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
+/// Reference to an entity in the system.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct EntityRef {
     id: usize,
@@ -7,6 +8,7 @@ pub struct EntityRef {
 }
 
 impl EntityRef {
+    /// Creates a new entity reference.
     pub fn new(id: usize, version: u8) -> Self {
         Self { id, version }
     }
@@ -22,7 +24,7 @@ impl EntityRef {
 pub struct EntityGroup(Vec<EntityRef>);
 
 /// A storage type that contains entity references that could be invalidated at any time.
-pub trait EntityRefStorage {
+pub trait EntityRefBag {
     /// Removes the invalidated entities from this storage.
     fn remove_invalids(&mut self, validity_set: &EntityValiditySet) -> HashSet<EntityRef> {
         let invalids = self.get_invalids(validity_set);
@@ -40,7 +42,7 @@ pub trait EntityRefStorage {
     fn try_remove(&mut self, e: &EntityRef) -> bool;
 }
 
-/// A set of entity references that are stored as a hash set.
+/// A collection of entity references that are stored as a hash set.
 #[derive(Clone, Debug, Default)]
 pub struct EntityRefSet(HashSet<EntityRef>);
 
@@ -54,7 +56,7 @@ impl EntityRefSet {
     }
 }
 
-impl EntityRefStorage for EntityRefSet {
+impl EntityRefBag for EntityRefSet {
     fn len(&self) -> usize {
         self.0.len()
     }
@@ -140,7 +142,7 @@ impl EntityManager {
         self.free_ids.push_front(id);
     }
 
-    /// Returns a set that contains the valid entities.
+    /// Returns a set that contains the valid entities. Performs a clone of the current maintained entity versions, use carefully!
     pub fn extract_validity_set(&self) -> EntityValiditySet {
         EntityValiditySet(self.curr_versions.clone())
     }

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::core::{
-    EntityRef, EntityRefStorage, EntityValiditySet, State, StateCommands, System, UpdateContext,
+    EntityRef, EntityRefBag, EntityValiditySet, State, StateCommands, System, UpdateContext,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -53,7 +53,7 @@ impl Equipment {
     }
 }
 
-impl EntityRefStorage for Equipment {
+impl EntityRefBag for Equipment {
     fn len(&self) -> usize {
         self.0.len()
     }

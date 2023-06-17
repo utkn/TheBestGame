@@ -3,9 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    core::{
-        EntityRef, EntityRefSet, EntityRefStorage, State, StateCommands, System, UpdateContext,
-    },
+    core::{EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, UpdateContext},
     physics::CollisionState,
 };
 
@@ -161,6 +159,7 @@ impl System for InteractionSystem {
     }
 }
 
+/// An actor that can interact with its surroundings.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct ProximityInteractor {
     pub target: Option<EntityRef>,
@@ -205,8 +204,9 @@ impl System for ProximityInteractionSystem {
                     }
                 }
             });
-        // Toggle the proximity interaction.
+        // End or toggle the proximity interaction, depending on the user input.
         if ctx.control_map.end_interact_pressed {
+            // End the proximity interaction.
             state
                 .select::<(ProximityInteractor, CollisionState)>()
                 .for_each(|(e, (pi, _))| {
@@ -219,6 +219,7 @@ impl System for ProximityInteractionSystem {
                     }
                 });
         } else if ctx.control_map.start_interact_pressed {
+            // Toggle the proximity interaction.
             state
                 .select::<(ProximityInteractor, CollisionState)>()
                 .for_each(|(e, (pi, coll_state))| {
@@ -229,17 +230,21 @@ impl System for ProximityInteractionSystem {
                             target: current_target,
                         }));
                     }
-                    // Find the first interactable target that the entity is colliding with.
-                    let interactable_target = coll_state.colliding.iter().find_map(|colliding| {
-                        state
-                            .select_one::<(Interactable,)>(&colliding)
-                            .map(|_| *colliding)
+                    // Find the first new interactable target that the entity is colliding with.
+                    let interactable_target = coll_state.colliding.iter().find(|candidate| {
+                        let is_interactable =
+                            state.select_one::<(Interactable,)>(candidate).is_some();
+                        let is_new = pi
+                            .target
+                            .map(|curr_target| curr_target != **candidate)
+                            .unwrap_or(true);
+                        is_interactable && is_new
                     });
                     // Try to start the interaction with the new target.
                     if let Some(target_entity) = interactable_target {
                         cmds.emit_event(TryInteractReq(Interaction {
                             actor: e,
-                            target: target_entity,
+                            target: *target_entity,
                         }));
                     }
                 });

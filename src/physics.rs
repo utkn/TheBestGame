@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 use sepax2d::{sat_collision, sat_overlap};
 
-use crate::core::{primitive_components::*, *};
+use crate::core::*;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Shape {

@@ -1,18 +1,16 @@
 #![allow(dead_code)]
 
-use crate::core::primitive_components::*;
 use crate::core::*;
 use equipment::EquipmentSystem;
 use game_entities::{create_chest, create_item, create_player};
-use interaction::{
-    Interactable, InteractionSystem, ProximityInteractionSystem, ProximityInteractor,
-};
+use interaction::*;
 use item::{ItemPickupSystem, ItemTransferSystem};
+use misc_systems::*;
 use notan::{
-    draw::{CreateDraw, CreateFont, DrawShapes},
+    draw::{CreateDraw, DrawShapes},
     egui::EguiPluginSugar,
 };
-use physics::{CollisionDetectionSystem, Hitbox, SeparateCollisionsSystem, Shape};
+use physics::*;
 use storage::StorageSystem;
 use ui::{draw_ui, UiState};
 
@@ -21,111 +19,22 @@ mod equipment;
 mod game_entities;
 mod interaction;
 mod item;
+mod misc_systems;
 mod physics;
 mod storage;
 mod ui;
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct MovementSystem;
-
-impl System for MovementSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state
-            .select::<(Position, Velocity)>()
-            .for_each(|(e, (pos, vel))| {
-                let mut new_pos = *pos;
-                new_pos.x += vel.x * ctx.dt;
-                new_pos.y += vel.y * ctx.dt;
-                cmds.set_component(&e, new_pos);
-            });
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ControlSystem;
-
-impl System for ControlSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state
-            .select::<(Velocity, TargetVelocity, Controller)>()
-            .for_each(|(e, (_, _, controller))| {
-                let new_target_vel_x = if ctx.control_map.left_pressed {
-                    -1.
-                } else if ctx.control_map.right_pressed {
-                    1.
-                } else {
-                    0.
-                } * controller.max_speed;
-                let new_target_vel_y = if ctx.control_map.up_pressed {
-                    -1.
-                } else if ctx.control_map.down_pressed {
-                    1.
-                } else {
-                    0.
-                } * controller.max_speed;
-                cmds.set_component(
-                    &e,
-                    TargetVelocity {
-                        x: new_target_vel_x,
-                        y: new_target_vel_y,
-                    },
-                )
-            })
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ApproachVelocitySystem;
-
-impl System for ApproachVelocitySystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state
-            .select::<(Velocity, TargetVelocity, Acceleration)>()
-            .for_each(|(e, (vel, target_vel, acc))| {
-                let vel = notan::math::vec2(vel.x, vel.y);
-                let target_vel = notan::math::vec2(target_vel.x, target_vel.y);
-                let new_vel = vel + acc.0 * ctx.dt * (target_vel - vel).normalize_or_zero();
-                cmds.set_component(
-                    &e,
-                    Velocity {
-                        x: new_vel.x,
-                        y: new_vel.y,
-                    },
-                )
-            })
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct AnchorSystem;
-
-impl System for AnchorSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state
-            .select::<(AnchorPosition,)>()
-            .for_each(|(child_entity, (anchor,))| {
-                if !state.is_valid(&anchor.0) {
-                    cmds.remove_entity(&child_entity);
-                } else if let Some((anchored_pos,)) = state.select_one::<(Position,)>(&anchor.0) {
-                    let new_pos = anchored_pos.translated(anchor.1);
-                    cmds.set_component(&child_entity, new_pos);
-                }
-            })
-    }
-}
-
 #[derive(notan::AppState)]
 struct AppState {
     world: World,
-    font: notan::draw::Font,
     ui_state: UiState,
 }
 
-fn setup(gfx: &mut notan::prelude::Graphics) -> AppState {
-    let font = gfx
-        .create_font(include_bytes!("assets/Ubuntu-B.ttf"))
-        .unwrap();
+fn setup(app: &mut notan::prelude::App) -> AppState {
+    app.backend.window().set_title("TheBestGame v0");
+    // Create the world from an empty state.
     let mut world = core::World::from(core::State::default());
+    // Register the systems.
     world.register_system(MovementSystem);
     world.register_system(ControlSystem::default());
     world.register_system(ApproachVelocitySystem);
@@ -137,7 +46,8 @@ fn setup(gfx: &mut notan::prelude::Graphics) -> AppState {
     world.register_system(EquipmentSystem);
     world.register_system(ItemTransferSystem);
     world.register_system(ItemPickupSystem);
-    world.register_system(AnchorSystem);
+    world.register_system(AnchorPositionSystem);
+    // Initialize the scene for debugging.
     world.update_with(|_, cmds| {
         create_player(cmds, Position { x: 0., y: 0. });
         create_chest(cmds, Position { x: 50., y: 50. });
@@ -146,7 +56,6 @@ fn setup(gfx: &mut notan::prelude::Graphics) -> AppState {
     });
     AppState {
         world,
-        font,
         ui_state: Default::default(),
     }
 }

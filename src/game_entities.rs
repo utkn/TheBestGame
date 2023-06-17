@@ -1,5 +1,5 @@
 use crate::{
-    core::{primitive_components::*, EntityRef, StateCommands},
+    core::*,
     equipment::{Equipment, EquipmentSlot, Equippable},
     interaction::{Interactable, InteractionType, ProximityInteractor},
     item::Item,

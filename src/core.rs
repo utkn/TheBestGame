@@ -3,13 +3,14 @@ mod component_tuple;
 mod entity;
 mod event;
 mod generic_bag;
-pub mod primitive_components;
+mod primitive_components;
 mod state;
 mod system;
 mod template;
 
 pub use entity::*;
 pub use event::EventManager;
+pub use primitive_components::*;
 pub use state::*;
 pub use system::*;
 pub use template::EntityTemplate;

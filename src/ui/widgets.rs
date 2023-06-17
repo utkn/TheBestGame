@@ -1,7 +1,7 @@
 use notan::egui;
 
 use crate::{
-    core::{primitive_components::Name, EntityRef, State, StateCommands},
+    core::*,
     equipment::{Equipment, EquipmentSlot},
     item::Item,
     storage::Storage,
