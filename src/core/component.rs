@@ -36,6 +36,10 @@ impl<T: Component> GenericBag for ComponentVec<T> {
         self.0
             .extend(other_component_vec.0.drain(..other_component_vec.0.len()));
     }
+
+    fn remove_at(&mut self, index: usize) -> bool {
+        self.remove(index).is_some()
+    }
 }
 
 impl<T: Component> ConcreteBag for ComponentVec<T> {
@@ -84,6 +88,11 @@ impl ComponentManager {
         T: Component,
     {
         self.0.get_bag::<ComponentVec<T>>()
+    }
+
+    /// Removes all the components at the given id. Returns true iff the operation succeeds.
+    pub fn clear_components(&mut self, id: usize) -> bool {
+        self.0.remove_at(id)
     }
 
     /// Fetches all the components as a tuple.

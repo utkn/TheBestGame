@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use crate::core::{
-    EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, UpdateContext,
+    EntityRef, EntityRefBag, EntityRefSet, Position, Rotation, State, StateCommands, System,
+    UpdateContext,
 };
 
 #[derive(Clone, Default, Debug)]

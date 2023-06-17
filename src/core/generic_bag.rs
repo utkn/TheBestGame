@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use itertools::Itertools;
+
 /// Represents a generic bag of objects.
 pub trait GenericBag: std::fmt::Debug {
     /// Returns the size of the collection.
@@ -10,6 +12,8 @@ pub trait GenericBag: std::fmt::Debug {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
     /// Consumes and merges the contents of the other generic bag into this one. Should panic if the underlying concrete types are different.
     fn merge(&mut self, other: Box<dyn GenericBag>);
+    /// Removes the value at the given index.
+    fn remove_at(&mut self, index: usize) -> bool;
 }
 
 /// Represents a concrete bag of objects that can be stored safely as a `GenericStorage`.
@@ -50,5 +54,14 @@ impl GenericBagMap {
 
     pub fn clear(&mut self) {
         self.bags.clear()
+    }
+
+    pub fn remove_at(&mut self, index: usize) -> bool {
+        self.bags
+            .values_mut()
+            .map(|bag| bag.remove_at(index))
+            .collect_vec()
+            .into_iter()
+            .all(|v| v)
     }
 }

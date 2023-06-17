@@ -27,16 +27,16 @@ impl System for ControlSystem {
             .select::<(Velocity, TargetVelocity, Controller)>()
             .for_each(|(e, (_, _, controller))| {
                 // Determine the target velocity according to the current pressed keys.
-                let new_target_vel_x = if ctx.control_map.left_pressed {
+                let new_target_vel_x = if ctx.control_map.left_is_down {
                     -1.
-                } else if ctx.control_map.right_pressed {
+                } else if ctx.control_map.right_is_down {
                     1.
                 } else {
                     0.
                 } * controller.max_speed;
-                let new_target_vel_y = if ctx.control_map.up_pressed {
+                let new_target_vel_y = if ctx.control_map.up_is_down {
                     -1.
-                } else if ctx.control_map.down_pressed {
+                } else if ctx.control_map.down_is_down {
                     1.
                 } else {
                     0.
@@ -76,21 +76,77 @@ impl System for ApproachVelocitySystem {
     }
 }
 
-/// A system that handles position anchoring.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct AnchorPositionSystem;
+pub struct FaceMouseSystem;
 
-impl System for AnchorPositionSystem {
+impl System for FaceMouseSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        let (mouse_x, mouse_y) = ctx.control_map.mouse_pos;
+        state
+            .select::<(FaceMouse, Rotation, Position)>()
+            .for_each(|(e, (_, _, pos))| {
+                let mouse_pos = notan::math::vec2(mouse_x, mouse_y);
+                let entity_pos = notan::math::vec2(pos.x, pos.y);
+                let diff = mouse_pos - entity_pos;
+                if diff.length_squared() == 0. {
+                    return;
+                }
+                let new_rot = diff.angle_between(notan::math::vec2(1., 0.)).to_degrees();
+                cmds.set_component(&e, Rotation { deg: new_rot });
+            });
+    }
+}
+
+/// A system that handles position and rotation anchoring.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct AnchorSystem;
+
+impl System for AnchorSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .select::<(AnchorPosition,)>()
             .for_each(|(child_entity, (anchor,))| {
                 if !state.is_valid(&anchor.0) {
-                    cmds.remove_entity(&child_entity);
+                    // TODO: decide what to do
+                    // cmds.remove_component::<AnchorPosition>(&child_entity);
                 } else if let Some((anchored_pos,)) = state.select_one::<(Position,)>(&anchor.0) {
                     let new_pos = anchored_pos.translated(anchor.1);
                     cmds.set_component(&child_entity, new_pos);
                 }
+            });
+        state
+            .select::<(AnchorRotation,)>()
+            .for_each(|(child_entity, (anchor,))| {
+                if !state.is_valid(&anchor.0) {
+                    // TODO: decide what to do
+                    // cmds.remove_component::<AnchorRotation>(&child_entity);
+                } else if let Some((anchored_rot,)) = state.select_one::<(Rotation,)>(&anchor.0) {
+                    let new_rot = Rotation {
+                        deg: anchored_rot.deg + anchor.1,
+                    };
+                    cmds.set_component(&child_entity, new_rot);
+                }
             })
+    }
+}
+
+/// A system that handles the entities with a lifetime.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LifetimeSystem;
+
+impl System for LifetimeSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state.select::<(Lifetime,)>().for_each(|(e, (lifetime,))| {
+            // Remove the entities with ended lifetime.
+            if lifetime.0 <= 0. {
+                cmds.remove_entity(&e);
+            } else {
+                // Update the alive entities' lifetimes.
+                let dt = ctx.dt;
+                cmds.update_component(&e, move |lifetime: &mut Lifetime| {
+                    lifetime.0 -= dt;
+                });
+            }
+        });
     }
 }

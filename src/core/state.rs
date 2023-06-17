@@ -104,6 +104,13 @@ impl StateCommands {
         self.tmp_entity_mgr.create()
     }
 
+    /// Dispatches a request to create a new entity with the given components in the next update.
+    pub fn create_from<'a, S: ComponentTuple<'a>>(&mut self, components: S) -> EntityRef {
+        let e = self.create_entity();
+        self.set_components(&e, components);
+        e
+    }
+
     /// Dispatches a request to update a component on a particular entity using a closure.
     pub fn update_component<T: Component>(
         &mut self,
@@ -169,6 +176,7 @@ impl StateCommands {
                 return;
             }
             state.entity_mgr.remove(e.id());
+            state.component_mgr.clear_components(e.id());
         });
         self.modifications.push(StateMod(3, f));
     }

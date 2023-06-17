@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
 use crate::core::*;
+use activation::ActivationSystem;
 use equipment::EquipmentSystem;
 use game_entities::{create_chest, create_item, create_player};
 use interaction::*;
-use item::{ItemPickupSystem, ItemTransferSystem};
+use item::{EquippedItemAnchorSystem, ItemPickupSystem, ItemTransferSystem};
 use misc_systems::*;
 use needs::*;
 use notan::{
@@ -12,9 +13,11 @@ use notan::{
     egui::EguiPluginSugar,
 };
 use physics::*;
+use projectile::ProjectileGenerationSystem;
 use storage::StorageSystem;
 use ui::{draw_ui, UiState};
 
+mod activation;
 mod core;
 mod equipment;
 mod game_entities;
@@ -23,6 +26,7 @@ mod item;
 mod misc_systems;
 mod needs;
 mod physics;
+mod projectile;
 mod storage;
 mod ui;
 
@@ -39,17 +43,23 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     // Register the systems.
     world.register_system(MovementSystem);
     world.register_system(ControlSystem::default());
+    world.register_system(LifetimeSystem);
     world.register_system(ApproachVelocitySystem);
+    world.register_system(FaceMouseSystem);
     world.register_system(CollisionDetectionSystem::default());
     world.register_system(SeparateCollisionsSystem);
     world.register_system(InteractionSystem::default());
     world.register_system(ProximityInteractionSystem);
+    world.register_system(HandInteractionSystem);
     world.register_system(StorageSystem);
     world.register_system(EquipmentSystem);
     world.register_system(ItemTransferSystem);
     world.register_system(ItemPickupSystem);
-    world.register_system(AnchorPositionSystem);
+    world.register_system(EquippedItemAnchorSystem);
+    world.register_system(AnchorSystem);
     world.register_system(NeedsSystem::default());
+    world.register_system(ActivationSystem);
+    world.register_system(ProjectileGenerationSystem);
     // Initialize the scene for debugging.
     world.update_with(|_, cmds| {
         create_player(cmds, Position { x: 0., y: 0. });

@@ -3,7 +3,11 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 use crate::{
-    core::{EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, UpdateContext},
+    core::{
+        Controller, EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System,
+        UpdateContext,
+    },
+    equipment::{Equipment, EquipmentSlot},
     physics::CollisionState,
 };
 
@@ -174,8 +178,8 @@ impl System for ProximityInteractionSystem {
         state.read_events::<InteractionEndedEvt>().for_each(|evt| {
             // Get the actor's proximity target.
             let actor_proximity_target = state
-                .select_one::<(ProximityInteractor,)>(&evt.0.actor)
-                .map(|(proximity_interactor,)| proximity_interactor.target)
+                .select_one::<(ProximityInteractor, Controller)>(&evt.0.actor)
+                .map(|(proximity_interactor, _)| proximity_interactor.target)
                 .flatten();
             // If it is identical to the target of this ended interaction, remove it from the proximity target.
             if let Some(actor_proximity_target) = actor_proximity_target {
@@ -191,8 +195,10 @@ impl System for ProximityInteractionSystem {
             .read_events::<InteractionStartedEvt>()
             .for_each(|evt| {
                 // If the actor is a proximity interactor...
-                if let Some((_, actor_coll_state)) =
-                    state.select_one::<(ProximityInteractor, CollisionState)>(&evt.0.actor)
+                if let Some((_, actor_coll_state, _)) =
+                    state.select_one::<(ProximityInteractor, CollisionState, Controller)>(
+                        &evt.0.actor,
+                    )
                 {
                     // ... and it collides with the target of this interaction...
                     if actor_coll_state.colliding.contains(&evt.0.target) {
@@ -205,11 +211,11 @@ impl System for ProximityInteractionSystem {
                 }
             });
         // End or toggle the proximity interaction, depending on the user input.
-        if ctx.control_map.end_interact_pressed {
+        if ctx.control_map.end_interact_was_pressed {
             // End the proximity interaction.
             state
-                .select::<(ProximityInteractor, CollisionState)>()
-                .for_each(|(e, (pi, _))| {
+                .select::<(ProximityInteractor, CollisionState, Controller)>()
+                .for_each(|(e, (pi, _, _))| {
                     // Try to uninteract with the current target.
                     if let Some(current_target) = pi.target {
                         cmds.emit_event(TryUninteractReq(Interaction {
@@ -218,11 +224,11 @@ impl System for ProximityInteractionSystem {
                         }));
                     }
                 });
-        } else if ctx.control_map.start_interact_pressed {
+        } else if ctx.control_map.start_interact_was_pressed {
             // Toggle the proximity interaction.
             state
-                .select::<(ProximityInteractor, CollisionState)>()
-                .for_each(|(e, (pi, coll_state))| {
+                .select::<(ProximityInteractor, CollisionState, Controller)>()
+                .for_each(|(e, (pi, coll_state, _))| {
                     // Try to uninteract with the current target.
                     if let Some(current_target) = pi.target {
                         cmds.emit_event(TryUninteractReq(Interaction {
@@ -249,5 +255,43 @@ impl System for ProximityInteractionSystem {
                     }
                 });
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct HandInteractor;
+
+#[derive(Clone, Copy, Debug)]
+pub struct HandInteractionSystem;
+
+impl System for HandInteractionSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state
+            .select::<(HandInteractor, Equipment, Controller)>()
+            .for_each(|(e, (_, equipment, _))| {
+                // Get the left & right hand items of the hand interactor actor.
+                let (lh_item, rh_item) = (
+                    equipment.get(EquipmentSlot::LeftHand),
+                    equipment.get(EquipmentSlot::RightHand),
+                );
+                // If left mouse is pressed, try to interact with the left hand item.
+                if ctx.control_map.mouse_left_was_pressed {
+                    if let Some(lh_item) = lh_item {
+                        cmds.emit_event(TryInteractReq(Interaction {
+                            actor: e,
+                            target: *lh_item,
+                        }))
+                    }
+                }
+                // If right mouse is pressed, try to interact with the right hand item.
+                if ctx.control_map.mouse_right_was_pressed {
+                    if let Some(rh_item) = rh_item {
+                        cmds.emit_event(TryInteractReq(Interaction {
+                            actor: e,
+                            target: *rh_item,
+                        }))
+                    }
+                }
+            })
     }
 }

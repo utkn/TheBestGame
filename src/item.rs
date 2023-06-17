@@ -1,6 +1,9 @@
 use crate::{
     core::*,
-    equipment::{EquipEntityReq, Equipment, Equippable, UnequipEntityReq},
+    equipment::{
+        EntityEquippedEvt, EntityUnequippedEvt, EquipEntityReq, Equipment, Equippable,
+        UnequipEntityReq,
+    },
     interaction::InteractionStartedEvt,
     storage::{Storage, StoreEntityReq, UnstoreEntityReq},
 };
@@ -136,16 +139,14 @@ impl System for ItemTransferSystem {
             // Place in the new location.
             match evt.to_loc {
                 ItemLocation::Ground => {
-                    let new_position = match evt.from_loc {
-                        ItemLocation::Ground => Position::default(),
-                        ItemLocation::Equipment(pos_entity) | ItemLocation::Storage(pos_entity) => {
-                            state
-                                .select_one::<(Position,)>(&pos_entity)
-                                .map(|(pos,)| *pos)
-                                .unwrap_or_default()
-                        }
+                    let new_transform = match evt.from_loc {
+                        ItemLocation::Ground => (Position::default(), Rotation::default()),
+                        ItemLocation::Equipment(entity) | ItemLocation::Storage(entity) => state
+                            .select_one::<(Position, Rotation)>(&entity)
+                            .map(|(pos, rot)| (*pos, *rot))
+                            .unwrap_or_default(),
                     };
-                    cmds.set_component(&evt.item_entity, new_position);
+                    cmds.set_components(&evt.item_entity, new_transform);
                 }
                 ItemLocation::Equipment(equipment_entity) => cmds.emit_event(EquipEntityReq {
                     entity: evt.item_entity,
@@ -175,5 +176,38 @@ impl System for ItemPickupSystem {
                     cmds.emit_event(ItemTransferReq::pick_up(evt.0.target, evt.0.actor));
                 }
             });
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct EquippedItemAnchorSystem;
+
+impl System for EquippedItemAnchorSystem {
+    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state.read_events::<EntityEquippedEvt>().for_each(|evt| {
+            if let (Some(_), Some(_)) = (
+                state.select_one::<(Equipment,)>(&evt.equipment_entity),
+                state.select_one::<(Item,)>(&evt.entity),
+            ) {
+                cmds.set_components(
+                    &evt.entity,
+                    (
+                        Position::default(),
+                        Rotation::default(),
+                        AnchorPosition(evt.equipment_entity, (0., 0.)),
+                        AnchorRotation(evt.equipment_entity, 0.),
+                    ),
+                );
+            }
+        });
+        state.read_events::<EntityUnequippedEvt>().for_each(|evt| {
+            if let (Some(_), Some(_)) = (
+                state.select_one::<(Equipment,)>(&evt.equipment_entity),
+                state.select_one::<(Item,)>(&evt.entity),
+            ) {
+                cmds.remove_component::<AnchorPosition>(&evt.entity);
+                cmds.remove_component::<AnchorRotation>(&evt.entity);
+            }
+        });
     }
 }

@@ -33,6 +33,14 @@ impl<T: Event> GenericBag for EventVec<T> {
         self.0
             .extend(other_event_vec.0.drain(..other_event_vec.0.len()));
     }
+
+    fn remove_at(&mut self, index: usize) -> bool {
+        if index >= self.len() {
+            return false;
+        }
+        self.0.remove(index);
+        true
+    }
 }
 
 impl<T: Event> ConcreteBag for EventVec<T> {
