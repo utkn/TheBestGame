@@ -1,0 +1,12 @@
+[package]
+name = "game"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+itertools = "0.10.5"
+notan = {version = "0.9.5", features = ["egui"]}
+sepax2d = "0.3.8"
+variadic_generics = "0.1.2"
