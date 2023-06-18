@@ -5,11 +5,15 @@ use std::{
 
 use crate::{core::*, entity_insights::EntityInsights};
 
+/// An effect is simply a function that takes in a component and returns a new one.
 pub type Effect<T> = fn(T) -> T;
 
+/// A component representing another affected component.
 #[derive(Clone, Debug)]
 pub struct Affected<T: Component> {
+    /// The initial state of the component.
     initial_state: Option<T>,
+    /// The applied effects.
     effects: VecDeque<Effect<T>>,
 }
 
@@ -23,6 +27,7 @@ impl<T: Component> Default for Affected<T> {
 }
 
 impl<T: Component> Affected<T> {
+    /// Computes the final state of the component using the saved effects.
     pub fn final_state(&self, init: T) -> T {
         self.effects
             .iter()
@@ -32,10 +37,13 @@ impl<T: Component> Affected<T> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EffectorTarget {
+    /// The effect will be applied to the storer of the `Effector` entity.
     Storer,
+    /// The effect will be applied to the equipper of the `Effector` entity.
     Equipper,
 }
 
+/// A component representing an entity that can apply effects to other entities.
 #[derive(Clone, Debug)]
 pub struct Effector<T: Component> {
     effect: Effect<T>,

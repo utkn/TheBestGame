@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 
@@ -22,6 +22,8 @@ pub struct Interaction {
 /// Whether
 #[derive(Clone, Copy, Debug)]
 pub enum InteractionType {
+    /// Interaction can arbitrarily be started and only be explicitly ended.
+    Whatevs,
     /// Interaction lasts only one frame.
     OneShot,
     /// Interaction can only be started if the actor and target touch.
@@ -42,12 +44,14 @@ impl InteractionType {
                     false
                 }
             }
+            InteractionType::Whatevs => true,
         }
     }
 
     /// Returns whether a started interaction should end given the current state of the game.
     fn should_end(&self, actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
         match self {
+            InteractionType::Whatevs => false,
             InteractionType::OneShot => true,
             InteractionType::ContactRequiredOneShot => true,
             InteractionType::ContactRequired => !self.can_start(target, actor, state),
@@ -165,73 +169,40 @@ impl System for InteractionSystem {
 }
 
 /// An actor that can interact with its surroundings.
-#[derive(Clone, Copy, Default, Debug)]
-pub struct ProximityInteractor {
-    pub target: Option<EntityRef>,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct ProximityInteractor;
 
-#[derive(Clone, Debug)]
-pub struct ProximityInteractionSystem;
+#[derive(Clone, Debug, Default)]
+pub struct ProximityInteractionSystem {
+    /// Requested proximity interactions (actor -> target)
+    potential_interactions: HashMap<EntityRef, EntityRef>,
+}
 
 impl System for ProximityInteractionSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        // Remove the proximity interactions if they were killed.
-        state.read_events::<InteractionEndedEvt>().for_each(|evt| {
-            // Get the actor's proximity target.
-            let actor_proximity_target = state
-                .select_one::<(ProximityInteractor, Controller)>(&evt.0.actor)
-                .map(|(proximity_interactor, _)| proximity_interactor.target)
-                .flatten();
-            // If it is identical to the target of this ended interaction, remove it from the proximity target.
-            if let Some(actor_proximity_target) = actor_proximity_target {
-                if actor_proximity_target == evt.0.target {
-                    cmds.update_component(&evt.0.actor, move |pi: &mut ProximityInteractor| {
-                        pi.target = None;
-                    })
-                }
-            }
-        });
-        // Handle the new interactions that should be handled as a proximity interaction.
-        state
-            .read_events::<InteractionStartedEvt>()
-            .for_each(|evt| {
-                // If the actor is a proximity interactor...
-                if let Some((_, actor_coll_state, _)) =
-                    state.select_one::<(ProximityInteractor, CollisionState, Controller)>(
-                        &evt.0.actor,
-                    )
-                {
-                    // ... and it collides with the target of this interaction...
-                    if actor_coll_state.colliding.contains(&evt.0.target) {
-                        // ... then set the proximity target of the actor.
-                        let target = evt.0.target;
-                        cmds.update_component(&evt.0.actor, move |pi: &mut ProximityInteractor| {
-                            pi.target = Some(target);
-                        });
-                    }
-                }
-            });
-        // End or toggle the proximity interaction, depending on the user input.
+        // Try to end the proximity interaction with explicit key press.
         if ctx.control_map.end_interact_was_pressed {
             // End the proximity interaction.
             state
-                .select::<(ProximityInteractor, CollisionState, Controller)>()
-                .for_each(|(e, (pi, _, _))| {
+                .select::<(ProximityInteractor, CollisionState)>()
+                .for_each(|(e, _)| {
                     // Try to uninteract with the current target.
-                    if let Some(current_target) = pi.target {
+                    if let Some(current_target) = self.potential_interactions.remove(&e) {
                         cmds.emit_event(TryUninteractReq(Interaction {
                             actor: e,
                             target: current_target,
                         }));
                     }
                 });
-        } else if ctx.control_map.start_interact_was_pressed {
+        }
+        // Try to start a proximity interaction.
+        if ctx.control_map.start_interact_was_pressed {
             // Toggle the proximity interaction.
             state
-                .select::<(ProximityInteractor, CollisionState, Controller)>()
-                .for_each(|(e, (pi, coll_state, _))| {
+                .select::<(ProximityInteractor, CollisionState)>()
+                .for_each(|(e, (_, coll_state))| {
                     // Try to uninteract with the current target.
-                    if let Some(current_target) = pi.target {
+                    if let Some(current_target) = self.potential_interactions.remove(&e) {
                         cmds.emit_event(TryUninteractReq(Interaction {
                             actor: e,
                             target: current_target,
@@ -241,9 +212,10 @@ impl System for ProximityInteractionSystem {
                     let interactable_target = coll_state.colliding.iter().find(|candidate| {
                         let is_interactable =
                             state.select_one::<(Interactable,)>(candidate).is_some();
-                        let is_new = pi
-                            .target
-                            .map(|curr_target| curr_target != **candidate)
+                        let is_new = self
+                            .potential_interactions
+                            .get(&e)
+                            .map(|curr_target| curr_target != *candidate)
                             .unwrap_or(true);
                         let is_on_ground = EntityInsights::of(&candidate, state).location
                             == EntityLocation::Ground;
@@ -251,6 +223,7 @@ impl System for ProximityInteractionSystem {
                     });
                     // Try to start the interaction with the new target.
                     if let Some(target_entity) = interactable_target {
+                        self.potential_interactions.insert(e, *target_entity);
                         cmds.emit_event(TryInteractReq(Interaction {
                             actor: e,
                             target: *target_entity,
@@ -286,10 +259,28 @@ impl System for HandInteractionSystem {
                         }))
                     }
                 }
+                // If the left mouse is released, try to uninteract with the left hand item.
+                if ctx.control_map.mouse_left_was_released {
+                    if let Some(lh_item) = lh_item {
+                        cmds.emit_event(TryUninteractReq(Interaction {
+                            actor: e,
+                            target: *lh_item,
+                        }))
+                    }
+                }
                 // If right mouse is pressed, try to interact with the right hand item.
                 if ctx.control_map.mouse_right_was_pressed {
                     if let Some(rh_item) = rh_item {
                         cmds.emit_event(TryInteractReq(Interaction {
+                            actor: e,
+                            target: *rh_item,
+                        }))
+                    }
+                }
+                // If the right mouse is released, try to uninteract with the right hand item.
+                if ctx.control_map.mouse_right_was_released {
+                    if let Some(rh_item) = rh_item {
+                        cmds.emit_event(TryUninteractReq(Interaction {
                             actor: e,
                             target: *rh_item,
                         }))

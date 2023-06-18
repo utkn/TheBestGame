@@ -12,16 +12,14 @@ use crate::{
 };
 
 pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
-    let player_entity = cmds.create_from((
+    let character_entity = cmds.create_from((
         trans,
         Velocity::default(),
         Acceleration(2000.),
         TargetVelocity::default(),
         MaxSpeed(300.),
-        Controller { default_speed: 5. },
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
         CollisionState::default(),
-        ProximityInteractor::default(),
         Storage::default(),
         Equipment::default(),
         Needs::new([
@@ -32,15 +30,17 @@ pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
         ]),
     ));
     cmds.set_components(
-        &player_entity,
+        &character_entity,
         (
             HandInteractor,
+            ProximityInteractor,
+            Controller { default_speed: 5. },
             FaceMouse,
             Affected::<MaxSpeed>::default(),
             Affected::<Acceleration>::default(),
         ),
     );
-    player_entity
+    character_entity
 }
 
 pub fn create_chest(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
@@ -66,14 +66,37 @@ pub fn create_handgun(cmds: &mut StateCommands, trans: Transform, name: Name) ->
         Item,
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
-        Interactable::new(InteractionType::ContactRequiredOneShot),
+        Interactable::new(InteractionType::OneShot),
         Equippable::new([EquipmentSlot::LeftHand]),
         Activatable::at_locations([ActivationLoc::Equipment]),
-        ProjectileGenerator(ProjectileDefn {
-            lifetime: 0.5,
-            speed: 300.,
-            need_mutation: (NeedType::Health, NeedMutatorEffect::Delta(-5.)),
-        }),
+        ProjectileGenerator {
+            cooldown: None,
+            proj: ProjectileDefn {
+                lifetime: 0.5,
+                speed: 300.,
+                need_mutation: (NeedType::Health, NeedMutatorEffect::Delta(-5.)),
+            },
+        },
+    ))
+}
+pub fn create_machinegun(cmds: &mut StateCommands, trans: Transform, name: Name) -> EntityRef {
+    cmds.create_from((
+        trans,
+        name,
+        Item,
+        Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
+        CollisionState::default(),
+        Interactable::new(InteractionType::Whatevs),
+        Equippable::new([EquipmentSlot::RightHand]),
+        Activatable::at_locations([ActivationLoc::Equipment]),
+        ProjectileGenerator {
+            cooldown: Some(0.1),
+            proj: ProjectileDefn {
+                lifetime: 1.5,
+                speed: 600.,
+                need_mutation: (NeedType::Health, NeedMutatorEffect::Delta(-5.)),
+            },
+        },
     ))
 }
 

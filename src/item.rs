@@ -1,11 +1,11 @@
 use crate::{
     core::*,
-    entity_insights::EntityLocation,
+    entity_insights::{EntityInsights, EntityLocation},
     equipment::{
         EntityEquippedEvt, EntityUnequippedEvt, EquipEntityReq, Equipment, Equippable,
         UnequipEntityReq,
     },
-    interaction::InteractionStartedEvt,
+    interaction::{InteractionStartedEvt, TryUninteractReq},
     storage::{Storage, StoreEntityReq, UnstoreEntityReq},
 };
 
@@ -148,7 +148,11 @@ impl System for ItemPickupSystem {
                     state.select_one::<(Storage,)>(&evt.0.actor),
                     state.select_one::<(Transform, Item)>(&evt.0.target),
                 ) {
-                    cmds.emit_event(ItemTransferReq::pick_up(evt.0.target, evt.0.actor));
+                    if EntityInsights::of(&evt.0.target, state).location == EntityLocation::Ground {
+                        cmds.emit_event(ItemTransferReq::pick_up(evt.0.target, evt.0.actor));
+                        // Explicitly end the interaction that lead to this item pick up action.
+                        cmds.emit_event(TryUninteractReq(evt.0));
+                    }
                 }
             });
     }

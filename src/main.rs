@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
 use crate::core::*;
-use activation::ActivationSystem;
+use activation::{Activatable, ActivationSystem};
+use cooldown::CooldownSystem;
 use effects::EffectSystem;
 use equipment::EquipmentSystem;
 use game_entities::*;
@@ -19,6 +20,7 @@ use storage::StorageSystem;
 use ui::{draw_ui, UiState};
 
 mod activation;
+mod cooldown;
 mod core;
 mod effects;
 mod entity_insights;
@@ -52,7 +54,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(CollisionDetectionSystem::default());
     world.register_system(SeparateCollisionsSystem);
     world.register_system(InteractionSystem::default());
-    world.register_system(ProximityInteractionSystem);
+    world.register_system(ProximityInteractionSystem::default());
     world.register_system(HandInteractionSystem);
     world.register_system(StorageSystem);
     world.register_system(EquipmentSystem);
@@ -63,16 +65,17 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(NeedsSystem::default());
     world.register_system(NeedMutatorSystem);
     world.register_system(ActivationSystem);
-    world.register_system(EffectSystem::<MaxSpeed>::default());
-    world.register_system(EffectSystem::<Acceleration>::default());
-    world.register_system(EffectSystem::<Needs>::default());
     world.register_system(ProjectileGenerationSystem);
     world.register_system(ProjectileHitSystem);
+    world.register_system(EffectSystem::<MaxSpeed>::default());
+    world.register_system(EffectSystem::<Acceleration>::default());
+    world.register_system(CooldownSystem::<Activatable>::default());
     // Initialize the scene for debugging.
     world.update_with(|_, cmds| {
         create_player(cmds, Transform::at(0., 0.));
         create_chest(cmds, Transform::at(50., 50.));
         create_handgun(cmds, Transform::at(150., 150.), Name("gun"));
+        create_machinegun(cmds, Transform::at(200., 200.), Name("machine gun"));
         create_shoes(cmds, Transform::at(180., 180.), Name("shoes"));
     });
     AppState {
@@ -97,10 +100,7 @@ fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
                 .select_one::<(Interactable,)>(&e)
                 .map(|(interactable,)| interactable.actors.len() > 0)
                 .unwrap_or(false);
-            let is_activator = state
-                .select_one::<(ProximityInteractor,)>(&e)
-                .map(|(pi,)| pi.target.is_some())
-                .unwrap_or(false);
+            let is_activator = false;
             let color = if is_activated {
                 notan::prelude::Color::GREEN
             } else if is_activator {

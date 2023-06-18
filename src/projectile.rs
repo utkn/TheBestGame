@@ -1,7 +1,8 @@
 use notan::egui::epaint::ahash::HashSet;
 
 use crate::{
-    activation::ActivatedEvt,
+    activation::Activatable,
+    cooldown::Cooldown,
     core::*,
     entity_insights::EntityInsights,
     needs::{NeedMutator, NeedMutatorEffect, NeedMutatorTarget, NeedType},
@@ -16,20 +17,22 @@ pub struct ProjectileDefn {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProjectileGenerator(pub ProjectileDefn);
+pub struct ProjectileGenerator {
+    pub proj: ProjectileDefn,
+    pub cooldown: Option<f32>,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectileGenerationSystem;
 
 impl System for ProjectileGenerationSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state.read_events::<ActivatedEvt>().for_each(|evt| {
-            let p_gen_entity = evt.0;
-            if let Some((p_gen, trans)) =
-                state.select_one::<(ProjectileGenerator, Transform)>(&p_gen_entity)
-            {
+        state
+            .select::<(Activatable, ProjectileGenerator, Transform)>()
+            .filter(|(_, (activatable, _, _))| activatable.curr_state)
+            .for_each(|(p_gen_entity, (_, p_gen, trans))| {
                 // Compute the new velocity of the projectile.
-                let vel = notan::math::Vec2::from_angle(trans.deg.to_radians()) * p_gen.0.speed;
+                let vel = notan::math::Vec2::from_angle(trans.deg.to_radians()) * p_gen.proj.speed;
                 let vel = Velocity {
                     x: vel.x,
                     y: -vel.y, // y axis is inverted!
@@ -44,19 +47,30 @@ impl System for ProjectileGenerationSystem {
                     *trans,
                     vel,
                     Lifetime {
-                        remaining_time: p_gen.0.lifetime,
+                        remaining_time: p_gen.proj.lifetime,
                     },
                     Hitbox(HitboxType::Ghost, Shape::Circle(5.)),
                     // Do not hit the anchor parent.
                     Projectile::new(friendly_entities, true),
                     NeedMutator::new(
                         [NeedMutatorTarget::HitTarget],
-                        p_gen.0.need_mutation.0,
-                        p_gen.0.need_mutation.1,
+                        p_gen.proj.need_mutation.0,
+                        p_gen.proj.need_mutation.1,
                     ),
                 ));
-            }
-        });
+                // If cooldown was set, remove the activatable component until the cooldown ends.
+                if let Some(cooldown_time) = p_gen.cooldown {
+                    if let Some((old_activatable,)) =
+                        state.select_one::<(Activatable,)>(&p_gen_entity)
+                    {
+                        cmds.remove_component::<Activatable>(&p_gen_entity);
+                        cmds.set_component(
+                            &p_gen_entity,
+                            Cooldown::new(cooldown_time, old_activatable.clone().deactivated()),
+                        )
+                    }
+                }
+            });
     }
 }
 
@@ -100,8 +114,10 @@ impl System for ProjectileHitSystem {
                 .filter(|coll_target| !hitter.friendly_entities.contains(coll_target))
                 // Make sure that the target's hitbox is concrete.
                 .filter(|coll_target| {
-                    let target_hb = state.select_one::<(Hitbox,)>(coll_target).unwrap().0;
-                    target_hb.0.is_concrete()
+                    state
+                        .select_one::<(Hitbox,)>(coll_target)
+                        .map(|(hb,)| hb.0.is_concrete())
+                        .unwrap_or(false)
                 })
                 .for_each(|coll_target| {
                     cmds.emit_event(ProjectileHitEvt {

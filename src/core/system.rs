@@ -11,6 +11,10 @@ pub struct ControlMap {
     pub end_interact_was_pressed: bool,
     pub mouse_left_was_pressed: bool,
     pub mouse_right_was_pressed: bool,
+    pub mouse_left_was_released: bool,
+    pub mouse_right_was_released: bool,
+    pub mouse_left_is_down: bool,
+    pub mouse_right_is_down: bool,
     pub mouse_pos: (f32, f32),
 }
 
@@ -26,6 +30,10 @@ impl ControlMap {
             mouse_pos: app.mouse.position(),
             mouse_left_was_pressed: app.mouse.left_was_pressed(),
             mouse_right_was_pressed: app.mouse.right_was_pressed(),
+            mouse_left_was_released: app.mouse.left_was_released(),
+            mouse_right_was_released: app.mouse.right_was_released(),
+            mouse_left_is_down: app.mouse.left_is_down(),
+            mouse_right_is_down: app.mouse.right_is_down(),
         }
     }
 }
