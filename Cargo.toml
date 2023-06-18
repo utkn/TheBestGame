@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 itertools = "0.10.5"
 notan = {version = "0.9.5", features = ["egui"]}
+rand = "0.8.5"
 sepax2d = "0.3.8"
 variadic_generics = "0.1.2"

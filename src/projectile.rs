@@ -9,10 +9,13 @@ use crate::{
     physics::{Hitbox, HitboxType, Shape},
 };
 
+use rand::Rng;
+
 #[derive(Clone, Debug)]
 pub struct ProjectileDefn {
     pub lifetime: f32,
     pub speed: f32,
+    pub spread: f32,
     pub need_mutation: (NeedType, NeedMutatorEffect),
 }
 
@@ -32,7 +35,13 @@ impl System for ProjectileGenerationSystem {
             .filter(|(_, (activatable, _, _))| activatable.curr_state)
             .for_each(|(p_gen_entity, (_, p_gen, trans))| {
                 // Compute the new velocity of the projectile.
-                let vel = notan::math::Vec2::from_angle(trans.deg.to_radians()) * p_gen.proj.speed;
+                let rand_spread = if p_gen.proj.spread > 0. {
+                    rand::thread_rng().gen_range(0.0..p_gen.proj.spread) - p_gen.proj.spread / 2.
+                } else {
+                    0.
+                };
+                let angles = trans.deg + rand_spread;
+                let vel = notan::math::Vec2::from_angle(angles.to_radians()) * p_gen.proj.speed;
                 let vel = Velocity {
                     x: vel.x,
                     y: -vel.y, // y axis is inverted!

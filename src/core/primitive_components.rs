@@ -4,6 +4,7 @@ use super::EntityRef;
 pub struct Transform {
     pub x: f32,
     pub y: f32,
+    /// Rotation in degrees.
     pub deg: f32,
 }
 

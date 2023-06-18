@@ -66,14 +66,15 @@ pub fn create_handgun(cmds: &mut StateCommands, trans: Transform, name: Name) ->
         Item,
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
-        Interactable::new(InteractionType::OneShot),
         Equippable::new([EquipmentSlot::LeftHand]),
+        Interactable::new(InteractionType::OneShot),
         Activatable::at_locations([ActivationLoc::Equipment]),
         ProjectileGenerator {
             cooldown: None,
             proj: ProjectileDefn {
                 lifetime: 0.5,
                 speed: 300.,
+                spread: 0.,
                 need_mutation: (NeedType::Health, NeedMutatorEffect::Delta(-5.)),
             },
         },
@@ -86,14 +87,15 @@ pub fn create_machinegun(cmds: &mut StateCommands, trans: Transform, name: Name)
         Item,
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
-        Interactable::new(InteractionType::Whatevs),
         Equippable::new([EquipmentSlot::RightHand]),
+        Interactable::new(InteractionType::Whatevs),
         Activatable::at_locations([ActivationLoc::Equipment]),
         ProjectileGenerator {
             cooldown: Some(0.1),
             proj: ProjectileDefn {
                 lifetime: 1.5,
                 speed: 600.,
+                spread: 15.,
                 need_mutation: (NeedType::Health, NeedMutatorEffect::Delta(-5.)),
             },
         },
