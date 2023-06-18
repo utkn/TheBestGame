@@ -62,10 +62,10 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(ProjectileGenerationSystem);
     // Initialize the scene for debugging.
     world.update_with(|_, cmds| {
-        create_player(cmds, Position { x: 0., y: 0. });
-        create_chest(cmds, Position { x: 50., y: 50. });
-        create_item(cmds, Position { x: 150., y: 150. }, Name("thing"));
-        create_item(cmds, Position { x: 150., y: 150. }, Name("other thing"));
+        create_player(cmds, Transform::at(0., 0.));
+        create_chest(cmds, Transform::at(50., 50.));
+        create_item(cmds, Transform::at(150., 150.), Name("thing"));
+        create_item(cmds, Transform::at(150., 150.), Name("other thing"));
     });
     AppState {
         world,
@@ -83,7 +83,7 @@ fn update(app: &mut notan::prelude::App, app_state: &mut AppState) {
 
 fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
     state
-        .select::<(Position, Hitbox)>()
+        .select::<(Transform, Hitbox)>()
         .for_each(|(e, (pos, hitbox))| {
             let is_activated = state
                 .select_one::<(Interactable,)>(&e)

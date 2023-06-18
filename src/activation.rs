@@ -1,7 +1,6 @@
 use crate::{
     core::*,
-    equipment::{Equipment, EquipmentSlot},
-    interaction::{Interaction, InteractionEndedEvt, InteractionStartedEvt, TryInteractReq},
+    interaction::{InteractionEndedEvt, InteractionStartedEvt},
 };
 
 #[derive(Clone, Copy, Default, Debug)]

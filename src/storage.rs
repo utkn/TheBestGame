@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 
 use crate::core::{
-    EntityRef, EntityRefBag, EntityRefSet, Position, Rotation, State, StateCommands, System,
-    UpdateContext,
+    EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, Transform, UpdateContext,
 };
 
 #[derive(Clone, Default, Debug)]
@@ -85,9 +84,8 @@ impl System for StorageSystem {
             cmds.update_component(&evt.storage_entity, move |storage: &mut Storage| {
                 storage.0.insert(evt.entity);
             });
-            // Stored entities should not have a position/translation.
-            cmds.remove_component::<Position>(&evt.entity);
-            cmds.remove_component::<Rotation>(&evt.entity);
+            // Stored entities should not have a translation.
+            cmds.remove_component::<Transform>(&evt.entity);
         });
     }
 }

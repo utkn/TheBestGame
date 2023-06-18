@@ -125,7 +125,7 @@ impl System for ItemTransferSystem {
             // Remove from the current location.
             match evt.from_loc {
                 ItemLocation::Ground => {
-                    cmds.remove_component::<Position>(&evt.item_entity);
+                    cmds.remove_component::<Transform>(&evt.item_entity);
                 }
                 ItemLocation::Equipment(equipment_entity) => cmds.emit_event(UnequipEntityReq {
                     entity: evt.item_entity,
@@ -140,10 +140,10 @@ impl System for ItemTransferSystem {
             match evt.to_loc {
                 ItemLocation::Ground => {
                     let new_transform = match evt.from_loc {
-                        ItemLocation::Ground => (Position::default(), Rotation::default()),
+                        ItemLocation::Ground => (Transform::default(),),
                         ItemLocation::Equipment(entity) | ItemLocation::Storage(entity) => state
-                            .select_one::<(Position, Rotation)>(&entity)
-                            .map(|(pos, rot)| (*pos, *rot))
+                            .select_one::<(Transform,)>(&entity)
+                            .map(|(trans,)| (*trans,))
                             .unwrap_or_default(),
                     };
                     cmds.set_components(&evt.item_entity, new_transform);
@@ -171,7 +171,7 @@ impl System for ItemPickupSystem {
             .for_each(|evt| {
                 if let (Some(_), Some(_)) = (
                     state.select_one::<(Storage,)>(&evt.0.actor),
-                    state.select_one::<(Position, Item)>(&evt.0.target),
+                    state.select_one::<(Transform, Item)>(&evt.0.target),
                 ) {
                     cmds.emit_event(ItemTransferReq::pick_up(evt.0.target, evt.0.actor));
                 }
@@ -192,10 +192,8 @@ impl System for EquippedItemAnchorSystem {
                 cmds.set_components(
                     &evt.entity,
                     (
-                        Position::default(),
-                        Rotation::default(),
-                        AnchorPosition(evt.equipment_entity, (0., 0.)),
-                        AnchorRotation(evt.equipment_entity, 0.),
+                        Transform::default(),
+                        AnchorTransform(evt.equipment_entity, (0., 0.)),
                     ),
                 );
             }
@@ -205,8 +203,7 @@ impl System for EquippedItemAnchorSystem {
                 state.select_one::<(Equipment,)>(&evt.equipment_entity),
                 state.select_one::<(Item,)>(&evt.entity),
             ) {
-                cmds.remove_component::<AnchorPosition>(&evt.entity);
-                cmds.remove_component::<AnchorRotation>(&evt.entity);
+                cmds.remove_component::<AnchorTransform>(&evt.entity);
             }
         });
     }

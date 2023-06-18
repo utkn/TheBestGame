@@ -10,9 +10,9 @@ use crate::{
     storage::Storage,
 };
 
-pub fn create_player(cmds: &mut StateCommands, pos: Position) -> EntityRef {
+pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
     let player_entity = cmds.create_from((
-        pos,
+        trans,
         Velocity::default(),
         Acceleration(2000.),
         TargetVelocity::default(),
@@ -30,32 +30,29 @@ pub fn create_player(cmds: &mut StateCommands, pos: Position) -> EntityRef {
             (NeedType::Thirst, NeedStatus::with_zero(100)),
         ]),
     ));
-    cmds.set_components(&player_entity, (FaceMouse, Rotation::default()));
+    cmds.set_components(&player_entity, (FaceMouse,));
     player_entity
 }
 
-pub fn create_chest(cmds: &mut StateCommands, pos: Position) -> EntityRef {
+pub fn create_chest(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
     let chest_entity = cmds.create_from((
-        pos,
-        Rotation::default(),
+        trans,
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
         CollisionState::default(),
         Interactable::new(InteractionType::ContactRequired),
         Storage::default(),
     ));
     let _chest_hitbox_entity = cmds.create_from((
-        Position::default(),
-        Rotation::default(),
+        Transform::default(),
         Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
-        AnchorPosition(chest_entity, (10., 10.)),
+        AnchorTransform(chest_entity, (10., 10.)),
     ));
     chest_entity
 }
 
-pub fn create_item(cmds: &mut StateCommands, pos: Position, name: Name) -> EntityRef {
+pub fn create_item(cmds: &mut StateCommands, trans: Transform, name: Name) -> EntityRef {
     cmds.create_from((
-        pos,
-        Rotation::default(),
+        trans,
         name,
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),

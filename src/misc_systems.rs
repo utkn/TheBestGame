@@ -1,4 +1,7 @@
-use crate::core::*;
+use crate::{
+    core::*,
+    physics::{CollisionEvt, Hitbox},
+};
 
 /// A system that handles simple translation using the velocities.
 #[derive(Clone, Copy, Debug, Default)]
@@ -7,12 +10,15 @@ pub struct MovementSystem;
 impl System for MovementSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
-            .select::<(Position, Velocity)>()
-            .for_each(|(e, (pos, vel))| {
-                let mut new_pos = *pos;
-                new_pos.x += vel.x * ctx.dt;
-                new_pos.y += vel.y * ctx.dt;
-                cmds.set_component(&e, new_pos);
+            .select::<(Transform, Velocity)>()
+            .for_each(|(e, (trans, vel))| {
+                let (mut new_pos_x, mut new_pos_y) = (trans.x, trans.y);
+                new_pos_x += vel.x * ctx.dt;
+                new_pos_y += vel.y * ctx.dt;
+                cmds.update_component(&e, move |trans: &mut Transform| {
+                    trans.x = new_pos_x;
+                    trans.y = new_pos_y;
+                });
             });
     }
 }
@@ -83,16 +89,18 @@ impl System for FaceMouseSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         let (mouse_x, mouse_y) = ctx.control_map.mouse_pos;
         state
-            .select::<(FaceMouse, Rotation, Position)>()
-            .for_each(|(e, (_, _, pos))| {
+            .select::<(FaceMouse, Transform)>()
+            .for_each(|(e, (_, trans))| {
                 let mouse_pos = notan::math::vec2(mouse_x, mouse_y);
-                let entity_pos = notan::math::vec2(pos.x, pos.y);
+                let entity_pos = notan::math::vec2(trans.x, trans.y);
                 let diff = mouse_pos - entity_pos;
                 if diff.length_squared() == 0. {
                     return;
                 }
-                let new_rot = diff.angle_between(notan::math::vec2(1., 0.)).to_degrees();
-                cmds.set_component(&e, Rotation { deg: new_rot });
+                let new_deg = diff.angle_between(notan::math::vec2(1., 0.)).to_degrees();
+                cmds.update_component(&e, move |trans: &mut Transform| {
+                    trans.deg = new_deg;
+                });
             });
     }
 }
@@ -104,29 +112,17 @@ pub struct AnchorSystem;
 impl System for AnchorSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
-            .select::<(AnchorPosition, Position)>()
+            .select::<(AnchorTransform, Transform)>()
             .for_each(|(child_entity, (anchor, _))| {
                 if !state.is_valid(&anchor.0) {
                     // TODO: decide what to do
                     // cmds.remove_component::<AnchorPosition>(&child_entity);
-                } else if let Some((anchored_pos,)) = state.select_one::<(Position,)>(&anchor.0) {
-                    let new_pos = anchored_pos.translated(anchor.1);
-                    cmds.set_component(&child_entity, new_pos);
+                } else if let Some((anchored_trans,)) = state.select_one::<(Transform,)>(&anchor.0)
+                {
+                    let new_trans = anchored_trans.translated(anchor.1);
+                    cmds.set_component(&child_entity, new_trans);
                 }
             });
-        state
-            .select::<(AnchorRotation, Rotation)>()
-            .for_each(|(child_entity, (anchor, _))| {
-                if !state.is_valid(&anchor.0) {
-                    // TODO: decide what to do
-                    // cmds.remove_component::<AnchorRotation>(&child_entity);
-                } else if let Some((anchored_rot,)) = state.select_one::<(Rotation,)>(&anchor.0) {
-                    let new_rot = Rotation {
-                        deg: anchored_rot.deg + anchor.1,
-                    };
-                    cmds.set_component(&child_entity, new_rot);
-                }
-            })
     }
 }
 
@@ -137,14 +133,24 @@ pub struct LifetimeSystem;
 impl System for LifetimeSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state.select::<(Lifetime,)>().for_each(|(e, (lifetime,))| {
+            // Remove the colliding entities with kill on collision flag.
+            let is_colliding_with_concrete = state.read_events::<CollisionEvt>().any(|evt| {
+                evt.e1 == e
+                    && state
+                        .select_one::<(Hitbox,)>(&evt.e2)
+                        .map(|(hb,)| hb.0.is_concrete())
+                        .unwrap_or(false)
+            });
             // Remove the entities with ended lifetime.
-            if lifetime.0 <= 0. {
+            if lifetime.remaining_time <= 0.
+                || (is_colliding_with_concrete && lifetime.kill_on_collision)
+            {
                 cmds.remove_entity(&e);
             } else {
                 // Update the alive entities' lifetimes.
                 let dt = ctx.dt;
                 cmds.update_component(&e, move |lifetime: &mut Lifetime| {
-                    lifetime.0 -= dt;
+                    lifetime.remaining_time -= dt;
                 });
             }
         });

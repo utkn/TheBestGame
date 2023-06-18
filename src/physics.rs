@@ -18,6 +18,12 @@ pub enum HitboxType {
     Dynamic, // concrete and dynamic
 }
 
+impl HitboxType {
+    pub fn is_concrete(&self) -> bool {
+        matches!(self, HitboxType::Static | HitboxType::Dynamic)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Hitbox(pub HitboxType, pub Shape);
 
@@ -53,7 +59,7 @@ pub enum TransformedShape {
 }
 
 impl TransformedShape {
-    fn new(pos: &Position, primitive_shape: &Shape) -> Self {
+    fn new(pos: &Transform, primitive_shape: &Shape) -> Self {
         match primitive_shape {
             Shape::Circle(r) => Self::Circle(sepax2d::circle::Circle::new((pos.x, pos.y), *r)),
             Shape::Rect(w, h) => Self::AABB(sepax2d::aabb::AABB::new((pos.x, pos.y), *w, *h)),
@@ -76,7 +82,7 @@ pub struct EffectiveHitbox {
 }
 
 impl EffectiveHitbox {
-    fn new(e: &EntityRef, pos: &Position, hb: &Hitbox) -> Self {
+    fn new(e: &EntityRef, pos: &Transform, hb: &Hitbox) -> Self {
         Self {
             entity: *e,
             shape: TransformedShape::new(pos, &hb.1),
@@ -118,7 +124,7 @@ impl CollisionDetectionSystem {
 impl System for CollisionDetectionSystem {
     fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         let effective_hbs = state
-            .select::<(Position, Hitbox)>()
+            .select::<(Transform, Hitbox)>()
             .map(|(e, (pos, hitbox))| EffectiveHitbox::new(&e, pos, hitbox))
             .collect_vec();
         let resps = effective_hbs
@@ -185,7 +191,7 @@ pub struct SeparateCollisionsSystem;
 impl System for SeparateCollisionsSystem {
     fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state.read_events::<CollisionEvt>().for_each(|evt| {
-            if let Some((pos, hb)) = state.select_one::<(Position, Hitbox)>(&evt.e1) {
+            if let Some((pos, hb)) = state.select_one::<(Transform, Hitbox)>(&evt.e1) {
                 let mut dpos = notan::math::vec2(-evt.overlap.0, -evt.overlap.1);
                 if dpos.length_squared() == 0. {
                     return;
@@ -199,11 +205,7 @@ impl System for SeparateCollisionsSystem {
                         dpos *= 0.5;
                     }
                     let new_pos = notan::math::vec2(pos.x, pos.y) + dpos;
-                    let new_pos = Position {
-                        x: new_pos.x,
-                        y: new_pos.y,
-                    };
-                    cmds.set_component(&evt.e1, new_pos);
+                    cmds.set_component(&evt.e1, Transform::at(new_pos.x, new_pos.y));
                 }
             }
         })
