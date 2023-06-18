@@ -1,8 +1,8 @@
 use notan::egui;
 
 use crate::core::{Controller, EntityRef, EntityRefBag, State, StateCommands, Transform};
+use crate::entity_insights::EntityLocation;
 use crate::interaction::Interactable;
-use crate::item::EntityLocation;
 use crate::storage::Storage;
 
 use super::widgets::*;

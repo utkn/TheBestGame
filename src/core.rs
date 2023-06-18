@@ -7,6 +7,7 @@ mod primitive_components;
 mod state;
 mod system;
 
+pub use component::Component;
 pub use entity::*;
 pub use event::EventManager;
 pub use primitive_components::*;

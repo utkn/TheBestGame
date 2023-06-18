@@ -4,8 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     core::*,
-    item::EntityLocation,
-    physics::{CollisionEvt, CollisionStartEvt, CollisionState},
+    entity_insights::{EntityInsights, EntityLocation},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -153,28 +152,36 @@ impl System for NeedsSystem {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum NeedEffectorCond {
-    OnCollision,
-    OnCollisionStart,
-    InEquipment,
-    InStorage,
+pub enum NeedMutatorTarget {
+    /// Colliding entities' needs will be mutated.
+    Collider,
+    /// The needs of the entities that start a collision with this mutator will be mutated.
+    CollisionStarter,
+    /// The needs of the equipment containing this mutator will be mutated.
+    Equipment,
+    /// The needs of the storage containing this mutator will be mutated.
+    Storage,
+    /// The needs of the anchoring parent of this mutator will be mutated.
+    AnchorParent,
+    /// The needs of the interacting actor entity will be mutated.
+    Interactor,
 }
 
 #[derive(Clone, Debug)]
-pub struct NeedEffector {
-    conds: HashSet<NeedEffectorCond>,
+pub struct NeedMutator {
+    targets: HashSet<NeedMutatorTarget>,
     need_type: NeedType,
     effect_rate: f32,
 }
 
-impl NeedEffector {
+impl NeedMutator {
     pub fn new(
-        conditions: impl IntoIterator<Item = NeedEffectorCond>,
+        targets: impl IntoIterator<Item = NeedMutatorTarget>,
         need_type: NeedType,
         effect_rate: f32,
     ) -> Self {
         Self {
-            conds: HashSet::from_iter(conditions),
+            targets: HashSet::from_iter(targets),
             need_type,
             effect_rate,
         }
@@ -182,39 +189,39 @@ impl NeedEffector {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct NeedEffectorSystem;
+pub struct NeedMutatorSystem;
 
-impl System for NeedEffectorSystem {
+impl System for NeedMutatorSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
-            .select::<(NeedEffector,)>()
+            .select::<(NeedMutator,)>()
             .for_each(|(e, (effector,))| {
-                let effector_location = EntityLocation::of(&e, state);
-                let effector_colliders: HashSet<_> = state
-                    .read_events::<CollisionEvt>()
-                    .filter(|evt| evt.e1 == e)
-                    .map(|evt| evt.e2)
-                    .collect();
-                let effector_collision_starters: HashSet<_> = state
-                    .read_events::<CollisionStartEvt>()
-                    .filter(|evt| evt.e1 == e)
-                    .map(|evt| evt.e2)
-                    .collect();
+                // Determine some key insights about the effector.
+                let mutator_insights = EntityInsights::of(&e, state);
                 // Collect the targets to apply the effect to.
                 let mut targets = HashSet::<EntityRef>::new();
-                if effector.conds.contains(&NeedEffectorCond::OnCollisionStart) {
-                    targets.extend(effector_collision_starters.into_iter());
+                if effector.targets.contains(&NeedMutatorTarget::AnchorParent) {
+                    targets.extend(mutator_insights.anchor_parent);
                 }
-                if effector.conds.contains(&NeedEffectorCond::OnCollision) {
-                    targets.extend(effector_colliders.into_iter());
+                if effector
+                    .targets
+                    .contains(&NeedMutatorTarget::CollisionStarter)
+                {
+                    targets.extend(mutator_insights.collision_starters.into_iter());
                 }
-                if effector.conds.contains(&NeedEffectorCond::InEquipment) {
-                    if let EntityLocation::Equipment(equipping_entity) = effector_location {
+                if effector.targets.contains(&NeedMutatorTarget::Collider) {
+                    targets.extend(mutator_insights.colliders.into_iter());
+                }
+                if effector.targets.contains(&NeedMutatorTarget::Interactor) {
+                    targets.extend(mutator_insights.interactors);
+                }
+                if effector.targets.contains(&NeedMutatorTarget::Equipment) {
+                    if let EntityLocation::Equipment(equipping_entity) = mutator_insights.location {
                         targets.insert(equipping_entity);
                     }
                 }
-                if effector.conds.contains(&NeedEffectorCond::InStorage) {
-                    if let EntityLocation::Storage(storing_entity) = effector_location {
+                if effector.targets.contains(&NeedMutatorTarget::Storage) {
+                    if let EntityLocation::Storage(storing_entity) = mutator_insights.location {
                         targets.insert(storing_entity);
                     }
                 }

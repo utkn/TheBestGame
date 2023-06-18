@@ -2,6 +2,7 @@
 
 use crate::core::*;
 use activation::ActivationSystem;
+use effects::EffectSystem;
 use equipment::EquipmentSystem;
 use game_entities::{create_chest, create_item, create_player};
 use interaction::*;
@@ -19,6 +20,8 @@ use ui::{draw_ui, UiState};
 
 mod activation;
 mod core;
+mod effects;
+mod entity_insights;
 mod equipment;
 mod game_entities;
 mod interaction;
@@ -42,7 +45,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     let mut world = core::World::from(core::State::default());
     // Register the systems.
     world.register_system(MovementSystem);
-    world.register_system(ControlSystem::default());
+    world.register_system(ControlSystem);
     world.register_system(LifetimeSystem);
     world.register_system(ApproachVelocitySystem);
     world.register_system(FaceMouseSystem);
@@ -58,8 +61,11 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(EquippedItemAnchorSystem);
     world.register_system(AnchorSystem);
     world.register_system(NeedsSystem::default());
-    world.register_system(NeedEffectorSystem);
+    world.register_system(NeedMutatorSystem);
     world.register_system(ActivationSystem);
+    world.register_system(EffectSystem::<MaxSpeed>::default());
+    world.register_system(EffectSystem::<Acceleration>::default());
+    world.register_system(EffectSystem::<Needs>::default());
     world.register_system(ProjectileGenerationSystem);
     // Initialize the scene for debugging.
     world.update_with(|_, cmds| {

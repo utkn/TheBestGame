@@ -1,5 +1,6 @@
 use crate::{
     core::*,
+    entity_insights::EntityLocation,
     equipment::{
         EntityEquippedEvt, EntityUnequippedEvt, EquipEntityReq, Equipment, Equippable,
         UnequipEntityReq,
@@ -7,32 +8,6 @@ use crate::{
     interaction::InteractionStartedEvt,
     storage::{Storage, StoreEntityReq, UnstoreEntityReq},
 };
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum EntityLocation {
-    Ground,
-    Equipment(EntityRef),
-    Storage(EntityRef),
-}
-
-impl EntityLocation {
-    /// Returns the current location of the given entity.
-    pub fn of(e: &EntityRef, state: &State) -> EntityLocation {
-        if let Some((storing_entity, _)) = state
-            .select::<(Storage,)>()
-            .find(|(_, (storage,))| storage.0.contains(e))
-        {
-            EntityLocation::Storage(storing_entity)
-        } else if let Some((equipping_entity, _)) = state
-            .select::<(Equipment,)>()
-            .find(|(_, (equipment,))| equipment.contains(e))
-        {
-            EntityLocation::Equipment(equipping_entity)
-        } else {
-            EntityLocation::Ground
-        }
-    }
-}
 
 #[derive(Clone, Copy, Debug)]
 pub struct ItemTransferReq {

@@ -1,8 +1,8 @@
 use crate::{
     activation::ActivatedEvt,
     core::*,
-    needs::{NeedEffector, NeedEffectorCond, NeedType},
-    physics::{CollisionState, Hitbox, HitboxType, Shape},
+    needs::{NeedMutator, NeedMutatorTarget, NeedType},
+    physics::{Hitbox, HitboxType, Shape},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -37,7 +37,7 @@ impl System for ProjectileGenerationSystem {
                         kill_on_collision: false,
                     },
                     hitbox,
-                    NeedEffector::new([NeedEffectorCond::OnCollision], NeedType::Health, -10.),
+                    NeedMutator::new([NeedMutatorTarget::Collider], NeedType::Health, -10.),
                 ));
             }
         });

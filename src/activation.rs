@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use crate::{
     core::*,
+    entity_insights::EntityLocation,
     interaction::{InteractionEndedEvt, InteractionStartedEvt},
-    item::EntityLocation,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

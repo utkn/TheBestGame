@@ -40,6 +40,9 @@ pub struct Velocity {
 }
 
 #[derive(Clone, Copy, Default, Debug)]
+pub struct MaxSpeed(pub f32);
+
+#[derive(Clone, Copy, Default, Debug)]
 pub struct TargetVelocity {
     pub x: f32,
     pub y: f32,
@@ -50,7 +53,7 @@ pub struct Acceleration(pub f32);
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Controller {
-    pub max_speed: f32,
+    pub default_speed: f32,
 }
 
 #[derive(Clone, Copy, Default, Debug)]

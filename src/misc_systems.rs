@@ -24,7 +24,7 @@ impl System for MovementSystem {
 }
 
 /// A system that handles user control.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct ControlSystem;
 
 impl System for ControlSystem {
@@ -32,6 +32,10 @@ impl System for ControlSystem {
         state
             .select::<(Velocity, TargetVelocity, Controller)>()
             .for_each(|(e, (_, _, controller))| {
+                let speed = state
+                    .select_one::<(MaxSpeed,)>(&e)
+                    .map(|(max_speed,)| max_speed.0)
+                    .unwrap_or(controller.default_speed);
                 // Determine the target velocity according to the current pressed keys.
                 let new_target_vel_x = if ctx.control_map.left_is_down {
                     -1.
@@ -39,14 +43,14 @@ impl System for ControlSystem {
                     1.
                 } else {
                     0.
-                } * controller.max_speed;
+                } * speed;
                 let new_target_vel_y = if ctx.control_map.up_is_down {
                     -1.
                 } else if ctx.control_map.down_is_down {
                     1.
                 } else {
                     0.
-                } * controller.max_speed;
+                } * speed;
                 // Set the target velocity.
                 cmds.set_component(
                     &e,

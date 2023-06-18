@@ -1,10 +1,11 @@
 use crate::{
     activation::{Activatable, ActivationLoc},
     core::*,
+    effects::{Affected, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable},
     interaction::{HandInteractor, Interactable, InteractionType, ProximityInteractor},
     item::Item,
-    needs::{NeedEffector, NeedEffectorCond, NeedStatus, NeedType, Needs},
+    needs::{NeedMutator, NeedMutatorTarget, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
     projectile::{ProjectileDefn, ProjectileGenerator},
     storage::Storage,
@@ -16,11 +17,11 @@ pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
         Velocity::default(),
         Acceleration(2000.),
         TargetVelocity::default(),
-        Controller { max_speed: 300. },
+        MaxSpeed(300.),
+        Controller { default_speed: 5. },
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
         CollisionState::default(),
         ProximityInteractor::default(),
-        HandInteractor,
         Storage::default(),
         Equipment::default(),
         Needs::new([
@@ -30,7 +31,15 @@ pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
             (NeedType::Thirst, NeedStatus::with_zero(100.)),
         ]),
     ));
-    cmds.set_components(&player_entity, (FaceMouse,));
+    cmds.set_components(
+        &player_entity,
+        (
+            HandInteractor,
+            FaceMouse,
+            Affected::<MaxSpeed>::default(),
+            Affected::<Acceleration>::default(),
+        ),
+    );
     player_entity
 }
 
@@ -64,6 +73,8 @@ pub fn create_item(cmds: &mut StateCommands, trans: Transform, name: Name) -> En
             lifetime: 0.5,
             speed: 300.,
         }),
-        NeedEffector::new([NeedEffectorCond::InStorage], NeedType::Sanity, -5.),
+        NeedMutator::new([NeedMutatorTarget::Storage], NeedType::Sanity, -5.),
+        Effector::<MaxSpeed>::new([EffectorTarget::Equipper], |old| MaxSpeed(old.0 * 2.)),
+        Effector::<Acceleration>::new([EffectorTarget::Equipper], |old| Acceleration(old.0 * 4.)),
     ))
 }
