@@ -25,7 +25,7 @@ impl System for ProjectileGenerationSystem {
                 let vel = notan::math::Vec2::from_angle(trans.deg.to_radians()) * p_gen.0.speed;
                 let vel = Velocity {
                     x: vel.x,
-                    y: -vel.y,
+                    y: -vel.y, // y axis is inverted!
                 };
                 let hitbox = Hitbox(HitboxType::Ghost, Shape::Circle(5.));
                 cmds.create_from((

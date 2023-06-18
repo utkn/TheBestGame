@@ -116,10 +116,8 @@ impl System for AnchorSystem {
             .for_each(|(child_entity, (anchor, _))| {
                 if !state.is_valid(&anchor.0) {
                     // TODO: decide what to do
-                    // cmds.remove_component::<AnchorPosition>(&child_entity);
-                } else if let Some((anchored_trans,)) = state.select_one::<(Transform,)>(&anchor.0)
-                {
-                    let new_trans = anchored_trans.translated(anchor.1);
+                } else if let Some((parent_trans,)) = state.select_one::<(Transform,)>(&anchor.0) {
+                    let new_trans = parent_trans.translated(anchor.1);
                     cmds.set_component(&child_entity, new_trans);
                 }
             });

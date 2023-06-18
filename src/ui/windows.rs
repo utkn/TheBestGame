@@ -2,7 +2,7 @@ use notan::egui;
 
 use crate::core::{Controller, EntityRef, EntityRefBag, State, StateCommands, Transform};
 use crate::interaction::Interactable;
-use crate::item::ItemLocation;
+use crate::item::EntityLocation;
 use crate::storage::Storage;
 
 use super::widgets::*;
@@ -15,12 +15,12 @@ pub enum WindowType {
     Needs(EntityRef),
 }
 
-impl From<Option<WindowType>> for ItemLocation {
+impl From<Option<WindowType>> for EntityLocation {
     fn from(opt_win_type: Option<WindowType>) -> Self {
         match opt_win_type {
-            Some(WindowType::Storage(entity)) => ItemLocation::Storage(entity),
-            Some(WindowType::Equipment(entity)) => ItemLocation::Equipment(entity),
-            _ => ItemLocation::Ground,
+            Some(WindowType::Storage(entity)) => EntityLocation::Storage(entity),
+            Some(WindowType::Equipment(entity)) => EntityLocation::Equipment(entity),
+            _ => EntityLocation::Ground,
         }
     }
 }

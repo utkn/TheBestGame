@@ -1,5 +1,5 @@
 use crate::{
-    activation::Activatable,
+    activation::{Activatable, ActivationLoc},
     core::*,
     equipment::{Equipment, EquipmentSlot, Equippable},
     interaction::{HandInteractor, Interactable, InteractionType, ProximityInteractor},
@@ -59,7 +59,7 @@ pub fn create_item(cmds: &mut StateCommands, trans: Transform, name: Name) -> En
         Interactable::new(InteractionType::ContactRequiredOneShot),
         Item,
         Equippable::new([EquipmentSlot::LeftHand]),
-        Activatable::default(),
+        Activatable::at_locations([ActivationLoc::Equipment]),
         ProjectileGenerator(ProjectileDefn {
             lifetime: 0.5,
             speed: 300.,

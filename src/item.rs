@@ -9,17 +9,36 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ItemLocation {
+pub enum EntityLocation {
     Ground,
     Equipment(EntityRef),
     Storage(EntityRef),
 }
 
+impl EntityLocation {
+    /// Returns the current location of the given item entity.
+    pub fn of_item(item: &EntityRef, state: &State) -> EntityLocation {
+        if let Some((storing_entity, _)) = state
+            .select::<(Storage,)>()
+            .find(|(_, (storage,))| storage.0.contains(item))
+        {
+            EntityLocation::Storage(storing_entity)
+        } else if let Some((equipping_entity, _)) = state
+            .select::<(Equipment,)>()
+            .find(|(_, (equipment,))| equipment.contains(item))
+        {
+            EntityLocation::Equipment(equipping_entity)
+        } else {
+            EntityLocation::Ground
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct ItemTransferReq {
     pub item_entity: EntityRef,
-    pub from_loc: ItemLocation,
-    pub to_loc: ItemLocation,
+    pub from_loc: EntityLocation,
+    pub to_loc: EntityLocation,
 }
 
 impl ItemTransferReq {
@@ -27,16 +46,16 @@ impl ItemTransferReq {
     pub fn pick_up(item_entity: EntityRef, target_storage: EntityRef) -> Self {
         Self {
             item_entity,
-            from_loc: ItemLocation::Ground,
-            to_loc: ItemLocation::Storage(target_storage),
+            from_loc: EntityLocation::Ground,
+            to_loc: EntityLocation::Storage(target_storage),
         }
     }
 
     pub fn drop(item_entity: EntityRef, from_storage: EntityRef) -> Self {
         Self {
             item_entity,
-            to_loc: ItemLocation::Ground,
-            from_loc: ItemLocation::Storage(from_storage),
+            to_loc: EntityLocation::Ground,
+            from_loc: EntityLocation::Storage(from_storage),
         }
     }
 
@@ -47,8 +66,8 @@ impl ItemTransferReq {
     ) -> Self {
         Self {
             item_entity,
-            to_loc: ItemLocation::Storage(to_storage),
-            from_loc: ItemLocation::Equipment(from_equipment),
+            to_loc: EntityLocation::Storage(to_storage),
+            from_loc: EntityLocation::Equipment(from_equipment),
         }
     }
 }
@@ -60,39 +79,18 @@ pub struct Item;
 pub struct ItemTransferSystem;
 
 impl ItemTransferSystem {
-    fn from_loc_valid(&self, item_e: &EntityRef, loc: &ItemLocation, state: &State) -> bool {
+    fn from_loc_valid(&self, item_e: &EntityRef, loc: &EntityLocation, state: &State) -> bool {
         let is_item_entity_valid = state.select_one::<(Item,)>(item_e).is_some();
-        is_item_entity_valid
-            && match loc {
-                ItemLocation::Ground => {
-                    let in_no_storage = state
-                        .select::<(Storage,)>()
-                        .all(|(_, (storage,))| !storage.0.contains(item_e));
-                    let in_no_equipment = state
-                        .select::<(Equipment,)>()
-                        .all(|(_, (equipment,))| !equipment.contains(item_e));
-                    in_no_storage && in_no_equipment
-                }
-                ItemLocation::Equipment(equipment_entity) => {
-                    state.select_one::<(Equippable,)>(item_e).is_some()
-                        && state
-                            .select_one::<(Equipment,)>(equipment_entity)
-                            .map(|(equipment,)| equipment.contains(item_e))
-                            .unwrap_or(false)
-                }
-                ItemLocation::Storage(storage_entity) => state
-                    .select_one::<(Storage,)>(storage_entity)
-                    .map(|(storage,)| storage.0.contains(item_e))
-                    .unwrap_or(false),
-            }
+        let curr_location = EntityLocation::of_item(item_e, state);
+        is_item_entity_valid && curr_location == *loc
     }
 
-    fn to_loc_valid(&self, item_e: &EntityRef, loc: &ItemLocation, state: &State) -> bool {
+    fn to_loc_valid(&self, item_e: &EntityRef, loc: &EntityLocation, state: &State) -> bool {
         let is_item_entity_valid = state.select_one::<(Item,)>(item_e).is_some();
         is_item_entity_valid
             && match loc {
-                ItemLocation::Ground => true,
-                ItemLocation::Equipment(equipment_entity) => {
+                EntityLocation::Ground => true,
+                EntityLocation::Equipment(equipment_entity) => {
                     if let Some((equippable,)) = state.select_one::<(Equippable,)>(item_e) {
                         state
                             .select_one::<(Equipment,)>(equipment_entity)
@@ -102,7 +100,7 @@ impl ItemTransferSystem {
                         false
                     }
                 }
-                ItemLocation::Storage(storage_entity) => {
+                EntityLocation::Storage(storage_entity) => {
                     if let Some((_storage,)) = state.select_one::<(Storage,)>(storage_entity) {
                         // TODO: storage limits
                         true
@@ -124,35 +122,37 @@ impl System for ItemTransferSystem {
             }
             // Remove from the current location.
             match evt.from_loc {
-                ItemLocation::Ground => {
+                EntityLocation::Ground => {
                     cmds.remove_component::<Transform>(&evt.item_entity);
                 }
-                ItemLocation::Equipment(equipment_entity) => cmds.emit_event(UnequipEntityReq {
+                EntityLocation::Equipment(equipment_entity) => cmds.emit_event(UnequipEntityReq {
                     entity: evt.item_entity,
                     equipment_entity,
                 }),
-                ItemLocation::Storage(storage_entity) => cmds.emit_event(UnstoreEntityReq {
+                EntityLocation::Storage(storage_entity) => cmds.emit_event(UnstoreEntityReq {
                     entity: evt.item_entity,
                     storage_entity,
                 }),
             };
             // Place in the new location.
             match evt.to_loc {
-                ItemLocation::Ground => {
+                EntityLocation::Ground => {
                     let new_transform = match evt.from_loc {
-                        ItemLocation::Ground => (Transform::default(),),
-                        ItemLocation::Equipment(entity) | ItemLocation::Storage(entity) => state
-                            .select_one::<(Transform,)>(&entity)
-                            .map(|(trans,)| (*trans,))
-                            .unwrap_or_default(),
+                        EntityLocation::Ground => (Transform::default(),),
+                        EntityLocation::Equipment(entity) | EntityLocation::Storage(entity) => {
+                            state
+                                .select_one::<(Transform,)>(&entity)
+                                .map(|(trans,)| (*trans,))
+                                .unwrap_or_default()
+                        }
                     };
                     cmds.set_components(&evt.item_entity, new_transform);
                 }
-                ItemLocation::Equipment(equipment_entity) => cmds.emit_event(EquipEntityReq {
+                EntityLocation::Equipment(equipment_entity) => cmds.emit_event(EquipEntityReq {
                     entity: evt.item_entity,
                     equipment_entity,
                 }),
-                ItemLocation::Storage(storage_entity) => cmds.emit_event(StoreEntityReq {
+                EntityLocation::Storage(storage_entity) => cmds.emit_event(StoreEntityReq {
                     entity: evt.item_entity,
                     storage_entity,
                 }),

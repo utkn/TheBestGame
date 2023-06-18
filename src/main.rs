@@ -84,7 +84,7 @@ fn update(app: &mut notan::prelude::App, app_state: &mut AppState) {
 fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
     state
         .select::<(Transform, Hitbox)>()
-        .for_each(|(e, (pos, hitbox))| {
+        .for_each(|(e, (trans, hitbox))| {
             let is_activated = state
                 .select_one::<(Interactable,)>(&e)
                 .map(|(interactable,)| interactable.actors.len() > 0)
@@ -103,12 +103,12 @@ fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
             match hitbox.1 {
                 Shape::Circle(r) => {
                     rnd.circle(r)
-                        .position(pos.x, pos.y)
+                        .position(trans.x, trans.y)
                         .stroke(1.)
                         .stroke_color(color);
                 }
                 Shape::Rect(w, h) => {
-                    rnd.rect((pos.x, pos.y), (w, h))
+                    rnd.rect((trans.x, trans.y), (w, h))
                         .stroke(1.)
                         .stroke_color(color);
                 }

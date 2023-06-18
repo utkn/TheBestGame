@@ -84,7 +84,7 @@ impl System for StorageSystem {
             cmds.update_component(&evt.storage_entity, move |storage: &mut Storage| {
                 storage.0.insert(evt.entity);
             });
-            // Stored entities should not have a translation.
+            // Stored entities should not have a transform.
             cmds.remove_component::<Transform>(&evt.entity);
         });
     }
