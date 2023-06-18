@@ -31,6 +31,7 @@ pub struct EntityUnstoredEvt {
     pub entity: EntityRef,
 }
 
+/// A system that handles entity storing/unstoring to/from `Storage` entities.
 #[derive(Clone, Debug)]
 pub struct StorageSystem;
 

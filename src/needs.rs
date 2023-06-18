@@ -1,11 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use itertools::Itertools;
 
-use crate::{
-    core::*,
-    entity_insights::{EntityInsights, EntityLocation},
-};
+use crate::core::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NeedType {
@@ -15,6 +12,7 @@ pub enum NeedType {
     Sanity,
 }
 
+/// Contains the status of a need.
 #[derive(Clone, Copy, Debug)]
 pub struct NeedStatus {
     pub curr: f32,

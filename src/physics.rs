@@ -97,6 +97,7 @@ pub struct CollisionResponse {
     overlap: (f32, f32),
 }
 
+/// A system that detects collisions. Emits `CollisionStartEvt`, `CollisionEndEvt`, and `CollisionEvt` events.
 #[derive(Clone, Debug, Default)]
 pub struct CollisionDetectionSystem {
     colliding_pairs: HashSet<(EntityRef, EntityRef)>,
@@ -185,6 +186,7 @@ impl System for CollisionDetectionSystem {
     }
 }
 
+/// A system that separates the colliding entities by listening to the `CollisionEvt` events.
 #[derive(Clone, Debug, Default)]
 pub struct SeparateCollisionsSystem;
 

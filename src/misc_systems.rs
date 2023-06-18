@@ -83,6 +83,7 @@ impl System for ApproachVelocitySystem {
     }
 }
 
+/// A system that handles mouse facing.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct FaceMouseSystem;
 

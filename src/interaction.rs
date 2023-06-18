@@ -19,7 +19,7 @@ pub struct Interaction {
     pub target: EntityRef,
 }
 
-/// Whether
+/// Denotes the conditions for start/end of interactions.
 #[derive(Clone, Copy, Debug)]
 pub enum InteractionType {
     /// Interaction can arbitrarily be started and only be explicitly ended.
@@ -59,6 +59,7 @@ impl InteractionType {
     }
 }
 
+/// Denotes an interactable entity.
 #[derive(Clone, Debug)]
 pub struct Interactable {
     pub t: InteractionType,
@@ -74,18 +75,26 @@ impl Interactable {
     }
 }
 
+/// A request to explicitly start an interaction.
 #[derive(Clone, Copy, Debug)]
 pub struct TryInteractReq(pub Interaction);
 
+/// A request to explicitly end an interaction.
 #[derive(Clone, Copy, Debug)]
 pub struct TryUninteractReq(pub Interaction);
 
+/// Emitted when an interaction is started.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InteractionStartedEvt(pub Interaction);
 
+/// Emitted when an interaction has been ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InteractionEndedEvt(pub Interaction);
 
+/// A system that handles interactions.
+/// Starts or ends interactions and emits `InteractionStartedEvt` and `InteractionEndedEvt`.
+/// Listens to `TryInteractReq` and `TryUninteractReq` events to explicitly start/end interactions.
+/// Interactions can also be ended automatically on certain conditions.
 #[derive(Clone, Debug, Default)]
 pub struct InteractionSystem {
     interactions: HashSet<Interaction>,
@@ -172,6 +181,7 @@ impl System for InteractionSystem {
 #[derive(Clone, Copy, Debug)]
 pub struct ProximityInteractor;
 
+/// A system that handles the entities that can interact with their surroundings.
 #[derive(Clone, Debug, Default)]
 pub struct ProximityInteractionSystem {
     /// Requested proximity interactions (actor -> target)
@@ -234,9 +244,11 @@ impl System for ProximityInteractionSystem {
     }
 }
 
+/// An actor that can interact with what they have on their hands (i.e., in their appropriate equipment slot).
 #[derive(Clone, Copy, Debug)]
 pub struct HandInteractor;
 
+/// A system that handles the entities that can interact with their equipment.
 #[derive(Clone, Copy, Debug)]
 pub struct HandInteractionSystem;
 

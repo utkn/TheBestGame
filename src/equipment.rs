@@ -4,6 +4,7 @@ use crate::core::{
     EntityRef, EntityRefBag, EntityValiditySet, State, StateCommands, System, UpdateContext,
 };
 
+/// Represent a slot in the equipment.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EquipmentSlot {
     Head,
@@ -16,6 +17,7 @@ pub enum EquipmentSlot {
     RightHand,
 }
 
+/// Denotes the slots that an item can occupy.
 #[derive(Clone, Debug)]
 pub struct SlotSelector(Vec<Vec<EquipmentSlot>>);
 
@@ -32,6 +34,7 @@ impl SlotSelector {
         Self(clauses)
     }
 
+    /// Chooses a set of slots from the given occupied slots. Returns `None` if the selection fails.
     pub fn choose_slots<'a>(
         &self,
         occupied_slots: &HashSet<EquipmentSlot>,
@@ -47,9 +50,11 @@ impl SlotSelector {
     }
 }
 
+/// An entity that can be equipped by `Equipment` entities.
 #[derive(Clone, Debug)]
 pub struct Equippable(pub SlotSelector);
 
+/// An entity that can equip `Equippable` entities.
 #[derive(Clone, Default, Debug)]
 pub struct Equipment(HashMap<EquipmentSlot, EntityRef>);
 
@@ -124,30 +129,35 @@ impl EntityRefBag for Equipment {
     }
 }
 
+/// Request to equip an entity.
 #[derive(Clone, Copy, Debug)]
 pub struct EquipEntityReq {
     pub entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
+/// Request to unequip an entity.
 #[derive(Clone, Copy, Debug)]
 pub struct UnequipEntityReq {
     pub entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
+/// Emitted when an item is equipped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct EntityEquippedEvt {
     pub entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
+/// Emitted when an item is unequipped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct EntityUnequippedEvt {
     pub entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
+/// A system that handles equipping/unequpping to/from `Equipment` entities.
 #[derive(Clone, Debug)]
 pub struct EquipmentSystem;
 

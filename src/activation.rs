@@ -6,6 +6,7 @@ use crate::{
     interaction::Interactable,
 };
 
+/// Represents a location from where an entity can be activated.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ActivationLoc {
     Ground,
@@ -23,6 +24,7 @@ impl From<EntityLocation> for ActivationLoc {
     }
 }
 
+/// An activatable entity. The activation is performed by interacting with the entity on the correct location.
 #[derive(Clone, Default, Debug)]
 pub struct Activatable {
     pub locs: HashSet<ActivationLoc>,
@@ -45,12 +47,15 @@ impl Activatable {
     }
 }
 
+/// Emitted when an entity is activated.
 #[derive(Clone, Copy, Debug)]
 pub struct ActivatedEvt(pub EntityRef);
 
+/// Emitted when an entity is deactivated.
 #[derive(Clone, Copy, Debug)]
 pub struct DeactivatedEvt(pub EntityRef);
 
+/// A system that handles activations.
 #[derive(Clone, Copy, Debug)]
 pub struct ActivationSystem;
 

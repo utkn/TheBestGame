@@ -47,30 +47,36 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     app.backend.window().set_title("TheBestGame v0");
     // Create the world from an empty state.
     let mut world = core::World::from(core::State::default());
-    // Register the systems.
+    // Control & movement
     world.register_system(MovementSystem);
+    world.register_system(AnchorSystem);
     world.register_system(ControlSystem);
     world.register_system(LifetimeSystem);
     world.register_system(ApproachVelocitySystem);
     world.register_system(FaceMouseSystem);
+    // Basic physics
     world.register_system(CollisionDetectionSystem::default());
     world.register_system(SeparateCollisionsSystem);
+    // Interactions
     world.register_system(InteractionSystem::default());
     world.register_system(ProximityInteractionSystem::default());
     world.register_system(HandInteractionSystem);
+    world.register_system(ActivationSystem);
+    // Item stuff
     world.register_system(StorageSystem);
     world.register_system(EquipmentSystem);
     world.register_system(ItemTransferSystem);
     world.register_system(ItemPickupSystem);
     world.register_system(EquippedItemAnchorSystem);
-    world.register_system(AnchorSystem);
+    // Needs
     world.register_system(NeedsSystem::default());
     world.register_system(NeedMutatorSystem);
-    world.register_system(ActivationSystem);
+    // Projectiles
     world.register_system(ProjectileGenerationSystem);
     world.register_system(ProjectileHitSystem);
     world.register_system(SuicideOnHitSystem);
     world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
+    // Misc
     world.register_system(TimedAddSystem::<Activatable>::default());
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());
