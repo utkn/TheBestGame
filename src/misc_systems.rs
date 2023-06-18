@@ -104,8 +104,8 @@ pub struct AnchorSystem;
 impl System for AnchorSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
-            .select::<(AnchorPosition,)>()
-            .for_each(|(child_entity, (anchor,))| {
+            .select::<(AnchorPosition, Position)>()
+            .for_each(|(child_entity, (anchor, _))| {
                 if !state.is_valid(&anchor.0) {
                     // TODO: decide what to do
                     // cmds.remove_component::<AnchorPosition>(&child_entity);
@@ -115,8 +115,8 @@ impl System for AnchorSystem {
                 }
             });
         state
-            .select::<(AnchorRotation,)>()
-            .for_each(|(child_entity, (anchor,))| {
+            .select::<(AnchorRotation, Rotation)>()
+            .for_each(|(child_entity, (anchor, _))| {
                 if !state.is_valid(&anchor.0) {
                     // TODO: decide what to do
                     // cmds.remove_component::<AnchorRotation>(&child_entity);

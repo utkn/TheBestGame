@@ -85,6 +85,9 @@ impl System for StorageSystem {
             cmds.update_component(&evt.storage_entity, move |storage: &mut Storage| {
                 storage.0.insert(evt.entity);
             });
+            // Stored entities should not have a position/translation.
+            cmds.remove_component::<Position>(&evt.entity);
+            cmds.remove_component::<Rotation>(&evt.entity);
         });
     }
 }
