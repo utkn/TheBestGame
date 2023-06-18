@@ -4,7 +4,7 @@ use crate::{
     equipment::{Equipment, EquipmentSlot, Equippable},
     interaction::{HandInteractor, Interactable, InteractionType, ProximityInteractor},
     item::Item,
-    needs::{NeedStatus, NeedType, Needs},
+    needs::{NeedEffector, NeedEffectorCond, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
     projectile::{ProjectileDefn, ProjectileGenerator},
     storage::Storage,
@@ -24,10 +24,10 @@ pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
         Storage::default(),
         Equipment::default(),
         Needs::new([
-            (NeedType::Health, NeedStatus::with_max(100)),
-            (NeedType::Sanity, NeedStatus::with_max(100)),
-            (NeedType::Hunger, NeedStatus::with_zero(100)),
-            (NeedType::Thirst, NeedStatus::with_zero(100)),
+            (NeedType::Health, NeedStatus::with_max(100.)),
+            (NeedType::Sanity, NeedStatus::with_max(100.)),
+            (NeedType::Hunger, NeedStatus::with_zero(100.)),
+            (NeedType::Thirst, NeedStatus::with_zero(100.)),
         ]),
     ));
     cmds.set_components(&player_entity, (FaceMouse,));
@@ -64,5 +64,6 @@ pub fn create_item(cmds: &mut StateCommands, trans: Transform, name: Name) -> En
             lifetime: 0.5,
             speed: 300.,
         }),
+        NeedEffector::new([NeedEffectorCond::InStorage], NeedType::Sanity, -5.),
     ))
 }

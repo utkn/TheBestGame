@@ -1,8 +1,12 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 
-use crate::core::*;
+use crate::{
+    core::*,
+    item::EntityLocation,
+    physics::{CollisionEvt, CollisionStartEvt, CollisionState},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NeedType {
@@ -14,21 +18,21 @@ pub enum NeedType {
 
 #[derive(Clone, Copy, Debug)]
 pub struct NeedStatus {
-    pub curr: usize,
-    pub max: usize,
+    pub curr: f32,
+    pub max: f32,
 }
 
 impl NeedStatus {
     /// Creates a new `NeedStatus` that starts at the maximum value.
-    pub fn with_max(max: usize) -> Self {
-        assert!(max > 0);
+    pub fn with_max(max: f32) -> Self {
+        assert!(max > 0.);
         Self { curr: max, max }
     }
 
     /// Creates a new `NeedStatus` that ends at the maximum value.
-    pub fn with_zero(max: usize) -> Self {
-        assert!(max > 0);
-        Self { curr: 0, max }
+    pub fn with_zero(max: f32) -> Self {
+        assert!(max > 0.);
+        Self { curr: 0., max }
     }
 
     /// Sets the current status to the maximum value.
@@ -36,8 +40,18 @@ impl NeedStatus {
         self.curr = self.max;
     }
 
+    /// Sets the current status to zero.
+    pub fn zero(&mut self) {
+        self.curr = 0.;
+    }
+
+    /// Applies the given change to the status.
+    pub fn change(&mut self, delta: &f32) {
+        self.curr += delta;
+    }
+
     pub fn get_fraction(&self) -> f32 {
-        if self.max == 0 {
+        if self.max == 0. {
             return 0.;
         }
         (self.curr as f32) / (self.max as f32)
@@ -50,6 +64,7 @@ pub enum NeedChange {
     Decreased(f32, f32),
     Increased(f32, f32),
     ExceededMaximum(f32, f32),
+    DescendedZero(f32, f32),
 }
 
 #[derive(Clone, Debug)]
@@ -116,7 +131,7 @@ impl System for NeedsSystem {
                 };
                 let need_type = *need_type;
                 cmds.emit_event(NeedChangeEvt(e, need_type, need_change));
-                // If the need has exceeded the maximum, set the need to the maximum value and additionally emit a need exceeded maximum event.
+                // If the need has exceeded the maximum, set the need to maximum and emit the appropriate event.
                 if new_frac > 1. {
                     let exceeded_change = NeedChange::ExceededMaximum(old_frac, new_frac);
                     cmds.emit_event(NeedChangeEvt(e, need_type, exceeded_change));
@@ -124,7 +139,95 @@ impl System for NeedsSystem {
                         needs.get_mut(&need_type).map(|need| need.maximize());
                     });
                 }
+                // If the need has descended zero, set the need to zero and emit the appropriate event.
+                if new_frac < 0. {
+                    let descended_change = NeedChange::DescendedZero(old_frac, new_frac);
+                    cmds.emit_event(NeedChangeEvt(e, need_type, descended_change));
+                    cmds.update_component(&e, move |needs: &mut Needs| {
+                        needs.get_mut(&need_type).map(|need| need.zero());
+                    });
+                }
             });
         })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum NeedEffectorCond {
+    OnCollision,
+    OnCollisionStart,
+    InEquipment,
+    InStorage,
+}
+
+#[derive(Clone, Debug)]
+pub struct NeedEffector {
+    conds: HashSet<NeedEffectorCond>,
+    need_type: NeedType,
+    effect_rate: f32,
+}
+
+impl NeedEffector {
+    pub fn new(
+        conditions: impl IntoIterator<Item = NeedEffectorCond>,
+        need_type: NeedType,
+        effect_rate: f32,
+    ) -> Self {
+        Self {
+            conds: HashSet::from_iter(conditions),
+            need_type,
+            effect_rate,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct NeedEffectorSystem;
+
+impl System for NeedEffectorSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state
+            .select::<(NeedEffector,)>()
+            .for_each(|(e, (effector,))| {
+                let effector_location = EntityLocation::of(&e, state);
+                let effector_colliders: HashSet<_> = state
+                    .read_events::<CollisionEvt>()
+                    .filter(|evt| evt.e1 == e)
+                    .map(|evt| evt.e2)
+                    .collect();
+                let effector_collision_starters: HashSet<_> = state
+                    .read_events::<CollisionStartEvt>()
+                    .filter(|evt| evt.e1 == e)
+                    .map(|evt| evt.e2)
+                    .collect();
+                // Collect the targets to apply the effect to.
+                let mut targets = HashSet::<EntityRef>::new();
+                if effector.conds.contains(&NeedEffectorCond::OnCollisionStart) {
+                    targets.extend(effector_collision_starters.into_iter());
+                }
+                if effector.conds.contains(&NeedEffectorCond::OnCollision) {
+                    targets.extend(effector_colliders.into_iter());
+                }
+                if effector.conds.contains(&NeedEffectorCond::InEquipment) {
+                    if let EntityLocation::Equipment(equipping_entity) = effector_location {
+                        targets.insert(equipping_entity);
+                    }
+                }
+                if effector.conds.contains(&NeedEffectorCond::InStorage) {
+                    if let EntityLocation::Storage(storing_entity) = effector_location {
+                        targets.insert(storing_entity);
+                    }
+                }
+                // Apply the effects.
+                let need_type = effector.need_type;
+                let need_change = effector.effect_rate * ctx.dt;
+                targets.into_iter().for_each(|target| {
+                    cmds.update_component(&target, move |target_needs: &mut Needs| {
+                        target_needs
+                            .get_mut(&need_type)
+                            .map(|status| status.change(&need_change));
+                    });
+                });
+            })
     }
 }

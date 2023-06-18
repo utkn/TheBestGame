@@ -1,4 +1,4 @@
-use notan::egui::epaint::ahash::HashSet;
+use std::collections::HashSet;
 
 use crate::{
     core::*,
@@ -64,7 +64,7 @@ impl System for ActivationSystem {
             .read_events::<InteractionStartedEvt>()
             .for_each(|evt| {
                 if let Some((target_activ,)) = state.select_one::<(Activatable,)>(&evt.0.target) {
-                    let curr_loc = EntityLocation::of_item(&evt.0.target, state).into();
+                    let curr_loc = EntityLocation::of(&evt.0.target, state).into();
                     if !target_activ.curr_state && target_activ.locs.contains(&curr_loc) {
                         cmds.emit_event(ActivatedEvt(evt.0.target));
                         cmds.update_component(&evt.0.target, |activ: &mut Activatable| {

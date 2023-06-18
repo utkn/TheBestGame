@@ -58,6 +58,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(EquippedItemAnchorSystem);
     world.register_system(AnchorSystem);
     world.register_system(NeedsSystem::default());
+    world.register_system(NeedEffectorSystem);
     world.register_system(ActivationSystem);
     world.register_system(ProjectileGenerationSystem);
     // Initialize the scene for debugging.

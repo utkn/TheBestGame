@@ -1,7 +1,8 @@
 use crate::{
     activation::ActivatedEvt,
     core::*,
-    physics::{Hitbox, HitboxType, Shape},
+    needs::{NeedEffector, NeedEffectorCond, NeedType},
+    physics::{CollisionState, Hitbox, HitboxType, Shape},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -36,6 +37,7 @@ impl System for ProjectileGenerationSystem {
                         kill_on_collision: false,
                     },
                     hitbox,
+                    NeedEffector::new([NeedEffectorCond::OnCollision], NeedType::Health, -10.),
                 ));
             }
         });

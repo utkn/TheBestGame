@@ -16,16 +16,16 @@ pub enum EntityLocation {
 }
 
 impl EntityLocation {
-    /// Returns the current location of the given item entity.
-    pub fn of_item(item: &EntityRef, state: &State) -> EntityLocation {
+    /// Returns the current location of the given entity.
+    pub fn of(e: &EntityRef, state: &State) -> EntityLocation {
         if let Some((storing_entity, _)) = state
             .select::<(Storage,)>()
-            .find(|(_, (storage,))| storage.0.contains(item))
+            .find(|(_, (storage,))| storage.0.contains(e))
         {
             EntityLocation::Storage(storing_entity)
         } else if let Some((equipping_entity, _)) = state
             .select::<(Equipment,)>()
-            .find(|(_, (equipment,))| equipment.contains(item))
+            .find(|(_, (equipment,))| equipment.contains(e))
         {
             EntityLocation::Equipment(equipping_entity)
         } else {
@@ -81,7 +81,7 @@ pub struct ItemTransferSystem;
 impl ItemTransferSystem {
     fn from_loc_valid(&self, item_e: &EntityRef, loc: &EntityLocation, state: &State) -> bool {
         let is_item_entity_valid = state.select_one::<(Item,)>(item_e).is_some();
-        let curr_location = EntityLocation::of_item(item_e, state);
+        let curr_location = EntityLocation::of(item_e, state);
         is_item_entity_valid && curr_location == *loc
     }
 
