@@ -2,7 +2,7 @@ use crate::{
     activation::{Activatable, ActivationLoc},
     core::*,
     effects::{Affected, Effector, EffectorTarget},
-    equipment::{Equipment, EquipmentSlot, Equippable},
+    equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
     interaction::{HandInteractor, Interactable, InteractionType, ProximityInteractor},
     item::Item,
     needs::{NeedMutatorEffect, NeedStatus, NeedType, Needs},
@@ -66,7 +66,10 @@ pub fn create_handgun(cmds: &mut StateCommands, trans: Transform, name: Name) ->
         Item,
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
-        Equippable::new([EquipmentSlot::LeftHand]),
+        Equippable(SlotSelector::new([[
+            EquipmentSlot::RightHand,
+            EquipmentSlot::LeftHand,
+        ]])),
         Interactable::new(InteractionType::OneShot),
         Activatable::at_locations([ActivationLoc::Equipment]),
         ProjectileGenerator {
@@ -87,7 +90,10 @@ pub fn create_machinegun(cmds: &mut StateCommands, trans: Transform, name: Name)
         Item,
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
-        Equippable::new([EquipmentSlot::RightHand]),
+        Equippable(SlotSelector::new([[
+            EquipmentSlot::RightHand,
+            EquipmentSlot::LeftHand,
+        ]])),
         Interactable::new(InteractionType::Whatevs),
         Activatable::at_locations([ActivationLoc::Equipment]),
         ProjectileGenerator {
@@ -110,7 +116,7 @@ pub fn create_shoes(cmds: &mut StateCommands, trans: Transform, name: Name) -> E
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
         Interactable::new(InteractionType::ContactRequiredOneShot),
-        Equippable::new([EquipmentSlot::Feet]),
+        Equippable(SlotSelector::new([[EquipmentSlot::Feet]])),
         Effector::<MaxSpeed>::new([EffectorTarget::Equipper], |old| MaxSpeed(old.0 * 2.)),
         Effector::<Acceleration>::new([EffectorTarget::Equipper], |old| Acceleration(old.0 * 4.)),
     ))

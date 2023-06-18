@@ -17,27 +17,56 @@ pub enum EquipmentSlot {
 }
 
 #[derive(Clone, Debug)]
-pub struct Equippable(pub HashSet<EquipmentSlot>);
+pub struct SlotSelector(Vec<HashSet<EquipmentSlot>>);
 
-impl Equippable {
-    pub fn new(slots: impl IntoIterator<Item = EquipmentSlot>) -> Self {
-        Self(HashSet::from_iter(slots.into_iter()))
+impl SlotSelector {
+    pub fn new<C, E>(clauses: C) -> Self
+    where
+        C: IntoIterator<Item = E>,
+        E: IntoIterator<Item = EquipmentSlot>,
+    {
+        let clauses = clauses
+            .into_iter()
+            .map(|clause| clause.into_iter().collect())
+            .collect();
+        Self(clauses)
+    }
+
+    pub fn choose_slots<'a>(
+        &self,
+        occupied_slots: &HashSet<EquipmentSlot>,
+    ) -> Option<HashSet<EquipmentSlot>> {
+        let mut chosen_slots = HashSet::new();
+        for clause in &self.0 {
+            let chosen_slot = clause.iter().find(|option| {
+                !occupied_slots.contains(*option) && !chosen_slots.contains(*option)
+            })?;
+            chosen_slots.insert(*chosen_slot);
+        }
+        Some(chosen_slots)
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct Equippable(pub SlotSelector);
 
 #[derive(Clone, Default, Debug)]
 pub struct Equipment(HashMap<EquipmentSlot, EntityRef>);
 
 impl Equipment {
+    /// Returns the set of occupied slots in this equipment.
+    pub fn occupied_slots(&self) -> HashSet<EquipmentSlot> {
+        self.0.keys().cloned().collect()
+    }
     /// Returns true if the item can be equipped.
     pub fn can_equip(&self, equippable: &Equippable) -> bool {
-        equippable.0.iter().all(|slot| !self.0.contains_key(slot))
+        equippable.0.choose_slots(&self.occupied_slots()).is_some()
     }
 
     /// Tries to equip the given entity to the given slot. Note that this always succeeds if the slots are available.
     pub fn try_equip(&mut self, e: EntityRef, equippable: &Equippable) -> bool {
-        if self.can_equip(equippable) {
-            self.0.extend(equippable.0.iter().map(|slot| (*slot, e)));
+        if let Some(chosen_slots) = equippable.0.choose_slots(&self.occupied_slots()) {
+            self.0.extend(chosen_slots.iter().map(|slot| (*slot, e)));
             true
         } else {
             false
