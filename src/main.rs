@@ -2,7 +2,6 @@
 
 use crate::core::*;
 use activation::{Activatable, ActivationSystem};
-use cooldown::CooldownSystem;
 use effects::EffectSystem;
 use equipment::EquipmentSystem;
 use game_entities::*;
@@ -15,12 +14,14 @@ use notan::{
     egui::EguiPluginSugar,
 };
 use physics::*;
-use projectile::{ProjectileGenerationSystem, ProjectileHitSystem};
+use projectile::{
+    ApplyOnHitSystem, ProjectileGenerationSystem, ProjectileHitSystem, SuicideOnHitSystem,
+};
 use storage::StorageSystem;
+use timed::{TimedAddSystem, TimedRemoveSystem};
 use ui::{draw_ui, UiState};
 
 mod activation;
-mod cooldown;
 mod core;
 mod effects;
 mod entity_insights;
@@ -33,6 +34,7 @@ mod needs;
 mod physics;
 mod projectile;
 mod storage;
+mod timed;
 mod ui;
 
 #[derive(notan::AppState)]
@@ -67,16 +69,20 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(ActivationSystem);
     world.register_system(ProjectileGenerationSystem);
     world.register_system(ProjectileHitSystem);
+    world.register_system(SuicideOnHitSystem);
+    world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
+    world.register_system(TimedAddSystem::<Activatable>::default());
+    world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());
     world.register_system(EffectSystem::<Acceleration>::default());
-    world.register_system(CooldownSystem::<Activatable>::default());
     // Initialize the scene for debugging.
     world.update_with(|_, cmds| {
-        create_player(cmds, Transform::at(0., 0.));
-        create_chest(cmds, Transform::at(50., 50.));
-        create_handgun(cmds, Transform::at(150., 150.), Name("gun"));
-        create_machinegun(cmds, Transform::at(200., 200.), Name("machine gun"));
-        create_shoes(cmds, Transform::at(180., 180.), Name("shoes"));
+        create_player(Transform::at(0., 0.), cmds);
+        create_chest(Transform::at(50., 50.), cmds);
+        create_handgun(Transform::at(150., 150.), Name("gun"), cmds);
+        create_handgun(Transform::at(150., 150.), Name("gun"), cmds);
+        create_machinegun(Transform::at(200., 200.), Name("machine gun"), cmds);
+        create_shoes(Transform::at(180., 180.), Name("shoes"), cmds);
     });
     AppState {
         world,

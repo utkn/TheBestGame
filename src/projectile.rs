@@ -1,12 +1,14 @@
+use std::marker::PhantomData;
+
 use notan::egui::epaint::ahash::HashSet;
 
 use crate::{
     activation::Activatable,
-    cooldown::Cooldown,
     core::*,
     entity_insights::EntityInsights,
-    needs::{NeedMutator, NeedMutatorEffect, NeedMutatorTarget, NeedType},
+    needs::NeedMutator,
     physics::{Hitbox, HitboxType, Shape},
+    timed::{TimedAdd, TimedRemove},
 };
 
 use rand::Rng;
@@ -16,7 +18,7 @@ pub struct ProjectileDefn {
     pub lifetime: f32,
     pub speed: f32,
     pub spread: f32,
-    pub need_mutation: (NeedType, NeedMutatorEffect),
+    pub on_hit: NeedMutator,
 }
 
 #[derive(Clone, Debug)]
@@ -60,12 +62,9 @@ impl System for ProjectileGenerationSystem {
                     },
                     Hitbox(HitboxType::Ghost, Shape::Circle(5.)),
                     // Do not hit the anchor parent.
-                    Projectile::new(friendly_entities, true),
-                    NeedMutator::new(
-                        [NeedMutatorTarget::HitTarget],
-                        p_gen.proj.need_mutation.0,
-                        p_gen.proj.need_mutation.1,
-                    ),
+                    Projectile::new(friendly_entities),
+                    SuicideOnHit,
+                    ApplyOnHit::new(Some(0.), p_gen.proj.on_hit.clone()),
                 ));
                 // If cooldown was set, remove the activatable component until the cooldown ends.
                 if let Some(cooldown_time) = p_gen.cooldown {
@@ -75,7 +74,7 @@ impl System for ProjectileGenerationSystem {
                         cmds.remove_component::<Activatable>(&p_gen_entity);
                         cmds.set_component(
                             &p_gen_entity,
-                            Cooldown::new(cooldown_time, old_activatable.clone().deactivated()),
+                            TimedAdd::new(cooldown_time, old_activatable.clone().deactivated()),
                         )
                     }
                 }
@@ -88,15 +87,12 @@ impl System for ProjectileGenerationSystem {
 pub struct Projectile {
     /// Hitting these entities will do nothing.
     friendly_entities: HashSet<EntityRef>,
-    /// If set to true, the projectile is removed after a hit.
-    remove_on_hit: bool,
 }
 
 impl Projectile {
-    pub fn new(exceptions: impl IntoIterator<Item = EntityRef>, remove_on_hit: bool) -> Self {
+    pub fn new(exceptions: impl IntoIterator<Item = EntityRef>) -> Self {
         Self {
             friendly_entities: HashSet::from_iter(exceptions),
-            remove_on_hit,
         }
     }
 }
@@ -135,11 +131,63 @@ impl System for ProjectileHitSystem {
                     })
                 });
         });
-        // Remove the projectiles that should be removed after a hit.
+    }
+}
+
+/// Entities tagged with this component will be removed after they hit another component.
+#[derive(Clone, Copy, Debug)]
+pub struct SuicideOnHit;
+
+#[derive(Clone, Copy, Debug)]
+pub struct SuicideOnHitSystem;
+
+impl System for SuicideOnHitSystem {
+    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        // Remove the entities that should be removed after a hit.
         state.read_events::<ProjectileHitEvt>().for_each(|evt| {
-            if let Some((hitter,)) = state.select_one::<(Projectile,)>(&evt.hitter) {
-                if hitter.remove_on_hit {
-                    cmds.remove_entity(&evt.hitter);
+            if let Some(_) = state.select_one::<(SuicideOnHit,)>(&evt.hitter) {
+                cmds.remove_entity(&evt.hitter);
+            }
+        });
+    }
+}
+
+/// The entities that are hit by this entity will be applied this component with an optional time.
+#[derive(Clone, Copy, Debug)]
+pub struct ApplyOnHit<T: Component> {
+    time: Option<f32>,
+    component: T,
+}
+
+impl<T: Component> ApplyOnHit<T> {
+    pub fn new(time: Option<f32>, component_to_apply: T) -> Self {
+        Self {
+            time,
+            component: component_to_apply,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ApplyOnHitSystem<T: Component>(PhantomData<T>);
+
+impl<T: Component> Default for ApplyOnHitSystem<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T: Component> System for ApplyOnHitSystem<T> {
+    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state.read_events::<ProjectileHitEvt>().for_each(|evt| {
+            if let Some((apply_on_hit,)) = state.select_one::<(ApplyOnHit<T>,)>(&evt.hitter) {
+                let target = evt.target;
+                let component_to_apply = apply_on_hit.component.clone();
+                // Add the component.
+                cmds.set_component(&target, component_to_apply);
+                // Optionally, request the removal of the said component after a certain time.
+                if let Some(time) = apply_on_hit.time {
+                    cmds.set_component(&target, TimedRemove::<T>::new(time));
                 }
             }
         });

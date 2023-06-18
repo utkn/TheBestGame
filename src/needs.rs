@@ -151,24 +151,6 @@ impl System for NeedsSystem {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum NeedMutatorTarget {
-    /// Colliding entities' needs will be mutated.
-    Collider,
-    /// The needs of the entities that start a collision with this mutator will be mutated.
-    CollisionStarter,
-    /// The needs of the equipment containing this mutator will be mutated.
-    Equipment,
-    /// The needs of the storage containing this mutator will be mutated.
-    Storage,
-    /// The needs of the anchoring parent of this mutator will be mutated.
-    AnchorParent,
-    /// The needs of the interacting actor entity will be mutated.
-    Interactor,
-    /// The needs of the entity that was hit by this mutator will be mutated.
-    HitTarget,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub enum NeedMutatorEffect {
     /// The given delta will be directly applied to the status.
@@ -179,22 +161,13 @@ pub enum NeedMutatorEffect {
 
 #[derive(Clone, Debug)]
 pub struct NeedMutator {
-    targets: HashSet<NeedMutatorTarget>,
     need_type: NeedType,
     effect: NeedMutatorEffect,
 }
 
 impl NeedMutator {
-    pub fn new(
-        targets: impl IntoIterator<Item = NeedMutatorTarget>,
-        need_type: NeedType,
-        effect: NeedMutatorEffect,
-    ) -> Self {
-        Self {
-            targets: HashSet::from_iter(targets),
-            need_type,
-            effect,
-        }
+    pub fn new(need_type: NeedType, effect: NeedMutatorEffect) -> Self {
+        Self { need_type, effect }
     }
 }
 
@@ -205,51 +178,17 @@ impl System for NeedMutatorSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .select::<(NeedMutator,)>()
-            .for_each(|(e, (effector,))| {
-                // Determine some key insights about the effector.
-                let mutator_insights = EntityInsights::of(&e, state);
-                // Collect the targets to apply the effect to.
-                let mut targets = HashSet::<EntityRef>::new();
-                if effector.targets.contains(&NeedMutatorTarget::AnchorParent) {
-                    targets.extend(mutator_insights.anchor_parent);
-                }
-                if effector
-                    .targets
-                    .contains(&NeedMutatorTarget::CollisionStarter)
-                {
-                    targets.extend(mutator_insights.new_collision_starters.into_iter());
-                }
-                if effector.targets.contains(&NeedMutatorTarget::Collider) {
-                    targets.extend(mutator_insights.new_colliders.into_iter());
-                }
-                if effector.targets.contains(&NeedMutatorTarget::Interactor) {
-                    targets.extend(mutator_insights.new_interactors);
-                }
-                if effector.targets.contains(&NeedMutatorTarget::HitTarget) {
-                    targets.extend(mutator_insights.new_hit_targets);
-                }
-                if effector.targets.contains(&NeedMutatorTarget::Equipment) {
-                    if let EntityLocation::Equipment(equipping_entity) = mutator_insights.location {
-                        targets.insert(equipping_entity);
-                    }
-                }
-                if effector.targets.contains(&NeedMutatorTarget::Storage) {
-                    if let EntityLocation::Storage(storing_entity) = mutator_insights.location {
-                        targets.insert(storing_entity);
-                    }
-                }
+            .for_each(|(e, (mutator,))| {
                 // Apply the effects.
-                let need_type = effector.need_type;
-                let need_change = match effector.effect {
+                let need_type = mutator.need_type;
+                let need_change = match mutator.effect {
                     NeedMutatorEffect::Delta(delta) => delta,
                     NeedMutatorEffect::Rate(rate) => rate * ctx.dt,
                 };
-                targets.into_iter().for_each(|target| {
-                    cmds.update_component(&target, move |target_needs: &mut Needs| {
-                        target_needs
-                            .get_mut(&need_type)
-                            .map(|status| status.change(&need_change));
-                    });
+                cmds.update_component(&e, move |needs: &mut Needs| {
+                    needs
+                        .get_mut(&need_type)
+                        .map(|status| status.change(&need_change));
                 });
             })
     }

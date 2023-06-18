@@ -4,7 +4,7 @@ use itertools::Itertools;
 use notan::egui;
 
 use crate::{
-    core::{EntityRef, EntityRefBag, State, StateCommands},
+    core::{EntityRef, EntityRefBag, Name, State, StateCommands},
     interaction::Interactable,
     item::ItemTransferReq,
     storage::Storage,
@@ -40,8 +40,12 @@ impl<'a> UiBuilder<'a> {
             .filter(|(_, (intr, _))| intr.actors.contains(&player_entity))
             .collect_vec();
         for (storage_entity, (_, _)) in active_storages {
+            let storage_name = game_state
+                .select_one::<(Name,)>(&storage_entity)
+                .map(|(name,)| name.0)
+                .unwrap_or("unnamed");
             self.add_window(StorageWindow {
-                title: "Chest",
+                title: storage_name,
                 storage_entity,
             });
         }

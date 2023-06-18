@@ -5,14 +5,14 @@ use crate::{
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
     interaction::{HandInteractor, Interactable, InteractionType, ProximityInteractor},
     item::Item,
-    needs::{NeedMutatorEffect, NeedStatus, NeedType, Needs},
+    needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
     projectile::{ProjectileDefn, ProjectileGenerator},
     storage::Storage,
 };
 
-pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
-    let character_entity = cmds.create_from((
+pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
+    cmds.create_from((
         trans,
         Velocity::default(),
         Acceleration(2000.),
@@ -28,9 +28,13 @@ pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
             (NeedType::Hunger, NeedStatus::with_zero(100.)),
             (NeedType::Thirst, NeedStatus::with_zero(100.)),
         ]),
-    ));
+    ))
+}
+
+pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
+    let character = create_character(trans, cmds);
     cmds.set_components(
-        &character_entity,
+        &character,
         (
             HandInteractor,
             ProximityInteractor,
@@ -40,12 +44,13 @@ pub fn create_player(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
             Affected::<Acceleration>::default(),
         ),
     );
-    character_entity
+    character
 }
 
-pub fn create_chest(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
+pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
     let chest_entity = cmds.create_from((
         trans,
+        Name("Some random chest"),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
         CollisionState::default(),
         Interactable::new(InteractionType::ContactRequired),
@@ -59,65 +64,92 @@ pub fn create_chest(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
     chest_entity
 }
 
-pub fn create_handgun(cmds: &mut StateCommands, trans: Transform, name: Name) -> EntityRef {
+pub fn create_item(
+    trans: Transform,
+    name: Name,
+    slots: SlotSelector,
+    cmds: &mut StateCommands,
+) -> EntityRef {
     cmds.create_from((
         trans,
         name,
         Item,
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
-        Equippable(SlotSelector::new([[
-            EquipmentSlot::RightHand,
-            EquipmentSlot::LeftHand,
-        ]])),
+        Equippable(slots),
         Interactable::new(InteractionType::OneShot),
-        Activatable::at_locations([ActivationLoc::Equipment]),
-        ProjectileGenerator {
-            cooldown: None,
-            proj: ProjectileDefn {
-                lifetime: 0.5,
-                speed: 300.,
-                spread: 0.,
-                need_mutation: (NeedType::Health, NeedMutatorEffect::Delta(-5.)),
-            },
-        },
-    ))
-}
-pub fn create_machinegun(cmds: &mut StateCommands, trans: Transform, name: Name) -> EntityRef {
-    cmds.create_from((
-        trans,
-        name,
-        Item,
-        Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
-        CollisionState::default(),
-        Equippable(SlotSelector::new([[
-            EquipmentSlot::RightHand,
-            EquipmentSlot::LeftHand,
-        ]])),
-        Interactable::new(InteractionType::Whatevs),
-        Activatable::at_locations([ActivationLoc::Equipment]),
-        ProjectileGenerator {
-            cooldown: Some(0.1),
-            proj: ProjectileDefn {
-                lifetime: 1.5,
-                speed: 600.,
-                spread: 15.,
-                need_mutation: (NeedType::Health, NeedMutatorEffect::Delta(-5.)),
-            },
-        },
     ))
 }
 
-pub fn create_shoes(cmds: &mut StateCommands, trans: Transform, name: Name) -> EntityRef {
-    cmds.create_from((
+pub fn create_handgun(trans: Transform, name: Name, cmds: &mut StateCommands) -> EntityRef {
+    let item = create_item(
         trans,
         name,
-        Item,
-        Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
-        CollisionState::default(),
-        Interactable::new(InteractionType::ContactRequiredOneShot),
-        Equippable(SlotSelector::new([[EquipmentSlot::Feet]])),
-        Effector::<MaxSpeed>::new([EffectorTarget::Equipper], |old| MaxSpeed(old.0 * 2.)),
-        Effector::<Acceleration>::new([EffectorTarget::Equipper], |old| Acceleration(old.0 * 4.)),
-    ))
+        SlotSelector::new([[EquipmentSlot::LeftHand, EquipmentSlot::RightHand]]),
+        cmds,
+    );
+    cmds.set_components(
+        &item,
+        (
+            Activatable::at_locations([ActivationLoc::Equipment]),
+            ProjectileGenerator {
+                cooldown: None,
+                proj: ProjectileDefn {
+                    lifetime: 0.5,
+                    speed: 300.,
+                    spread: 0.,
+                    on_hit: NeedMutator::new(NeedType::Health, NeedMutatorEffect::Delta(-5.)),
+                },
+            },
+        ),
+    );
+    item
+}
+pub fn create_machinegun(trans: Transform, name: Name, cmds: &mut StateCommands) -> EntityRef {
+    let item = create_item(
+        trans,
+        name,
+        SlotSelector::new([
+            [EquipmentSlot::LeftHand, EquipmentSlot::RightHand],
+            [EquipmentSlot::LeftHand, EquipmentSlot::RightHand],
+        ]),
+        cmds,
+    );
+    cmds.set_components(
+        &item,
+        (
+            Storage::default(),
+            Interactable::new(InteractionType::Whatevs),
+            Activatable::at_locations([ActivationLoc::Equipment]),
+            ProjectileGenerator {
+                cooldown: Some(0.1),
+                proj: ProjectileDefn {
+                    lifetime: 1.5,
+                    speed: 600.,
+                    spread: 15.,
+                    on_hit: NeedMutator::new(NeedType::Health, NeedMutatorEffect::Delta(-5.)),
+                },
+            },
+        ),
+    );
+    item
+}
+
+pub fn create_shoes(trans: Transform, name: Name, cmds: &mut StateCommands) -> EntityRef {
+    let item = create_item(
+        trans,
+        name,
+        SlotSelector::new([[EquipmentSlot::Feet]]),
+        cmds,
+    );
+    cmds.set_components(
+        &item,
+        (
+            Effector::<MaxSpeed>::new([EffectorTarget::Equipper], |old| MaxSpeed(old.0 * 2.)),
+            Effector::<Acceleration>::new([EffectorTarget::Equipper], |old| {
+                Acceleration(old.0 * 4.)
+            }),
+        ),
+    );
+    item
 }

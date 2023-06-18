@@ -4,7 +4,7 @@ use crate::{
     core::{AnchorTransform, EntityRef, EntityRefBag, State},
     equipment::{EntityEquippedEvt, EntityUnequippedEvt, Equipment},
     interaction::{InteractionEndedEvt, InteractionStartedEvt},
-    physics::{CollisionEvt, CollisionStartEvt},
+    physics::{CollisionEndEvt, CollisionEvt, CollisionStartEvt},
     projectile::ProjectileHitEvt,
     storage::{EntityStoredEvt, EntityUnstoredEvt, Storage},
 };
@@ -43,6 +43,7 @@ pub struct EntityInsights {
     pub anchor_parent: Option<EntityRef>,
     pub new_colliders: HashSet<EntityRef>,
     pub new_collision_starters: HashSet<EntityRef>,
+    pub new_collision_enders: HashSet<EntityRef>,
     pub new_storers: HashSet<EntityRef>,
     pub new_equippers: HashSet<EntityRef>,
     pub new_interactors: HashSet<EntityRef>,
@@ -99,6 +100,11 @@ impl EntityInsights {
                 .collect(),
             new_collision_starters: state
                 .read_events::<CollisionStartEvt>()
+                .filter(|evt| evt.e1 == *e)
+                .map(|evt| evt.e2)
+                .collect(),
+            new_collision_enders: state
+                .read_events::<CollisionEndEvt>()
                 .filter(|evt| evt.e1 == *e)
                 .map(|evt| evt.e2)
                 .collect(),

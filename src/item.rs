@@ -65,7 +65,7 @@ impl ItemTransferSystem {
         is_item_entity_valid
             && match loc {
                 EntityLocation::Ground => true,
-                EntityLocation::Equipment(equipment_entity) => {
+                EntityLocation::Equipment(equipment_entity) if equipment_entity != item_e => {
                     if let Some((equippable,)) = state.select_one::<(Equippable,)>(item_e) {
                         state
                             .select_one::<(Equipment,)>(equipment_entity)
@@ -75,7 +75,7 @@ impl ItemTransferSystem {
                         false
                     }
                 }
-                EntityLocation::Storage(storage_entity) => {
+                EntityLocation::Storage(storage_entity) if storage_entity != item_e => {
                     if let Some((_storage,)) = state.select_one::<(Storage,)>(storage_entity) {
                         // TODO: storage limits
                         true
@@ -83,6 +83,7 @@ impl ItemTransferSystem {
                         false
                     }
                 }
+                _ => false,
             }
     }
 }

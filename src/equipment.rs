@@ -17,7 +17,7 @@ pub enum EquipmentSlot {
 }
 
 #[derive(Clone, Debug)]
-pub struct SlotSelector(Vec<HashSet<EquipmentSlot>>);
+pub struct SlotSelector(Vec<Vec<EquipmentSlot>>);
 
 impl SlotSelector {
     pub fn new<C, E>(clauses: C) -> Self

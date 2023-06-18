@@ -37,10 +37,14 @@ impl<T: Component> Affected<T> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EffectorTarget {
-    /// The effect will be applied to the storer of the `Effector` entity.
+    /// The effect will be applied to the storer of the `Effector`.
     Storer,
-    /// The effect will be applied to the equipper of the `Effector` entity.
+    /// The effect will be applied to the equipper of the `Effector`.
     Equipper,
+    /// The effect will be applied to the interactors of the `Effector` during the interaction.
+    Interactor,
+    /// The effect will be applied to the entities colliding with this `Effector` during the collision.
+    Collider,
 }
 
 /// A component representing an entity that can apply effects to other entities.
@@ -108,6 +112,14 @@ impl<T: Component> System for EffectSystem<T> {
                 // Collect the application targets.
                 let mut apply_targets = HashSet::<EntityRef>::new();
                 let mut unapply_targets = HashSet::<EntityRef>::new();
+                if effector.targets.contains(&EffectorTarget::Collider) {
+                    apply_targets.extend(effector_insights.new_collision_starters);
+                    unapply_targets.extend(effector_insights.new_collision_enders);
+                }
+                if effector.targets.contains(&EffectorTarget::Interactor) {
+                    apply_targets.extend(effector_insights.new_interactors);
+                    unapply_targets.extend(effector_insights.new_uninteractors);
+                }
                 if effector.targets.contains(&EffectorTarget::Storer) {
                     apply_targets.extend(effector_insights.new_storers);
                     unapply_targets.extend(effector_insights.new_unstorers);
