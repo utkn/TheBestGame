@@ -1,7 +1,4 @@
-use crate::{
-    core::*,
-    physics::{CollisionEvt, Hitbox},
-};
+use crate::core::*;
 
 /// A system that handles simple translation using the velocities.
 #[derive(Clone, Copy, Debug, Default)]

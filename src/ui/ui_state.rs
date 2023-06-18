@@ -10,13 +10,17 @@ pub(super) struct DragResult {
 }
 
 #[derive(Clone, Default, Debug)]
-pub(super) struct ItemDragState {
+pub struct ItemDragState {
     from_position: Option<(f32, f32)>,
     to_position: Option<(f32, f32)>,
     dragging_item: Option<EntityRef>,
 }
 
 impl ItemDragState {
+    pub fn is_dragging(&self) -> bool {
+        self.dragging_item.is_some()
+    }
+
     pub(super) fn dragging(&self) -> Option<&EntityRef> {
         self.dragging_item.as_ref()
     }
@@ -61,5 +65,5 @@ impl ItemDragState {
 
 #[derive(Clone, Default, Debug)]
 pub struct UiState {
-    pub(super) item_drag: ItemDragState,
+    pub item_drag: ItemDragState,
 }

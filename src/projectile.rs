@@ -34,6 +34,11 @@ impl System for ProjectileGenerationSystem {
                     x: vel.x,
                     y: -vel.y, // y axis is inverted!
                 };
+                // Determine the friendly entities of the projectile, which are...
+                // ... the generator itself
+                let mut friendly_entities = vec![p_gen_entity];
+                // ... and the anchor parent of the generator
+                friendly_entities.extend(EntityInsights::of(&p_gen_entity, state).anchor_parent);
                 // Create the projectile entity.
                 cmds.create_from((
                     *trans,
@@ -43,7 +48,7 @@ impl System for ProjectileGenerationSystem {
                     },
                     Hitbox(HitboxType::Ghost, Shape::Circle(5.)),
                     // Do not hit the anchor parent.
-                    Projectile::new(EntityInsights::of(&p_gen_entity, state).anchor_parent, true),
+                    Projectile::new(friendly_entities, true),
                     NeedMutator::new(
                         [NeedMutatorTarget::HitTarget],
                         p_gen.0.need_mutation.0,
