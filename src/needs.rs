@@ -165,25 +165,35 @@ pub enum NeedMutatorTarget {
     AnchorParent,
     /// The needs of the interacting actor entity will be mutated.
     Interactor,
+    /// The needs of the entity that was hit by this mutator will be mutated.
+    HitTarget,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum NeedMutatorEffect {
+    /// The given delta will be directly applied to the status.
+    Delta(f32),
+    /// The given rate will be multiplied by delta time before applying it to the status.
+    Rate(f32),
 }
 
 #[derive(Clone, Debug)]
 pub struct NeedMutator {
     targets: HashSet<NeedMutatorTarget>,
     need_type: NeedType,
-    effect_rate: f32,
+    effect: NeedMutatorEffect,
 }
 
 impl NeedMutator {
     pub fn new(
         targets: impl IntoIterator<Item = NeedMutatorTarget>,
         need_type: NeedType,
-        effect_rate: f32,
+        effect: NeedMutatorEffect,
     ) -> Self {
         Self {
             targets: HashSet::from_iter(targets),
             need_type,
-            effect_rate,
+            effect,
         }
     }
 }
@@ -207,13 +217,16 @@ impl System for NeedMutatorSystem {
                     .targets
                     .contains(&NeedMutatorTarget::CollisionStarter)
                 {
-                    targets.extend(mutator_insights.collision_starters.into_iter());
+                    targets.extend(mutator_insights.new_collision_starters.into_iter());
                 }
                 if effector.targets.contains(&NeedMutatorTarget::Collider) {
-                    targets.extend(mutator_insights.colliders.into_iter());
+                    targets.extend(mutator_insights.new_colliders.into_iter());
                 }
                 if effector.targets.contains(&NeedMutatorTarget::Interactor) {
-                    targets.extend(mutator_insights.interactors);
+                    targets.extend(mutator_insights.new_interactors);
+                }
+                if effector.targets.contains(&NeedMutatorTarget::HitTarget) {
+                    targets.extend(mutator_insights.new_hit_targets);
                 }
                 if effector.targets.contains(&NeedMutatorTarget::Equipment) {
                     if let EntityLocation::Equipment(equipping_entity) = mutator_insights.location {
@@ -227,7 +240,10 @@ impl System for NeedMutatorSystem {
                 }
                 // Apply the effects.
                 let need_type = effector.need_type;
-                let need_change = effector.effect_rate * ctx.dt;
+                let need_change = match effector.effect {
+                    NeedMutatorEffect::Delta(delta) => delta,
+                    NeedMutatorEffect::Rate(rate) => rate * ctx.dt,
+                };
                 targets.into_iter().for_each(|target| {
                     cmds.update_component(&target, move |target_needs: &mut Needs| {
                         target_needs

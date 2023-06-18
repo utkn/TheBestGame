@@ -135,18 +135,8 @@ pub struct LifetimeSystem;
 impl System for LifetimeSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state.select::<(Lifetime,)>().for_each(|(e, (lifetime,))| {
-            // Remove the colliding entities with kill on collision flag.
-            let is_colliding_with_concrete = state.read_events::<CollisionEvt>().any(|evt| {
-                evt.e1 == e
-                    && state
-                        .select_one::<(Hitbox,)>(&evt.e2)
-                        .map(|(hb,)| hb.0.is_concrete())
-                        .unwrap_or(false)
-            });
             // Remove the entities with ended lifetime.
-            if lifetime.remaining_time <= 0.
-                || (is_colliding_with_concrete && lifetime.kill_on_collision)
-            {
+            if lifetime.remaining_time <= 0. {
                 cmds.remove_entity(&e);
             } else {
                 // Update the alive entities' lifetimes.

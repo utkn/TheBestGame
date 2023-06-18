@@ -7,6 +7,7 @@ use crate::{
         Controller, EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System,
         UpdateContext,
     },
+    entity_insights::{EntityInsights, EntityLocation},
     equipment::{Equipment, EquipmentSlot},
     physics::CollisionState,
 };
@@ -244,7 +245,9 @@ impl System for ProximityInteractionSystem {
                             .target
                             .map(|curr_target| curr_target != **candidate)
                             .unwrap_or(true);
-                        is_interactable && is_new
+                        let is_on_ground = EntityInsights::of(&candidate, state).location
+                            == EntityLocation::Ground;
+                        is_interactable && is_new && is_on_ground
                     });
                     // Try to start the interaction with the new target.
                     if let Some(target_entity) = interactable_target {

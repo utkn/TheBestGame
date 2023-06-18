@@ -4,7 +4,7 @@ use crate::core::*;
 use activation::ActivationSystem;
 use effects::EffectSystem;
 use equipment::EquipmentSystem;
-use game_entities::{create_chest, create_item, create_player};
+use game_entities::*;
 use interaction::*;
 use item::{EquippedItemAnchorSystem, ItemPickupSystem, ItemTransferSystem};
 use misc_systems::*;
@@ -14,7 +14,7 @@ use notan::{
     egui::EguiPluginSugar,
 };
 use physics::*;
-use projectile::ProjectileGenerationSystem;
+use projectile::{ProjectileGenerationSystem, ProjectileHitSystem};
 use storage::StorageSystem;
 use ui::{draw_ui, UiState};
 
@@ -67,12 +67,13 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(EffectSystem::<Acceleration>::default());
     world.register_system(EffectSystem::<Needs>::default());
     world.register_system(ProjectileGenerationSystem);
+    world.register_system(ProjectileHitSystem);
     // Initialize the scene for debugging.
     world.update_with(|_, cmds| {
         create_player(cmds, Transform::at(0., 0.));
         create_chest(cmds, Transform::at(50., 50.));
-        create_item(cmds, Transform::at(150., 150.), Name("thing"));
-        create_item(cmds, Transform::at(150., 150.), Name("other thing"));
+        create_handgun(cmds, Transform::at(150., 150.), Name("gun"));
+        create_shoes(cmds, Transform::at(180., 180.), Name("shoes"));
     });
     AppState {
         world,

@@ -5,7 +5,7 @@ use crate::{
     equipment::{Equipment, EquipmentSlot, Equippable},
     interaction::{HandInteractor, Interactable, InteractionType, ProximityInteractor},
     item::Item,
-    needs::{NeedMutator, NeedMutatorTarget, NeedStatus, NeedType, Needs},
+    needs::{NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
     projectile::{ProjectileDefn, ProjectileGenerator},
     storage::Storage,
@@ -59,21 +59,33 @@ pub fn create_chest(cmds: &mut StateCommands, trans: Transform) -> EntityRef {
     chest_entity
 }
 
-pub fn create_item(cmds: &mut StateCommands, trans: Transform, name: Name) -> EntityRef {
+pub fn create_handgun(cmds: &mut StateCommands, trans: Transform, name: Name) -> EntityRef {
     cmds.create_from((
         trans,
         name,
+        Item,
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
         Interactable::new(InteractionType::ContactRequiredOneShot),
-        Item,
         Equippable::new([EquipmentSlot::LeftHand]),
         Activatable::at_locations([ActivationLoc::Equipment]),
         ProjectileGenerator(ProjectileDefn {
             lifetime: 0.5,
             speed: 300.,
+            need_mutation: (NeedType::Health, NeedMutatorEffect::Delta(-5.)),
         }),
-        NeedMutator::new([NeedMutatorTarget::Storage], NeedType::Sanity, -5.),
+    ))
+}
+
+pub fn create_shoes(cmds: &mut StateCommands, trans: Transform, name: Name) -> EntityRef {
+    cmds.create_from((
+        trans,
+        name,
+        Item,
+        Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
+        CollisionState::default(),
+        Interactable::new(InteractionType::ContactRequiredOneShot),
+        Equippable::new([EquipmentSlot::Feet]),
         Effector::<MaxSpeed>::new([EffectorTarget::Equipper], |old| MaxSpeed(old.0 * 2.)),
         Effector::<Acceleration>::new([EffectorTarget::Equipper], |old| Acceleration(old.0 * 4.)),
     ))

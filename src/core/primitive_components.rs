@@ -71,5 +71,4 @@ pub struct Name(pub &'static str);
 #[derive(Clone, Copy, Debug)]
 pub struct Lifetime {
     pub remaining_time: f32,
-    pub kill_on_collision: bool,
 }

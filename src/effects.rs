@@ -101,12 +101,12 @@ impl<T: Component> System for EffectSystem<T> {
                 let mut apply_targets = HashSet::<EntityRef>::new();
                 let mut unapply_targets = HashSet::<EntityRef>::new();
                 if effector.targets.contains(&EffectorTarget::Storer) {
-                    apply_targets.extend(effector_insights.storers);
-                    unapply_targets.extend(effector_insights.unstorers);
+                    apply_targets.extend(effector_insights.new_storers);
+                    unapply_targets.extend(effector_insights.new_unstorers);
                 }
                 if effector.targets.contains(&EffectorTarget::Equipper) {
-                    apply_targets.extend(effector_insights.equippers);
-                    unapply_targets.extend(effector_insights.unequippers);
+                    apply_targets.extend(effector_insights.new_equippers);
+                    unapply_targets.extend(effector_insights.new_unequippers);
                 }
                 // Emit an application/unapplication request for the targets.
                 unapply_targets.into_iter().for_each(|target| {
