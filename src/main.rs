@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use crate::core::*;
+use camera::{map_to_screen_cords, map_to_world_cords};
 use effects::EffectSystem;
 use equipment::EquipmentSystem;
 use game_entities::*;
@@ -25,6 +26,7 @@ use timed::{TimedEmitSystem, TimedRemoveSystem};
 use ui::{draw_ui, UiState};
 use vehicle::{Vehicle, VehicleSystem};
 
+mod camera;
 mod core;
 mod effects;
 mod entity_insights;
@@ -109,7 +111,14 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
 
 fn update(app: &mut notan::prelude::App, app_state: &mut AppState) {
     let dt = app.timer.delta_f32();
-    let control_map = ControlMap::from_app_state(&app);
+    let mut control_map = ControlMap::from_app_state(&app);
+    control_map.mouse_pos = map_to_world_cords(
+        control_map.mouse_pos.0,
+        control_map.mouse_pos.1,
+        app.window().width() as f32,
+        app.window().height() as f32,
+        app_state.world.get_state(),
+    );
     app_state
         .world
         .update_with_systems(UpdateContext { dt, control_map });
@@ -128,17 +137,13 @@ fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
             } else {
                 notan::prelude::Color::RED
             };
+            let (x, y) = map_to_screen_cords(trans.x, trans.y, rnd.width(), rnd.height(), state);
             match hitbox.1 {
                 Shape::Circle(r) => {
-                    rnd.circle(r)
-                        .position(trans.x, trans.y)
-                        .stroke(1.)
-                        .stroke_color(color);
+                    rnd.circle(r).position(x, y).stroke(1.).stroke_color(color);
                 }
                 Shape::Rect(w, h) => {
-                    rnd.rect((trans.x, trans.y), (w, h))
-                        .stroke(1.)
-                        .stroke_color(color);
+                    rnd.rect((x, y), (w, h)).stroke(1.).stroke_color(color);
                 }
             };
         });

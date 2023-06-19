@@ -1,4 +1,5 @@
 use crate::{
+    camera::CameraFollow,
     core::*,
     effects::{Affected, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
@@ -64,6 +65,7 @@ pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         &character,
         (
             HandInteractor,
+            CameraFollow,
             ProximityInteractor,
             Controller { default_speed: 5. },
             FaceMouse,
