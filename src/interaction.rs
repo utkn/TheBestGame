@@ -61,26 +61,6 @@ impl TryInteractReq {
     }
 }
 
-/// A request to explicitly start a targeted interaction.
-#[derive(Clone, Copy, Debug)]
-pub struct TryTargetedInteractReq<I: InteractionType> {
-    pub consensus_id: usize,
-    pub actor: EntityRef,
-    pub target: EntityRef,
-    pd: PhantomData<I>,
-}
-
-impl<I: InteractionType> TryTargetedInteractReq<I> {
-    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
-        Self {
-            consensus_id: random(),
-            actor,
-            target,
-            pd: Default::default(),
-        }
-    }
-}
-
 /// A request to explicitly end an interaction.
 #[derive(Clone, Copy, Debug)]
 pub struct TryUninteractReq {
@@ -115,17 +95,6 @@ impl ProposeInteractionEvt {
         evt.priority = usize::MAX;
         evt
     }
-
-    /// Creates a new proposal in response to the given [`TryInteractReq`]. Should always succeed.
-    pub fn from_targeted_req<I: InteractionType>(req: &TryTargetedInteractReq<I>) -> Self {
-        Self {
-            consensus_id: req.consensus_id,
-            proposer_id: std::any::TypeId::of::<I>(),
-            priority: usize::MAX,
-            actor: req.actor,
-            target: req.target,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -155,9 +124,8 @@ impl System for InteractionAcceptorSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         let consensus_instances = state
             .read_events::<ProposeInteractionEvt>()
-            .group_by(|evt| evt.consensus_id);
+            .into_group_map_by(|evt| evt.consensus_id);
         consensus_instances.into_iter().for_each(|(_, proposals)| {
-            let proposals = proposals.collect_vec();
             let picked_proposal = proposals
                 .into_iter()
                 .max_by_key(|proposal| proposal.priority);
@@ -186,16 +154,6 @@ impl<I: InteractionType> Default for InteractionProposerSystem<I> {
 
 impl<I: InteractionType> System for InteractionProposerSystem<I> {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        // Directly accept the targeted interactions.
-        state
-            .read_events::<TryTargetedInteractReq<I>>()
-            .for_each(|evt| {
-                if !self.interactions.contains(&(evt.actor, evt.target))
-                    && I::can_start(&evt.actor, &evt.target, state)
-                {
-                    cmds.emit_event(ProposeInteractionEvt::from_targeted_req::<I>(evt));
-                };
-            });
         // Propose interactions in response to try interaction requests.
         state.read_events::<TryInteractReq>().for_each(|evt| {
             // If we already have this interaction, no other interactions should start. We must ensure
@@ -344,7 +302,7 @@ impl System for HandInteractionSystem {
                     if let Some(lh_item) = lh_item {
                         cmds.emit_event(TryInteractReq::new(e, *lh_item));
                     }
-                }
+                } else
                 // If the left mouse is released, try to uninteract with the left hand item.
                 if ctx.control_map.mouse_left_was_released {
                     if let Some(lh_item) = lh_item {
@@ -359,7 +317,7 @@ impl System for HandInteractionSystem {
                     if let Some(rh_item) = rh_item {
                         cmds.emit_event(TryInteractReq::new(e, *rh_item));
                     }
-                }
+                } else
                 // If the right mouse is released, try to uninteract with the right hand item.
                 if ctx.control_map.mouse_right_was_released {
                     if let Some(rh_item) = rh_item {
