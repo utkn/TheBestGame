@@ -20,10 +20,10 @@ use projectile::{
     ApplyOnHitSystem, GenerateProjectileReq, ProjectileGenerationSystem, ProjectileGenerator,
     ProjectileHitSystem, SuicideOnHitSystem,
 };
-use riding::{RidingSystem, Vehicle};
 use storage::{Storage, StorageSystem};
 use timed::{TimedEmitSystem, TimedRemoveSystem};
 use ui::{draw_ui, UiState};
+use vehicle::{Vehicle, VehicleSystem};
 
 mod core;
 mod effects;
@@ -36,10 +36,10 @@ mod misc_systems;
 mod needs;
 mod physics;
 mod projectile;
-mod riding;
 mod storage;
 mod timed;
 mod ui;
+mod vehicle;
 
 #[derive(notan::AppState)]
 struct AppState {
@@ -85,7 +85,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(TimedEmitSystem::<GenerateProjectileReq>::default());
     world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
     // Riding
-    world.register_system(RidingSystem);
+    world.register_system(VehicleSystem);
     world.register_system(InteractionSystem::<Vehicle>::default());
     // Misc
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());

@@ -10,8 +10,8 @@ use crate::{
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
     projectile::{ProjectileDefn, ProjectileGenerator},
-    riding::Vehicle,
     storage::Storage,
+    vehicle::Vehicle,
 };
 
 pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
@@ -24,12 +24,12 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         ProximityInteractable,
         CollisionState::default(),
         Acceleration(2000.),
-        MaxSpeed(800.),
+        MaxSpeed(1000.),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
     ));
-    let vehicle_door = cmds.create_from((
+    let _vehicle_door = cmds.create_from((
         Transform::default(),
-        AnchorTransform(vehicle_entity, (0., 0.)),
+        AnchorTransform(vehicle_entity, (-10., -10.)),
         ProximityInteractable,
         CollisionState::default(),
         InteractionDelegate(vehicle_entity),
@@ -75,9 +75,8 @@ pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
 }
 
 pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
-    let _chest_center_entity =
-        cmds.create_from((trans, Hitbox(HitboxType::Static, Shape::Rect(20., 20.))));
-    let chest_entity = cmds.create_from((
+    let chest_center = cmds.create_from((trans, Hitbox(HitboxType::Static, Shape::Rect(20., 20.))));
+    let chest = cmds.create_from((
         Transform::default(),
         Name("Some random chest"),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
@@ -85,9 +84,9 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         ProximityInteractable,
         Interactable::<Storage>::default(),
         Storage::default(),
-        AnchorTransform(_chest_center_entity, (-10., -10.)),
+        AnchorTransform(chest_center, (-10., -10.)),
     ));
-    chest_entity
+    chest
 }
 
 pub fn create_item(

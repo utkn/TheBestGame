@@ -95,7 +95,7 @@ impl Window for StorageWindow {
     ) {
         let window_width = 140.;
         let is_player_storage = game_state
-            .select_one::<(Controller,)>(&self.storage_entity)
+            .select_one::<(FaceMouse,)>(&self.storage_entity)
             .is_some();
         let mut win = egui::Window::new(self.title)
             .id(self.window_id())
@@ -104,13 +104,13 @@ impl Window for StorageWindow {
             .resizable(false);
         // Get the active storages, i.e., the storages that are being interacted by this storage.
         let active_storages = game_state
-            .select::<(Storage, Interactable<Storage>, Transform)>()
-            .filter(|(_, (_, intr, _))| intr.actors.contains(&self.storage_entity))
+            .select::<(Interactable<Storage>, Transform)>()
+            .filter(|(_, (intr, _))| intr.actors.contains(&self.storage_entity))
             .collect_vec();
         // Calculate the position through them.
         let position_with_active_storage = active_storages
             .into_iter()
-            .map(|(_, (_, _, trans))| ((trans.x + window_width).ceil() as i32, trans.y))
+            .map(|(_, (_, trans))| ((trans.x + window_width).ceil() as i32, trans.y))
             .max_by_key(|(x, _)| *x);
         // Handle alignment & positioning.
         if is_player_storage {

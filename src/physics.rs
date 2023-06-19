@@ -218,6 +218,10 @@ impl System for SeparateCollisionsSystem {
                         }
                         let new_pos = notan::math::vec2(pos.x, pos.y) + dpos;
                         cmds.set_component(&evt.e1, Transform::at(new_pos.x, new_pos.y));
+                        // Reset the velocity.
+                        if other_hb.0 == HitboxType::Static {
+                            cmds.set_component(&evt.e1, Velocity::default());
+                        }
                     }
                 }
             })

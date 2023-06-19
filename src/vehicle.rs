@@ -1,7 +1,6 @@
 use crate::core::*;
 
 use crate::interaction::{InteractionEndedEvt, InteractionStartedEvt, InteractionType};
-use crate::physics::{Hitbox, HitboxType};
 use crate::storage::Storage;
 
 #[derive(Clone, Copy, Debug)]
@@ -18,9 +17,9 @@ impl InteractionType for Vehicle {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct RidingSystem;
+pub struct VehicleSystem;
 
-impl System for RidingSystem {
+impl System for VehicleSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .read_events::<InteractionStartedEvt<Vehicle>>()
@@ -37,10 +36,6 @@ impl System for RidingSystem {
                 if let Some((vehicle_transform,)) = state.select_one::<(Transform,)>(vehicle) {
                     cmds.set_component(driver, vehicle_transform.clone());
                 }
-                // Give vehicle a dynamic hitbox.
-                // cmds.update_component(vehicle, |hb: &mut Hitbox| {
-                //     hb.0 = HitboxType::Dynamic;
-                // });
             });
         state
             .read_events::<InteractionEndedEvt<Vehicle>>()
@@ -57,10 +52,10 @@ impl System for RidingSystem {
                 cmds.set_component(vehicle, TargetVelocity { x: 0., y: 0. });
                 // Remove the driver's anchor.
                 cmds.remove_component::<AnchorTransform>(driver);
-                // Give vehicle a ghost hitbox.
-                // cmds.update_component(vehicle, |hb: &mut Hitbox| {
-                //     hb.0 = HitboxType::Ghost;
-                // });
+                // Position the driver a bit right for collision detection to resolve it.
+                cmds.update_component(driver, |trans: &mut Transform| {
+                    trans.x += 10.;
+                });
             });
     }
 }
