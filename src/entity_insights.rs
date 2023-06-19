@@ -1,10 +1,9 @@
 use std::collections::HashSet;
 
 use crate::{
-    core::{AnchorTransform, EntityRef, EntityRefBag, State},
+    core::{AnchorTransform, EntityRef, EntityRefBag, EntityRefSet, State},
     equipment::{EntityEquippedEvt, EntityUnequippedEvt, Equipment},
-    interaction::{InteractionEndedEvt, InteractionStartedEvt},
-    physics::{CollisionEndEvt, CollisionEvt, CollisionStartEvt},
+    physics::{CollisionEndEvt, CollisionEvt, CollisionStartEvt, CollisionState},
     projectile::ProjectileHitEvt,
     storage::{EntityStoredEvt, EntityUnstoredEvt, Storage},
 };
@@ -41,15 +40,14 @@ impl EntityLocation {
 pub struct EntityInsights {
     pub location: EntityLocation,
     pub anchor_parent: Option<EntityRef>,
+    pub contacts: EntityRefSet,
     pub new_colliders: HashSet<EntityRef>,
     pub new_collision_starters: HashSet<EntityRef>,
     pub new_collision_enders: HashSet<EntityRef>,
     pub new_storers: HashSet<EntityRef>,
     pub new_equippers: HashSet<EntityRef>,
-    pub new_interactors: HashSet<EntityRef>,
     pub new_unstorers: HashSet<EntityRef>,
     pub new_unequippers: HashSet<EntityRef>,
-    pub new_uninteractors: HashSet<EntityRef>,
     pub new_hitters: HashSet<EntityRef>,
     pub new_hit_targets: HashSet<EntityRef>,
 }
@@ -63,11 +61,10 @@ impl EntityInsights {
         Self {
             location,
             anchor_parent,
-            new_interactors: state
-                .read_events::<InteractionStartedEvt>()
-                .filter(|evt| evt.0.target == *e)
-                .map(|evt| evt.0.actor)
-                .collect(),
+            contacts: state
+                .select_one::<(CollisionState,)>(e)
+                .map(|(coll_state,)| coll_state.colliding.clone())
+                .unwrap_or_default(),
             new_storers: state
                 .read_events::<EntityStoredEvt>()
                 .filter(|evt| evt.entity == *e)
@@ -77,11 +74,6 @@ impl EntityInsights {
                 .read_events::<EntityEquippedEvt>()
                 .filter(|evt| evt.entity == *e)
                 .map(|evt| evt.equipment_entity)
-                .collect(),
-            new_uninteractors: state
-                .read_events::<InteractionEndedEvt>()
-                .filter(|evt| evt.0.target == *e)
-                .map(|evt| evt.0.actor)
                 .collect(),
             new_unstorers: state
                 .read_events::<EntityUnstoredEvt>()

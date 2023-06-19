@@ -194,7 +194,7 @@ impl System for EquipmentSystem {
             if let Some((equippable,)) = state.select_one::<(Equippable,)>(&evt.entity) {
                 if let Some((equipment,)) = state.select_one::<(Equipment,)>(&evt.equipment_entity)
                 {
-                    if equipment.can_equip(equippable) {
+                    if equipment.can_equip(equippable) && evt.entity != evt.equipment_entity {
                         equipped_events.insert(EntityEquippedEvt {
                             entity: evt.entity,
                             equipment_entity: evt.equipment_entity,

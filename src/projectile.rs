@@ -3,12 +3,14 @@ use std::marker::PhantomData;
 use notan::egui::epaint::ahash::HashSet;
 
 use crate::{
-    activation::Activatable,
+    activation::{Activatable, ActivatableComponent, ActivatedEvt},
     core::*,
     entity_insights::EntityInsights,
+    equipment::Equipment,
     needs::NeedMutator,
     physics::{Hitbox, HitboxType, Shape},
-    timed::{TimedAdd, TimedRemove},
+    storage::Storage,
+    timed::{TimedEmit, TimedRemove},
 };
 
 use rand::Rng;
@@ -28,14 +30,54 @@ pub struct ProjectileGenerator {
 }
 
 #[derive(Clone, Copy, Debug)]
+pub struct GenerateProjectileReq(EntityRef);
+
+impl ActivatableComponent for ProjectileGenerator {
+    fn can_activate(
+        actor: &EntityRef,
+        target: &EntityRef,
+        _proj_gen: &Self,
+        state: &State,
+    ) -> bool {
+        state
+            .select_one::<(Equipment,)>(actor)
+            .map(|(actor_equipment,)| actor_equipment.contains(target))
+            .unwrap_or(false)
+    }
+
+    fn activation_priority() -> usize {
+        Storage::activation_priority() + 10
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct ProjectileGenerationSystem;
 
 impl System for ProjectileGenerationSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        // In response to projectile generator activation events, emit generate projectile request.
         state
-            .select::<(Activatable, ProjectileGenerator, Transform)>()
-            .filter(|(_, (activatable, _, _))| activatable.curr_state)
-            .for_each(|(p_gen_entity, (_, p_gen, trans))| {
+            .read_events::<ActivatedEvt<ProjectileGenerator>>()
+            .for_each(|evt| {
+                cmds.emit_event(GenerateProjectileReq(evt.activatable));
+            });
+        // Handle the generate projectile requests.
+        state
+            .read_events::<GenerateProjectileReq>()
+            .filter_map(|evt| {
+                state
+                    .select_one::<(
+                        Activatable<ProjectileGenerator>,
+                        ProjectileGenerator,
+                        Transform,
+                    )>(&evt.0)
+                    .map(|c| (evt.0, c))
+            })
+            .for_each(|(p_gen_entity, (activatable, p_gen, trans))| {
+                // Make sure that the generator is active.
+                if !activatable.curr_state {
+                    return;
+                }
                 // Compute the new velocity of the projectile.
                 let rand_spread = if p_gen.proj.spread > 0. {
                     rand::thread_rng().gen_range(0.0..p_gen.proj.spread) - p_gen.proj.spread / 2.
@@ -48,11 +90,12 @@ impl System for ProjectileGenerationSystem {
                     x: vel.x,
                     y: -vel.y, // y axis is inverted!
                 };
+                let anchor_parent = EntityInsights::of(&p_gen_entity, state).anchor_parent;
                 // Determine the friendly entities of the projectile, which are...
                 // ... the generator itself
                 let mut friendly_entities = vec![p_gen_entity];
                 // ... and the anchor parent of the generator
-                friendly_entities.extend(EntityInsights::of(&p_gen_entity, state).anchor_parent);
+                friendly_entities.extend(anchor_parent);
                 // Create the projectile entity.
                 cmds.create_from((
                     *trans,
@@ -68,15 +111,10 @@ impl System for ProjectileGenerationSystem {
                 ));
                 // If cooldown was set, remove the activatable component until the cooldown ends.
                 if let Some(cooldown_time) = p_gen.cooldown {
-                    if let Some((old_activatable,)) =
-                        state.select_one::<(Activatable,)>(&p_gen_entity)
-                    {
-                        cmds.remove_component::<Activatable>(&p_gen_entity);
-                        cmds.set_component(
-                            &p_gen_entity,
-                            TimedAdd::new(cooldown_time, old_activatable.clone().deactivated()),
-                        )
-                    }
+                    cmds.set_component(
+                        &p_gen_entity,
+                        TimedEmit::new(cooldown_time, GenerateProjectileReq(p_gen_entity)),
+                    );
                 }
             });
     }
@@ -138,6 +176,7 @@ impl System for ProjectileHitSystem {
 #[derive(Clone, Copy, Debug)]
 pub struct SuicideOnHit;
 
+/// A system that removes the [`SuicideOnHit`] entities from the system when they hit a concrete entity.
 #[derive(Clone, Copy, Debug)]
 pub struct SuicideOnHitSystem;
 
@@ -168,6 +207,7 @@ impl<T: Component> ApplyOnHit<T> {
     }
 }
 
+/// A system that handles the entities that apply `T` to the entities they hit.
 #[derive(Clone, Debug)]
 pub struct ApplyOnHitSystem<T: Component>(PhantomData<T>);
 

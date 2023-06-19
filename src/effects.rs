@@ -41,8 +41,6 @@ pub enum EffectorTarget {
     Storer,
     /// The effect will be applied to the equipper of the `Effector`.
     Equipper,
-    /// The effect will be applied to the interactors of the `Effector` during the interaction.
-    Interactor,
     /// The effect will be applied to the entities colliding with this `Effector` during the collision.
     Collider,
 }
@@ -75,6 +73,7 @@ struct EffectAppliedEvt<T: Component>(EntityRef, Effect<T>);
 #[derive(Clone, Copy, Debug)]
 struct EffectUnappliedEvt<T: Component>(EntityRef, Effect<T>);
 
+/// A system that handles effects that apply to type `T`.
 #[derive(Clone, Copy, Debug)]
 pub struct EffectSystem<T>(PhantomData<T>);
 
@@ -115,10 +114,6 @@ impl<T: Component> System for EffectSystem<T> {
                 if effector.targets.contains(&EffectorTarget::Collider) {
                     apply_targets.extend(effector_insights.new_collision_starters);
                     unapply_targets.extend(effector_insights.new_collision_enders);
-                }
-                if effector.targets.contains(&EffectorTarget::Interactor) {
-                    apply_targets.extend(effector_insights.new_interactors);
-                    unapply_targets.extend(effector_insights.new_uninteractors);
                 }
                 if effector.targets.contains(&EffectorTarget::Storer) {
                     apply_targets.extend(effector_insights.new_storers);

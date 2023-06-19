@@ -53,6 +53,10 @@ impl State {
         })
     }
 
+    pub fn select_all<'a>(&'a self) -> impl Iterator<Item = EntityRef> + 'a {
+        self.entity_mgr.get_all()
+    }
+
     /// Returns the components of the given entity identified by the given component selector.
     pub fn select_one<'a, S: ComponentTuple<'a>>(
         &'a self,

@@ -1,12 +1,15 @@
 #![allow(dead_code)]
 
 use crate::core::*;
-use activation::{Activatable, ActivationSystem};
+use activation::{Activatable, ActivatedEvt, ActivationInteraction};
 use effects::EffectSystem;
 use equipment::EquipmentSystem;
 use game_entities::*;
-use interaction::*;
-use item::{EquippedItemAnchorSystem, ItemPickupSystem, ItemTransferSystem};
+use interaction::{
+    HandInteractionSystem, Interactable, InteractionAcceptorSystem, InteractionProposerSystem,
+    ProximityInteractionSystem, TryInteractReq,
+};
+use item::{EquippedItemAnchorSystem, ItemPickupInteraction, ItemTransferSystem};
 use misc_systems::*;
 use needs::*;
 use notan::{
@@ -15,10 +18,11 @@ use notan::{
 };
 use physics::*;
 use projectile::{
-    ApplyOnHitSystem, ProjectileGenerationSystem, ProjectileHitSystem, SuicideOnHitSystem,
+    ApplyOnHitSystem, GenerateProjectileReq, ProjectileGenerationSystem, ProjectileGenerator,
+    ProjectileHitSystem, SuicideOnHitSystem,
 };
-use storage::StorageSystem;
-use timed::{TimedAddSystem, TimedRemoveSystem};
+use storage::{Storage, StorageSystem};
+use timed::{TimedAddSystem, TimedEmit, TimedEmitSystem, TimedRemoveSystem};
 use ui::{draw_ui, UiState};
 
 mod activation;
@@ -58,26 +62,29 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(CollisionDetectionSystem::default());
     world.register_system(SeparateCollisionsSystem);
     // Interactions
-    world.register_system(InteractionSystem::default());
+    world.register_system(InteractionAcceptorSystem);
     world.register_system(ProximityInteractionSystem::default());
     world.register_system(HandInteractionSystem);
-    world.register_system(ActivationSystem);
     // Item stuff
+    world.register_system(InteractionProposerSystem::<ItemPickupInteraction>::default());
+    world.register_system(InteractionProposerSystem::<ActivationInteraction<Storage>>::default());
     world.register_system(StorageSystem);
     world.register_system(EquipmentSystem);
     world.register_system(ItemTransferSystem);
-    world.register_system(ItemPickupSystem);
     world.register_system(EquippedItemAnchorSystem);
     // Needs
     world.register_system(NeedsSystem::default());
     world.register_system(NeedMutatorSystem);
     // Projectiles
+    world.register_system(InteractionProposerSystem::<
+        ActivationInteraction<ProjectileGenerator>,
+    >::default());
     world.register_system(ProjectileGenerationSystem);
     world.register_system(ProjectileHitSystem);
     world.register_system(SuicideOnHitSystem);
+    world.register_system(TimedEmitSystem::<GenerateProjectileReq>::default());
     world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
     // Misc
-    world.register_system(TimedAddSystem::<Activatable>::default());
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());
     world.register_system(EffectSystem::<Acceleration>::default());
@@ -108,15 +115,12 @@ fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
     state
         .select::<(Transform, Hitbox)>()
         .for_each(|(e, (trans, hitbox))| {
-            let is_activated = state
+            let is_being_interacted = state
                 .select_one::<(Interactable,)>(&e)
                 .map(|(interactable,)| interactable.actors.len() > 0)
                 .unwrap_or(false);
-            let is_activator = false;
-            let color = if is_activated {
+            let color = if is_being_interacted {
                 notan::prelude::Color::GREEN
-            } else if is_activator {
-                notan::prelude::Color::BLUE
             } else {
                 notan::prelude::Color::RED
             };

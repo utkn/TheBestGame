@@ -1,11 +1,40 @@
 use std::collections::HashSet;
 
-use crate::core::{
-    EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, Transform, UpdateContext,
+use crate::{
+    activation::ActivatableComponent,
+    core::{
+        EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, Transform,
+        UpdateContext,
+    },
+    physics::CollisionState,
 };
 
 #[derive(Clone, Default, Debug)]
 pub struct Storage(pub EntityRefSet);
+
+impl Storage {
+    pub fn can_store(&self, e: &EntityRef, state: &State) -> bool {
+        true
+    }
+}
+
+impl ActivatableComponent for Storage {
+    fn can_activate(
+        actor: &EntityRef,
+        target: &EntityRef,
+        target_component: &Self,
+        state: &State,
+    ) -> bool {
+        state
+            .select_one::<(CollisionState,)>(actor)
+            .map(|(actor_coll_state,)| actor_coll_state.colliding.contains(target))
+            .unwrap_or(false)
+    }
+
+    fn activation_priority() -> usize {
+        0
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct StoreEntityReq {
@@ -65,7 +94,7 @@ impl System for StorageSystem {
         state.read_events::<StoreEntityReq>().for_each(|evt| {
             // Decide whether we need to emit an event.
             if let Some((storage,)) = state.select_one::<(Storage,)>(&evt.storage_entity) {
-                if !storage.0.contains(&evt.entity) {
+                if !storage.0.contains(&evt.entity) && evt.storage_entity != evt.entity {
                     stored_events.insert(EntityStoredEvt {
                         storage_entity: evt.storage_entity,
                         entity: evt.entity,

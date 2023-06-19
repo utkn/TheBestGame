@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     core::*,
     entity_insights::{EntityInsights, EntityLocation},
@@ -5,7 +7,8 @@ use crate::{
         EntityEquippedEvt, EntityUnequippedEvt, EquipEntityReq, Equipment, Equippable,
         UnequipEntityReq,
     },
-    interaction::{InteractionStartedEvt, TryUninteractReq},
+    interaction::InteractionType,
+    physics::CollisionState,
     storage::{Storage, StoreEntityReq, UnstoreEntityReq},
 };
 
@@ -138,28 +141,6 @@ impl System for ItemTransferSystem {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct ItemPickupSystem;
-
-impl System for ItemPickupSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state
-            .read_events::<InteractionStartedEvt>()
-            .for_each(|evt| {
-                if let (Some(_), Some(_)) = (
-                    state.select_one::<(Storage,)>(&evt.0.actor),
-                    state.select_one::<(Transform, Item)>(&evt.0.target),
-                ) {
-                    if EntityInsights::of(&evt.0.target, state).location == EntityLocation::Ground {
-                        cmds.emit_event(ItemTransferReq::pick_up(evt.0.target, evt.0.actor));
-                        // Explicitly end the interaction that lead to this item pick up action.
-                        cmds.emit_event(TryUninteractReq(evt.0));
-                    }
-                }
-            });
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
 pub struct EquippedItemAnchorSystem;
 
 impl System for EquippedItemAnchorSystem {
@@ -186,5 +167,47 @@ impl System for EquippedItemAnchorSystem {
                 cmds.remove_component::<AnchorTransform>(&evt.entity);
             }
         });
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ItemPickupInteraction;
+
+impl InteractionType for ItemPickupInteraction {
+    fn valid_actors(target: &EntityRef, state: &State) -> Option<HashSet<EntityRef>> {
+        if EntityInsights::of(target, state).location != EntityLocation::Ground {
+            return None;
+        }
+        let (_, _, target_coll_state) =
+            state.select_one::<(Transform, Item, CollisionState)>(target)?;
+        let picker_actors: HashSet<_> = target_coll_state
+            .colliding
+            .iter()
+            .filter_map(|actor| {
+                state
+                    .select_one::<(Storage,)>(actor)
+                    .map(|(actor_storage,)| (actor, actor_storage))
+            })
+            .filter(|(_, actor_storage)| actor_storage.can_store(target, state))
+            .map(|(actor, _)| *actor)
+            .collect();
+        if picker_actors.len() > 0 {
+            Some(picker_actors)
+        } else {
+            None
+        }
+    }
+
+    fn should_end(_: &EntityRef, _: &EntityRef, _: &State) -> bool {
+        // one shot
+        true
+    }
+
+    fn on_start(actor: &EntityRef, target: &EntityRef, _state: &State, cmds: &mut StateCommands) {
+        cmds.emit_event(ItemTransferReq::pick_up(*target, *actor));
+    }
+
+    fn priority() -> usize {
+        100
     }
 }

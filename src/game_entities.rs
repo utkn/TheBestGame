@@ -3,7 +3,7 @@ use crate::{
     core::*,
     effects::{Affected, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
-    interaction::{HandInteractor, Interactable, InteractionType, ProximityInteractor},
+    interaction::{HandInteractor, Interactable, ProximityInteractor},
     item::Item,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
@@ -53,7 +53,8 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         Name("Some random chest"),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
         CollisionState::default(),
-        Interactable::new(InteractionType::ContactRequired),
+        Interactable::default(),
+        Activatable::<Storage>::default(),
         Storage::default(),
     ));
     let _chest_hitbox_entity = cmds.create_from((
@@ -77,7 +78,7 @@ pub fn create_item(
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
         Equippable(slots),
-        Interactable::new(InteractionType::OneShot),
+        Interactable::default(),
     ))
 }
 
@@ -91,7 +92,9 @@ pub fn create_handgun(trans: Transform, name: Name, cmds: &mut StateCommands) ->
     cmds.set_components(
         &item,
         (
-            Activatable::at_locations([ActivationLoc::Equipment]),
+            Storage::default(),
+            Activatable::<Storage>::default(),
+            Activatable::<ProjectileGenerator>::default(),
             ProjectileGenerator {
                 cooldown: None,
                 proj: ProjectileDefn {
@@ -119,8 +122,8 @@ pub fn create_machinegun(trans: Transform, name: Name, cmds: &mut StateCommands)
         &item,
         (
             Storage::default(),
-            Interactable::new(InteractionType::Whatevs),
-            Activatable::at_locations([ActivationLoc::Equipment]),
+            Activatable::<Storage>::default(),
+            Activatable::<ProjectileGenerator>::default(),
             ProjectileGenerator {
                 cooldown: Some(0.1),
                 proj: ProjectileDefn {

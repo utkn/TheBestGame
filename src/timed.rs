@@ -10,7 +10,7 @@ pub struct TimedAdd<T: Component> {
 }
 
 impl<T: Component> TimedAdd<T> {
-    /// Creates a cooldown component that replaces itself with the inner component after given time.
+    /// Creates a `TimedAdd<T>` component that replaces itself with the inner component of type `T` after given time.
     pub fn new(time: f32, component_to_add: T) -> Self {
         Self {
             remaining: time,
@@ -19,6 +19,7 @@ impl<T: Component> TimedAdd<T> {
     }
 }
 
+/// A system that handles timed component additions of type `T`.
 #[derive(Clone, Copy, Debug)]
 pub struct TimedAddSystem<T: Component>(PhantomData<T>);
 
@@ -49,7 +50,7 @@ impl<T: Component> System for TimedAddSystem<T> {
     }
 }
 
-/// A wrapper compoonent that removes itself and the inner component after a certain time.
+/// A wrapper compoonent that removes itself and the component `T` after a certain time.
 #[derive(Clone, Debug)]
 pub struct TimedRemove<T: Component> {
     remaining: f32,
@@ -66,6 +67,7 @@ impl<T: Component> TimedRemove<T> {
     }
 }
 
+/// A system that handles timed component removals of type `T`.
 #[derive(Clone, Copy, Debug)]
 pub struct TimedRemoveSystem<T: Component>(PhantomData<T>);
 
@@ -89,6 +91,52 @@ impl<T: Component> System for TimedRemoveSystem<T> {
                     // Otherwise, decrease the lifetime.
                     let dt = ctx.dt;
                     cmds.update_component(&e, move |cooldown: &mut TimedRemove<T>| {
+                        cooldown.remaining -= dt;
+                    });
+                }
+            });
+    }
+}
+
+/// A wrapper compoonent that emits an event and removes itself after given time.
+#[derive(Clone, Debug)]
+pub struct TimedEmit<T: Event> {
+    remaining: f32,
+    event: T,
+}
+
+impl<T: Component> TimedEmit<T> {
+    pub fn new(time: f32, event: T) -> Self {
+        Self {
+            remaining: time,
+            event,
+        }
+    }
+}
+
+/// A system that handles timed event emits of type `T`.
+#[derive(Clone, Copy, Debug)]
+pub struct TimedEmitSystem<T: Component>(PhantomData<T>);
+
+impl<T: Component> Default for TimedEmitSystem<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T: Component> System for TimedEmitSystem<T> {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state
+            .select::<(TimedEmit<T>,)>()
+            .for_each(|(e, (timed_emit,))| {
+                // If the time has been reached...
+                if timed_emit.remaining <= 0. {
+                    cmds.remove_component::<TimedEmit<T>>(&e);
+                    cmds.emit_event(timed_emit.event.clone());
+                } else {
+                    // Otherwise, decrease the lifetime.
+                    let dt = ctx.dt;
+                    cmds.update_component(&e, move |cooldown: &mut TimedEmit<T>| {
                         cooldown.remaining -= dt;
                     });
                 }

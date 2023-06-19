@@ -4,6 +4,7 @@ use itertools::Itertools;
 use notan::egui;
 
 use crate::{
+    activation::Activatable,
     core::{EntityRef, EntityRefBag, Name, State, StateCommands},
     interaction::Interactable,
     item::ItemTransferReq,
@@ -36,10 +37,12 @@ impl<'a> UiBuilder<'a> {
             storage_entity: player_entity,
         });
         let active_storages = game_state
-            .select::<(Interactable, Storage)>()
-            .filter(|(_, (intr, _))| intr.actors.contains(&player_entity))
+            .select::<(Interactable, Storage, Activatable<Storage>)>()
+            .filter(|(_, (intr, _, activatable))| {
+                intr.actors.contains(&player_entity) && activatable.curr_state
+            })
             .collect_vec();
-        for (storage_entity, (_, _)) in active_storages {
+        for (storage_entity, _) in active_storages {
             let storage_name = game_state
                 .select_one::<(Name,)>(&storage_entity)
                 .map(|(name,)| name.0)
