@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use notan::egui;
 
-use crate::activation::Activatable;
 use crate::core::*;
 use crate::entity_insights::EntityLocation;
 use crate::interaction::Interactable;
@@ -105,15 +104,13 @@ impl Window for StorageWindow {
             .resizable(false);
         // Get the active storages, i.e., the storages that are being interacted by this storage.
         let active_storages = game_state
-            .select::<(Interactable, Storage, Transform, Activatable<Storage>)>()
-            .filter(|(_, (intr, _, _, activatable))| {
-                intr.actors.contains(&self.storage_entity) && activatable.curr_state
-            })
+            .select::<(Storage, Interactable<Storage>, Transform)>()
+            .filter(|(_, (_, intr, _))| intr.actors.contains(&self.storage_entity))
             .collect_vec();
         // Calculate the position through them.
         let position_with_active_storage = active_storages
             .into_iter()
-            .map(|(_, (_, _, pos, _))| ((pos.x + window_width).ceil() as i32, pos.y))
+            .map(|(_, (_, _, trans))| ((trans.x + window_width).ceil() as i32, trans.y))
             .max_by_key(|(x, _)| *x);
         // Handle alignment & positioning.
         if is_player_storage {

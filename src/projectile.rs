@@ -3,10 +3,13 @@ use std::marker::PhantomData;
 use notan::egui::epaint::ahash::HashSet;
 
 use crate::{
-    activation::{Activatable, ActivatableComponent, ActivatedEvt},
     core::*,
     entity_insights::EntityInsights,
-    equipment::Equipment,
+    equipment::{EntityUnequippedEvt, Equipment},
+    interaction::{
+        interaction_exists, Interactable, InteractionStartedEvt, InteractionType,
+        TryUninteractTargetedReq,
+    },
     needs::NeedMutator,
     physics::{Hitbox, HitboxType, Shape},
     storage::Storage,
@@ -32,21 +35,16 @@ pub struct ProjectileGenerator {
 #[derive(Clone, Copy, Debug)]
 pub struct GenerateProjectileReq(EntityRef);
 
-impl ActivatableComponent for ProjectileGenerator {
-    fn can_activate(
-        actor: &EntityRef,
-        target: &EntityRef,
-        _proj_gen: &Self,
-        state: &State,
-    ) -> bool {
+impl InteractionType for ProjectileGenerator {
+    fn priority() -> usize {
+        Storage::priority() + 10
+    }
+
+    fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
         state
             .select_one::<(Equipment,)>(actor)
             .map(|(actor_equipment,)| actor_equipment.contains(target))
             .unwrap_or(false)
-    }
-
-    fn activation_priority() -> usize {
-        Storage::activation_priority() + 10
     }
 }
 
@@ -55,11 +53,20 @@ pub struct ProjectileGenerationSystem;
 
 impl System for ProjectileGenerationSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state.read_events::<EntityUnequippedEvt>().for_each(|evt| {
+            if interaction_exists::<ProjectileGenerator>(&evt.equipment_entity, &evt.entity, state)
+            {
+                cmds.emit_event(TryUninteractTargetedReq::<ProjectileGenerator>::new(
+                    evt.equipment_entity,
+                    evt.entity,
+                ));
+            }
+        });
         // In response to projectile generator activation events, emit generate projectile request.
         state
-            .read_events::<ActivatedEvt<ProjectileGenerator>>()
+            .read_events::<InteractionStartedEvt<ProjectileGenerator>>()
             .for_each(|evt| {
-                cmds.emit_event(GenerateProjectileReq(evt.activatable));
+                cmds.emit_event(GenerateProjectileReq(evt.target));
             });
         // Handle the generate projectile requests.
         state
@@ -67,15 +74,15 @@ impl System for ProjectileGenerationSystem {
             .filter_map(|evt| {
                 state
                     .select_one::<(
-                        Activatable<ProjectileGenerator>,
+                        Interactable<ProjectileGenerator>,
                         ProjectileGenerator,
                         Transform,
                     )>(&evt.0)
                     .map(|c| (evt.0, c))
             })
-            .for_each(|(p_gen_entity, (activatable, p_gen, trans))| {
+            .for_each(|(p_gen_entity, (interactable, p_gen, trans))| {
                 // Make sure that the generator is active.
-                if !activatable.curr_state {
+                if interactable.actors.len() == 0 {
                     return;
                 }
                 // Compute the new velocity of the projectile.

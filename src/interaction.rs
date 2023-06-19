@@ -5,38 +5,30 @@ use rand::random;
 
 use crate::{
     core::*,
-    entity_insights::{EntityInsights, EntityLocation},
     equipment::{Equipment, EquipmentSlot},
     physics::CollisionState,
 };
 
-/// Denotes an interactable entity.
-#[derive(Clone, Debug, Default)]
-pub struct Interactable {
-    pub actors: EntityRefSet,
-}
-
 #[allow(unused_variables)]
 pub trait InteractionType: 'static + std::fmt::Debug + Clone {
-    fn priority() -> usize {
-        0
-    }
+    fn priority() -> usize;
+    fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool;
+}
 
-    fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        Self::valid_actors(target, state)
-            .map(|actors| actors.contains(actor))
-            .unwrap_or(false)
-    }
+/// Denotes an interactable entity.
+#[derive(Clone, Debug)]
+pub struct Interactable<I: InteractionType> {
+    pub actors: EntityRefSet,
+    pd: PhantomData<I>,
+}
 
-    fn should_end(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        Self::valid_actors(target, state)
-            .map(|actors| !actors.contains(actor))
-            .unwrap_or(true)
+impl<I: InteractionType> Default for Interactable<I> {
+    fn default() -> Self {
+        Self {
+            actors: Default::default(),
+            pd: Default::default(),
+        }
     }
-
-    fn valid_actors(target: &EntityRef, state: &State) -> Option<HashSet<EntityRef>>;
-    fn on_start(actor: &EntityRef, target: &EntityRef, state: &State, cmds: &mut StateCommands) {}
-    fn on_end(actor: &EntityRef, target: &EntityRef, state: &State, cmds: &mut StateCommands) {}
 }
 
 /// A request to explicitly start an interaction.
@@ -63,6 +55,29 @@ pub struct TryUninteractReq {
     pub actor: EntityRef,
     pub target: EntityRef,
 }
+impl TryUninteractReq {
+    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
+        Self { actor, target }
+    }
+}
+
+/// A request to explicitly end an interaction.
+#[derive(Clone, Copy, Debug)]
+pub struct TryUninteractTargetedReq<I: InteractionType> {
+    pub actor: EntityRef,
+    pub target: EntityRef,
+    pd: PhantomData<I>,
+}
+
+impl<I: InteractionType> TryUninteractTargetedReq<I> {
+    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
+        Self {
+            actor,
+            target,
+            pd: PhantomData::default(),
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct ProposeInteractionEvt {
@@ -83,13 +98,6 @@ impl ProposeInteractionEvt {
             actor: req.actor,
             target: req.target,
         }
-    }
-
-    /// Creates a new proposal in response to the given [`TryInteractReq`] which will always succeed.
-    pub fn ensurement_from_req<I: InteractionType>(req: &TryInteractReq) -> Self {
-        let mut evt = Self::from_req::<I>(req);
-        evt.priority = usize::MAX;
-        evt
     }
 }
 
@@ -114,6 +122,40 @@ impl From<&ProposeInteractionEvt> for InteractionAcceptedEvt {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct InteractionStartedEvt<I: InteractionType> {
+    pub actor: EntityRef,
+    pub target: EntityRef,
+    pd: PhantomData<I>,
+}
+
+impl<I: InteractionType> InteractionStartedEvt<I> {
+    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
+        Self {
+            actor,
+            target,
+            pd: Default::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct InteractionEndedEvt<I: InteractionType> {
+    pub actor: EntityRef,
+    pub target: EntityRef,
+    pd: PhantomData<I>,
+}
+
+impl<I: InteractionType> InteractionEndedEvt<I> {
+    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
+        Self {
+            actor,
+            target,
+            pd: Default::default(),
+        }
+    }
+}
+
 pub struct InteractionAcceptorSystem;
 
 impl System for InteractionAcceptorSystem {
@@ -134,12 +176,12 @@ impl System for InteractionAcceptorSystem {
 
 /// A system that proposes interactions defined by `I` in response to [`TryInteractReq`]s.
 #[derive(Clone, Debug)]
-pub struct InteractionProposerSystem<I: InteractionType> {
+pub struct InteractionSystem<I: InteractionType> {
     interactions: HashSet<(EntityRef, EntityRef)>,
     pd: PhantomData<I>,
 }
 
-impl<I: InteractionType> Default for InteractionProposerSystem<I> {
+impl<I: InteractionType> Default for InteractionSystem<I> {
     fn default() -> Self {
         Self {
             interactions: Default::default(),
@@ -148,45 +190,44 @@ impl<I: InteractionType> Default for InteractionProposerSystem<I> {
     }
 }
 
-impl<I: InteractionType> System for InteractionProposerSystem<I> {
+impl<I: InteractionType> System for InteractionSystem<I> {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Auto invalidate interactions.
         let invalidated_interactions = self
             .interactions
             .iter()
-            .filter(|(actor, target)| {
-                I::should_end(actor, target, state)
-                    || !state.is_valid(actor)
-                    || !state.is_valid(target)
-            })
+            .filter(|(actor, target)| !state.is_valid(actor) || !state.is_valid(target))
             .cloned()
             .collect_vec();
         invalidated_interactions
             .into_iter()
             .for_each(|(actor, target)| {
                 self.interactions.remove(&(actor, target));
-                I::on_end(&actor, &target, state, cmds);
-                cmds.update_component(&target, move |interactable: &mut Interactable| {
+                cmds.emit_event(InteractionEndedEvt::<I>::new(actor, target));
+                cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
                     interactable.actors.try_remove(&actor);
                 });
             });
         // End interactions in response to explicit uninteract requests.
-        state.read_events::<TryUninteractReq>().for_each(|evt| {
-            if self.interactions.remove(&(evt.actor, evt.target)) {
-                let (actor, target) = (evt.actor, evt.target);
-                I::on_end(&actor, &target, state, cmds);
-                cmds.update_component(&target, move |interactable: &mut Interactable| {
+        let uninteract_requests = state
+            .read_events::<TryUninteractTargetedReq<I>>()
+            .map(|evt| (evt.actor, evt.target))
+            .chain(
+                state
+                    .read_events::<TryUninteractReq>()
+                    .map(|evt| (evt.actor, evt.target)),
+            );
+        uninteract_requests.for_each(|(actor, target)| {
+            if self.interactions.remove(&(actor, target)) {
+                cmds.emit_event(InteractionEndedEvt::<I>::new(actor, target));
+                cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
                     interactable.actors.try_remove(&actor);
                 });
             }
         });
         // Propose interactions in response to try interaction requests.
         state.read_events::<TryInteractReq>().for_each(|evt| {
-            // If we already have this interaction, no other interactions should start. We must ensure
-            // that the acceptor will accept our proposal. Hence, we emit an `ensurement`.
-            if self.interactions.contains(&(evt.actor, evt.target)) {
-                cmds.emit_event(ProposeInteractionEvt::ensurement_from_req::<I>(evt));
-            } else if !self.interactions.contains(&(evt.actor, evt.target))
+            if !self.interactions.contains(&(evt.actor, evt.target))
                 && I::can_start(&evt.actor, &evt.target, state)
             {
                 // Otherwise, propose normally.
@@ -202,8 +243,8 @@ impl<I: InteractionType> System for InteractionProposerSystem<I> {
                 {
                     let (actor, target) = (evt.actor, evt.target);
                     self.interactions.insert((actor, target));
-                    I::on_start(&actor, &target, state, cmds);
-                    cmds.update_component(&target, move |interactable: &mut Interactable| {
+                    cmds.emit_event(InteractionStartedEvt::<I>::new(actor, target));
+                    cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
                         interactable.actors.insert(actor);
                     });
                 }
@@ -214,6 +255,10 @@ impl<I: InteractionType> System for InteractionProposerSystem<I> {
 /// An actor that can interact with its surroundings.
 #[derive(Clone, Copy, Debug)]
 pub struct ProximityInteractor;
+
+/// An actor that can be interacted by colliding entities.
+#[derive(Clone, Copy, Debug)]
+pub struct ProximityInteractable;
 
 /// A system that handles the entities that can interact with their surroundings.
 #[derive(Clone, Debug, Default)]
@@ -228,12 +273,16 @@ impl System for ProximityInteractionSystem {
                 .select::<(ProximityInteractor, CollisionState)>()
                 .for_each(|(e, (_, coll_state))| {
                     // Try to uninteract with all possible targets.
-                    coll_state.colliding.iter().for_each(|possible_target| {
-                        cmds.emit_event(TryUninteractReq {
-                            actor: e,
-                            target: *possible_target,
-                        });
-                    })
+                    coll_state
+                        .colliding
+                        .iter()
+                        .filter(|e| state.select_one::<(ProximityInteractable,)>(e).is_some())
+                        .for_each(|possible_target| {
+                            cmds.emit_event(TryUninteractReq {
+                                actor: e,
+                                target: *possible_target,
+                            });
+                        })
                 });
         }
         // Try to start a proximity interaction.
@@ -242,24 +291,14 @@ impl System for ProximityInteractionSystem {
             state
                 .select::<(ProximityInteractor, CollisionState)>()
                 .for_each(|(e, (_, coll_state))| {
-                    // Find the first new interactable target that the entity is colliding with.
-                    let interactable_target = coll_state.colliding.iter().find(|candidate| {
-                        let is_interactable =
-                            state.select_one::<(Interactable,)>(candidate).is_some();
-                        let is_new = state
-                            .select_one::<(Interactable,)>(candidate)
-                            .map(|(candidate_interactable,)| {
-                                !candidate_interactable.actors.contains(&e)
-                            })
-                            .unwrap_or(false);
-                        let is_on_ground = EntityInsights::of(&candidate, state).location
-                            == EntityLocation::Ground;
-                        is_interactable && is_new && is_on_ground
-                    });
-                    // Try to start the interaction with the new target.
-                    if let Some(target_entity) = interactable_target {
-                        cmds.emit_event(TryInteractReq::new(e, *target_entity));
-                    }
+                    // Try to interact with all possible targets.
+                    coll_state
+                        .colliding
+                        .iter()
+                        .filter(|e| state.select_one::<(ProximityInteractable,)>(e).is_some())
+                        .for_each(|candidate| {
+                            cmds.emit_event(TryInteractReq::new(e, *candidate));
+                        });
                 });
         }
     }
@@ -289,13 +328,9 @@ impl System for HandInteractionSystem {
                         cmds.emit_event(TryInteractReq::new(e, *lh_item));
                     }
                 }
-                // If the left mouse is released, try to uninteract with the left hand item.
                 if ctx.control_map.mouse_left_was_released {
                     if let Some(lh_item) = lh_item {
-                        cmds.emit_event(TryUninteractReq {
-                            actor: e,
-                            target: *lh_item,
-                        });
+                        cmds.emit_event(TryUninteractReq::new(e, *lh_item));
                     }
                 }
                 // If right mouse is pressed, try to interact with the right hand item.
@@ -304,19 +339,16 @@ impl System for HandInteractionSystem {
                         cmds.emit_event(TryInteractReq::new(e, *rh_item));
                     }
                 }
-                // If the right mouse is released, try to uninteract with the right hand item.
                 if ctx.control_map.mouse_right_was_released {
                     if let Some(rh_item) = rh_item {
-                        cmds.emit_event(TryUninteractReq {
-                            actor: e,
-                            target: *rh_item,
-                        });
+                        cmds.emit_event(TryUninteractReq::new(e, *rh_item));
                     }
                 }
             })
     }
 }
 
+/// A component that converts interaction requests to its parent while acting as a target.
 #[derive(Clone, Copy, Debug)]
 pub struct InteractionDelegate(pub EntityRef);
 
@@ -324,7 +356,7 @@ pub struct InteractionDelegate(pub EntityRef);
 pub struct InteractionDelegateSystem;
 
 impl System for InteractionDelegateSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state.read_events::<TryInteractReq>().for_each(|evt| {
             if let Some((target_delegate,)) =
                 state.select_one::<(InteractionDelegate,)>(&evt.target)
@@ -332,5 +364,17 @@ impl System for InteractionDelegateSystem {
                 cmds.emit_event(TryInteractReq::new(evt.actor, target_delegate.0));
             }
         });
+    }
+}
+
+pub fn interaction_exists<I: InteractionType>(
+    actor: &EntityRef,
+    target: &EntityRef,
+    state: &State,
+) -> bool {
+    if let Some((intr,)) = state.select_one::<(Interactable<I>,)>(target) {
+        intr.actors.contains(actor)
+    } else {
+        false
     }
 }

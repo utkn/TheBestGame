@@ -1,27 +1,38 @@
 use crate::{
-    activation::Activatable,
     core::*,
     effects::{Affected, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
-    interaction::{HandInteractor, Interactable, InteractionDelegate, ProximityInteractor},
+    interaction::{
+        HandInteractor, Interactable, InteractionDelegate, ProximityInteractable,
+        ProximityInteractor,
+    },
     item::Item,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
     projectile::{ProjectileDefn, ProjectileGenerator},
-    riding::Ridable,
+    riding::Vehicle,
     storage::Storage,
 };
 
 pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
     let vehicle_entity = cmds.create_from((
         trans,
-        Ridable,
+        Vehicle,
+        Interactable::<Vehicle>::default(),
         Velocity::default(),
         TargetVelocity::default(),
+        ProximityInteractable,
+        CollisionState::default(),
         Acceleration(2000.),
         MaxSpeed(800.),
-        Interactable::default(),
+        Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
+    ));
+    let vehicle_door = cmds.create_from((
+        Transform::default(),
+        AnchorTransform(vehicle_entity, (0., 0.)),
+        ProximityInteractable,
         CollisionState::default(),
+        InteractionDelegate(vehicle_entity),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
     ));
     vehicle_entity
@@ -71,8 +82,8 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         Name("Some random chest"),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
         CollisionState::default(),
-        Interactable::default(),
-        Activatable::<Storage>::default(),
+        ProximityInteractable,
+        Interactable::<Storage>::default(),
         Storage::default(),
         AnchorTransform(_chest_center_entity, (-10., -10.)),
     ));
@@ -89,10 +100,11 @@ pub fn create_item(
         trans,
         name,
         Item,
+        ProximityInteractable,
+        Interactable::<Item>::default(),
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
         Equippable(slots),
-        Interactable::default(),
     ))
 }
 
@@ -107,8 +119,8 @@ pub fn create_handgun(trans: Transform, name: Name, cmds: &mut StateCommands) ->
         &item,
         (
             Storage::default(),
-            Activatable::<Storage>::default(),
-            Activatable::<ProjectileGenerator>::default(),
+            Interactable::<Storage>::default(),
+            Interactable::<ProjectileGenerator>::default(),
             ProjectileGenerator {
                 cooldown: None,
                 proj: ProjectileDefn {
@@ -136,8 +148,8 @@ pub fn create_machinegun(trans: Transform, name: Name, cmds: &mut StateCommands)
         &item,
         (
             Storage::default(),
-            Activatable::<Storage>::default(),
-            Activatable::<ProjectileGenerator>::default(),
+            Interactable::<Storage>::default(),
+            Interactable::<ProjectileGenerator>::default(),
             ProjectileGenerator {
                 cooldown: Some(0.1),
                 proj: ProjectileDefn {

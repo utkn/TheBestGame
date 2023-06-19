@@ -1,16 +1,15 @@
-use std::collections::HashSet;
-
 use crate::{
     core::*,
     entity_insights::{EntityInsights, EntityLocation},
-    equipment::{
-        EntityEquippedEvt, EntityUnequippedEvt, EquipEntityReq, Equipment, Equippable,
-        UnequipEntityReq,
+    equipment::{EquipEntityReq, Equipment, Equippable, UnequipEntityReq},
+    interaction::{
+        InteractionStartedEvt, InteractionType, ProximityInteractable, TryUninteractTargetedReq,
     },
-    interaction::InteractionType,
-    physics::CollisionState,
     storage::{Storage, StoreEntityReq, UnstoreEntityReq},
 };
+
+#[derive(Clone, Copy, Debug)]
+pub struct Item;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ItemTransferReq {
@@ -28,30 +27,14 @@ impl ItemTransferReq {
             to_loc: EntityLocation::Storage(target_storage),
         }
     }
-
-    pub fn drop(item_entity: EntityRef, from_storage: EntityRef) -> Self {
-        Self {
-            item_entity,
-            to_loc: EntityLocation::Ground,
-            from_loc: EntityLocation::Storage(from_storage),
-        }
-    }
-
-    pub fn unequip(
-        item_entity: EntityRef,
-        from_equipment: EntityRef,
-        to_storage: EntityRef,
-    ) -> Self {
-        Self {
-            item_entity,
-            to_loc: EntityLocation::Storage(to_storage),
-            from_loc: EntityLocation::Equipment(from_equipment),
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Item;
+pub struct ItemTransferEvt {
+    pub item_entity: EntityRef,
+    pub from_loc: EntityLocation,
+    pub to_loc: EntityLocation,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct ItemTransferSystem;
@@ -101,9 +84,7 @@ impl System for ItemTransferSystem {
             }
             // Remove from the current location.
             match evt.from_loc {
-                EntityLocation::Ground => {
-                    cmds.remove_component::<Transform>(&evt.item_entity);
-                }
+                EntityLocation::Ground => {}
                 EntityLocation::Equipment(equipment_entity) => cmds.emit_event(UnequipEntityReq {
                     entity: evt.item_entity,
                     equipment_entity,
@@ -115,18 +96,7 @@ impl System for ItemTransferSystem {
             };
             // Place in the new location.
             match evt.to_loc {
-                EntityLocation::Ground => {
-                    let new_transform = match evt.from_loc {
-                        EntityLocation::Ground => (Transform::default(),),
-                        EntityLocation::Equipment(entity) | EntityLocation::Storage(entity) => {
-                            state
-                                .select_one::<(Transform,)>(&entity)
-                                .map(|(trans,)| (*trans,))
-                                .unwrap_or_default()
-                        }
-                    };
-                    cmds.set_components(&evt.item_entity, new_transform);
-                }
+                EntityLocation::Ground => {}
                 EntityLocation::Equipment(equipment_entity) => cmds.emit_event(EquipEntityReq {
                     entity: evt.item_entity,
                     equipment_entity,
@@ -136,78 +106,104 @@ impl System for ItemTransferSystem {
                     storage_entity,
                 }),
             }
+            cmds.emit_event(ItemTransferEvt {
+                from_loc: evt.from_loc,
+                to_loc: evt.to_loc,
+                item_entity: evt.item_entity,
+            });
         });
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct EquippedItemAnchorSystem;
+pub struct ItemAnchorSystem;
 
-impl System for EquippedItemAnchorSystem {
+impl System for ItemAnchorSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state.read_events::<EntityEquippedEvt>().for_each(|evt| {
-            if let (Some(_), Some(_)) = (
-                state.select_one::<(Equipment,)>(&evt.equipment_entity),
-                state.select_one::<(Item,)>(&evt.entity),
-            ) {
+        state
+            .read_events::<ItemTransferEvt>()
+            .filter(|evt| evt.from_loc == EntityLocation::Ground)
+            .filter_map(|evt| match evt.to_loc {
+                EntityLocation::Ground => None,
+                EntityLocation::Equipment(e) | EntityLocation::Storage(e) => {
+                    Some((evt.item_entity, e))
+                }
+            })
+            .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
+            .for_each(|(item, actor)| {
                 cmds.set_components(
-                    &evt.entity,
-                    (
-                        Transform::default(),
-                        AnchorTransform(evt.equipment_entity, (0., 0.)),
-                    ),
+                    &item,
+                    (Transform::default(), AnchorTransform(actor, (0., 0.))),
                 );
-            }
-        });
-        state.read_events::<EntityUnequippedEvt>().for_each(|evt| {
-            if let (Some(_), Some(_)) = (
-                state.select_one::<(Equipment,)>(&evt.equipment_entity),
-                state.select_one::<(Item,)>(&evt.entity),
-            ) {
-                cmds.remove_component::<AnchorTransform>(&evt.entity);
-            }
-        });
+            });
+        state
+            .read_events::<ItemTransferEvt>()
+            .filter(|evt| evt.to_loc == EntityLocation::Ground)
+            .filter_map(|evt| match evt.from_loc {
+                EntityLocation::Ground => None,
+                EntityLocation::Equipment(e) | EntityLocation::Storage(e) => {
+                    Some((evt.item_entity, e))
+                }
+            })
+            .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
+            .for_each(|(item, _)| {
+                cmds.remove_component::<AnchorTransform>(&item);
+            });
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct ItemPickupInteraction;
-
-impl InteractionType for ItemPickupInteraction {
-    fn valid_actors(target: &EntityRef, state: &State) -> Option<HashSet<EntityRef>> {
-        if EntityInsights::of(target, state).location != EntityLocation::Ground {
-            return None;
-        }
-        let (_, _, target_coll_state) =
-            state.select_one::<(Transform, Item, CollisionState)>(target)?;
-        let picker_actors: HashSet<_> = target_coll_state
-            .colliding
-            .iter()
-            .filter_map(|actor| {
-                state
-                    .select_one::<(Storage,)>(actor)
-                    .map(|(actor_storage,)| (actor, actor_storage))
-            })
-            .filter(|(_, actor_storage)| actor_storage.can_store(target, state))
-            .map(|(actor, _)| *actor)
-            .collect();
-        if picker_actors.len() > 0 {
-            Some(picker_actors)
-        } else {
-            None
-        }
-    }
-
-    fn should_end(_: &EntityRef, _: &EntityRef, _: &State) -> bool {
-        // one shot
-        true
-    }
-
-    fn on_start(actor: &EntityRef, target: &EntityRef, _state: &State, cmds: &mut StateCommands) {
-        cmds.emit_event(ItemTransferReq::pick_up(*target, *actor));
-    }
-
+impl InteractionType for Item {
     fn priority() -> usize {
         100
+    }
+
+    fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        let target_insights = EntityInsights::of(target, state);
+        if target_insights.location != EntityLocation::Ground {
+            return false;
+        }
+        if !target_insights.contacts.contains(actor) {
+            return false;
+        }
+        if state.select_one::<(Item,)>(target).is_none() {
+            return false;
+        }
+        if let Some((actor_storage,)) = state.select_one::<(Storage,)>(actor) {
+            actor_storage.can_store(target, state)
+        } else {
+            false
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ItemPickupSystem;
+
+impl System for ItemPickupSystem {
+    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state
+            .read_events::<ItemTransferEvt>()
+            // Going to ground
+            .filter(|evt| evt.to_loc == EntityLocation::Ground)
+            // From either equipment or storage
+            .filter(|evt| {
+                matches!(
+                    evt.from_loc,
+                    EntityLocation::Equipment(_) | EntityLocation::Storage(_)
+                )
+            })
+            .map(|evt| evt.item_entity)
+            .filter(|item| state.select_one::<(Item,)>(item).is_some())
+            .for_each(|item| {
+                cmds.set_component(&item, ProximityInteractable);
+            });
+        state
+            .read_events::<InteractionStartedEvt<Item>>()
+            .for_each(|evt| {
+                cmds.emit_event(ItemTransferReq::pick_up(evt.target, evt.actor));
+                cmds.remove_component::<ProximityInteractable>(&evt.target);
+                // Stop the interaction immediately.
+                cmds.emit_event(TryUninteractTargetedReq::<Item>::new(evt.actor, evt.target));
+            });
     }
 }

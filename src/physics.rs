@@ -195,10 +195,7 @@ impl System for SeparateCollisionsSystem {
         state
             .read_events::<CollisionEvt>()
             .filter(|evt| {
-                let anchored = state
-                    .select_one::<(AnchorTransform,)>(&evt.e1)
-                    .map(|(anchor,)| anchor.0 == evt.e2)
-                    .unwrap_or(false)
+                let anchored = state.select_one::<(AnchorTransform,)>(&evt.e1).is_some()
                     || state
                         .select_one::<(AnchorTransform,)>(&evt.e2)
                         .map(|(anchor,)| anchor.0 == evt.e1)
