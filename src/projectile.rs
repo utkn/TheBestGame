@@ -85,11 +85,14 @@ impl System for ProjectileGenerationSystem {
                     0.
                 };
                 let angles = trans.deg + rand_spread;
-                let vel = notan::math::Vec2::from_angle(angles.to_radians()) * p_gen.proj.speed;
-                let vel = Velocity {
-                    x: vel.x,
-                    y: -vel.y, // y axis is inverted!
-                };
+                let mut dir = notan::math::Vec2::from_angle(angles.to_radians());
+                dir.y = -dir.y; // y axis is inverted!
+                let new_pos = notan::math::vec2(trans.x, trans.y) + dir * 20.;
+                let mut new_trans = *trans;
+                new_trans.x = new_pos.x;
+                new_trans.y = new_pos.y;
+                let vel = dir * p_gen.proj.speed;
+                let vel = Velocity { x: vel.x, y: vel.y };
                 let anchor_parent = EntityInsights::of(&p_gen_entity, state).anchor_parent;
                 // Determine the friendly entities of the projectile, which are...
                 // ... the generator itself
@@ -98,7 +101,7 @@ impl System for ProjectileGenerationSystem {
                 friendly_entities.extend(anchor_parent);
                 // Create the projectile entity.
                 cmds.create_from((
-                    *trans,
+                    new_trans,
                     vel,
                     Lifetime {
                         remaining_time: p_gen.proj.lifetime,

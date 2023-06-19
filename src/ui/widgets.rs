@@ -125,9 +125,12 @@ impl<'a> egui::Widget for StorageWidget<'a> {
         egui::Grid::new(format!("Storage[{:?}]", self.0))
             .show(ui, |ui| {
                 if let Some((storage,)) = self.1.select_one::<(Storage,)>(self.0) {
-                    storage.0.iter().for_each(|item| {
-                        ui.add(ItemWidget(item, self.1, self.2, self.3));
-                    });
+                    storage.0.iter().chunks(3).into_iter().for_each(|row| {
+                        row.into_iter().for_each(|item| {
+                            ui.add(ItemWidget(item, self.1, self.2, self.3));
+                        });
+                        ui.end_row();
+                    })
                 }
             })
             .response

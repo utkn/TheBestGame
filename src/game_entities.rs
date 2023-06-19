@@ -1,15 +1,31 @@
 use crate::{
-    activation::{Activatable, ActivationLoc},
+    activation::Activatable,
     core::*,
     effects::{Affected, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
-    interaction::{HandInteractor, Interactable, ProximityInteractor},
+    interaction::{HandInteractor, Interactable, InteractionDelegate, ProximityInteractor},
     item::Item,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
     projectile::{ProjectileDefn, ProjectileGenerator},
+    riding::Ridable,
     storage::Storage,
 };
+
+pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
+    let vehicle_entity = cmds.create_from((
+        trans,
+        Ridable,
+        Velocity::default(),
+        TargetVelocity::default(),
+        Acceleration(2000.),
+        MaxSpeed(800.),
+        Interactable::default(),
+        CollisionState::default(),
+        Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
+    ));
+    vehicle_entity
+}
 
 pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
     cmds.create_from((
@@ -48,19 +64,17 @@ pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
 }
 
 pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
+    let _chest_center_entity =
+        cmds.create_from((trans, Hitbox(HitboxType::Static, Shape::Rect(20., 20.))));
     let chest_entity = cmds.create_from((
-        trans,
+        Transform::default(),
         Name("Some random chest"),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
         CollisionState::default(),
         Interactable::default(),
         Activatable::<Storage>::default(),
         Storage::default(),
-    ));
-    let _chest_hitbox_entity = cmds.create_from((
-        Transform::default(),
-        Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
-        AnchorTransform(chest_entity, (10., 10.)),
+        AnchorTransform(_chest_center_entity, (-10., -10.)),
     ));
     chest_entity
 }

@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
 use crate::core::*;
-use activation::{Activatable, ActivatedEvt, ActivationInteraction};
+use activation::ActivationInteraction;
 use effects::EffectSystem;
 use equipment::EquipmentSystem;
 use game_entities::*;
 use interaction::{
-    HandInteractionSystem, Interactable, InteractionAcceptorSystem, InteractionProposerSystem,
-    ProximityInteractionSystem, TryInteractReq,
+    HandInteractionSystem, Interactable, InteractionAcceptorSystem, InteractionDelegateSystem,
+    InteractionProposerSystem, ProximityInteractionSystem,
 };
 use item::{EquippedItemAnchorSystem, ItemPickupInteraction, ItemTransferSystem};
 use misc_systems::*;
@@ -21,8 +21,9 @@ use projectile::{
     ApplyOnHitSystem, GenerateProjectileReq, ProjectileGenerationSystem, ProjectileGenerator,
     ProjectileHitSystem, SuicideOnHitSystem,
 };
+use riding::RideInteraction;
 use storage::{Storage, StorageSystem};
-use timed::{TimedAddSystem, TimedEmit, TimedEmitSystem, TimedRemoveSystem};
+use timed::{TimedEmitSystem, TimedRemoveSystem};
 use ui::{draw_ui, UiState};
 
 mod activation;
@@ -37,6 +38,7 @@ mod misc_systems;
 mod needs;
 mod physics;
 mod projectile;
+mod riding;
 mod storage;
 mod timed;
 mod ui;
@@ -65,6 +67,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(InteractionAcceptorSystem);
     world.register_system(ProximityInteractionSystem::default());
     world.register_system(HandInteractionSystem);
+    world.register_system(InteractionDelegateSystem);
     // Item stuff
     world.register_system(InteractionProposerSystem::<ItemPickupInteraction>::default());
     world.register_system(InteractionProposerSystem::<ActivationInteraction<Storage>>::default());
@@ -84,6 +87,8 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(SuicideOnHitSystem);
     world.register_system(TimedEmitSystem::<GenerateProjectileReq>::default());
     world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
+    // Riding
+    world.register_system(InteractionProposerSystem::<RideInteraction>::default());
     // Misc
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());
@@ -96,6 +101,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
         create_handgun(Transform::at(150., 150.), Name("gun"), cmds);
         create_machinegun(Transform::at(200., 200.), Name("machine gun"), cmds);
         create_shoes(Transform::at(180., 180.), Name("shoes"), cmds);
+        create_vehicle(Transform::at(500., 500.), cmds);
     });
     AppState {
         world,

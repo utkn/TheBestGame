@@ -1,8 +1,4 @@
-use std::{
-    any::{Any, TypeId},
-    collections::{HashMap, HashSet},
-    marker::PhantomData,
-};
+use std::{any::TypeId, collections::HashSet, marker::PhantomData};
 
 use itertools::Itertools;
 use rand::random;
@@ -154,6 +150,36 @@ impl<I: InteractionType> Default for InteractionProposerSystem<I> {
 
 impl<I: InteractionType> System for InteractionProposerSystem<I> {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        // Auto invalidate interactions.
+        let invalidated_interactions = self
+            .interactions
+            .iter()
+            .filter(|(actor, target)| {
+                I::should_end(actor, target, state)
+                    || !state.is_valid(actor)
+                    || !state.is_valid(target)
+            })
+            .cloned()
+            .collect_vec();
+        invalidated_interactions
+            .into_iter()
+            .for_each(|(actor, target)| {
+                self.interactions.remove(&(actor, target));
+                I::on_end(&actor, &target, state, cmds);
+                cmds.update_component(&target, move |interactable: &mut Interactable| {
+                    interactable.actors.try_remove(&actor);
+                });
+            });
+        // End interactions in response to explicit uninteract requests.
+        state.read_events::<TryUninteractReq>().for_each(|evt| {
+            if self.interactions.remove(&(evt.actor, evt.target)) {
+                let (actor, target) = (evt.actor, evt.target);
+                I::on_end(&actor, &target, state, cmds);
+                cmds.update_component(&target, move |interactable: &mut Interactable| {
+                    interactable.actors.try_remove(&actor);
+                });
+            }
+        });
         // Propose interactions in response to try interaction requests.
         state.read_events::<TryInteractReq>().for_each(|evt| {
             // If we already have this interaction, no other interactions should start. We must ensure
@@ -182,36 +208,6 @@ impl<I: InteractionType> System for InteractionProposerSystem<I> {
                     });
                 }
             });
-        // Auto invalidate interactions.
-        let invalidated_interactions = self
-            .interactions
-            .iter()
-            .filter(|(actor, target)| {
-                I::should_end(actor, target, state)
-                    || !state.is_valid(actor)
-                    || !state.is_valid(target)
-            })
-            .cloned()
-            .collect_vec();
-        invalidated_interactions
-            .into_iter()
-            .for_each(|(actor, target)| {
-                self.interactions.remove(&(actor, target));
-                I::on_end(&actor, &target, state, cmds);
-                cmds.update_component(&target, move |interactable: &mut Interactable| {
-                    interactable.actors.try_remove(&actor);
-                });
-            });
-        // End interactions in response to
-        state.read_events::<TryUninteractReq>().for_each(|evt| {
-            if self.interactions.remove(&(evt.actor, evt.target)) {
-                let (actor, target) = (evt.actor, evt.target);
-                I::on_end(&actor, &target, state, cmds);
-                cmds.update_component(&target, move |interactable: &mut Interactable| {
-                    interactable.actors.try_remove(&actor);
-                });
-            }
-        });
     }
 }
 
@@ -221,10 +217,7 @@ pub struct ProximityInteractor;
 
 /// A system that handles the entities that can interact with their surroundings.
 #[derive(Clone, Debug, Default)]
-pub struct ProximityInteractionSystem {
-    /// Requested proximity interactions (actor -> target)
-    potential_interactions: HashMap<EntityRef, EntityRef>,
-}
+pub struct ProximityInteractionSystem;
 
 impl System for ProximityInteractionSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
@@ -233,14 +226,14 @@ impl System for ProximityInteractionSystem {
             // End the proximity interaction.
             state
                 .select::<(ProximityInteractor, CollisionState)>()
-                .for_each(|(e, _)| {
-                    // Try to uninteract with the current target.
-                    if let Some(current_target) = self.potential_interactions.remove(&e) {
+                .for_each(|(e, (_, coll_state))| {
+                    // Try to uninteract with all possible targets.
+                    coll_state.colliding.iter().for_each(|possible_target| {
                         cmds.emit_event(TryUninteractReq {
                             actor: e,
-                            target: current_target,
+                            target: *possible_target,
                         });
-                    }
+                    })
                 });
         }
         // Try to start a proximity interaction.
@@ -249,29 +242,22 @@ impl System for ProximityInteractionSystem {
             state
                 .select::<(ProximityInteractor, CollisionState)>()
                 .for_each(|(e, (_, coll_state))| {
-                    // Try to uninteract with the current target.
-                    if let Some(current_target) = self.potential_interactions.remove(&e) {
-                        cmds.emit_event(TryUninteractReq {
-                            actor: e,
-                            target: current_target,
-                        });
-                    }
                     // Find the first new interactable target that the entity is colliding with.
                     let interactable_target = coll_state.colliding.iter().find(|candidate| {
                         let is_interactable =
                             state.select_one::<(Interactable,)>(candidate).is_some();
-                        let is_new = self
-                            .potential_interactions
-                            .get(&e)
-                            .map(|curr_target| curr_target != *candidate)
-                            .unwrap_or(true);
+                        let is_new = state
+                            .select_one::<(Interactable,)>(candidate)
+                            .map(|(candidate_interactable,)| {
+                                !candidate_interactable.actors.contains(&e)
+                            })
+                            .unwrap_or(false);
                         let is_on_ground = EntityInsights::of(&candidate, state).location
                             == EntityLocation::Ground;
                         is_interactable && is_new && is_on_ground
                     });
                     // Try to start the interaction with the new target.
                     if let Some(target_entity) = interactable_target {
-                        self.potential_interactions.insert(e, *target_entity);
                         cmds.emit_event(TryInteractReq::new(e, *target_entity));
                     }
                 });
@@ -290,8 +276,8 @@ pub struct HandInteractionSystem;
 impl System for HandInteractionSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
-            .select::<(HandInteractor, Equipment, Controller)>()
-            .for_each(|(e, (_, equipment, _))| {
+            .select::<(HandInteractor, Equipment)>()
+            .for_each(|(e, (_, equipment))| {
                 // Get the left & right hand items of the hand interactor actor.
                 let (lh_item, rh_item) = (
                     equipment.get(EquipmentSlot::LeftHand),
@@ -302,7 +288,7 @@ impl System for HandInteractionSystem {
                     if let Some(lh_item) = lh_item {
                         cmds.emit_event(TryInteractReq::new(e, *lh_item));
                     }
-                } else
+                }
                 // If the left mouse is released, try to uninteract with the left hand item.
                 if ctx.control_map.mouse_left_was_released {
                     if let Some(lh_item) = lh_item {
@@ -317,7 +303,7 @@ impl System for HandInteractionSystem {
                     if let Some(rh_item) = rh_item {
                         cmds.emit_event(TryInteractReq::new(e, *rh_item));
                     }
-                } else
+                }
                 // If the right mouse is released, try to uninteract with the right hand item.
                 if ctx.control_map.mouse_right_was_released {
                     if let Some(rh_item) = rh_item {
@@ -328,5 +314,23 @@ impl System for HandInteractionSystem {
                     }
                 }
             })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct InteractionDelegate(pub EntityRef);
+
+#[derive(Clone, Copy, Debug)]
+pub struct InteractionDelegateSystem;
+
+impl System for InteractionDelegateSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state.read_events::<TryInteractReq>().for_each(|evt| {
+            if let Some((target_delegate,)) =
+                state.select_one::<(InteractionDelegate,)>(&evt.target)
+            {
+                cmds.emit_event(TryInteractReq::new(evt.actor, target_delegate.0));
+            }
+        });
     }
 }

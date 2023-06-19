@@ -192,24 +192,37 @@ pub struct SeparateCollisionsSystem;
 
 impl System for SeparateCollisionsSystem {
     fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state.read_events::<CollisionEvt>().for_each(|evt| {
-            if let Some((pos, hb)) = state.select_one::<(Transform, Hitbox)>(&evt.e1) {
-                let mut dpos = notan::math::vec2(-evt.overlap.0, -evt.overlap.1);
-                if dpos.length_squared() == 0. {
-                    return;
-                }
-                if let Some((other_hb,)) = state.select_one::<(Hitbox,)>(&evt.e2) {
-                    if hb.0 != HitboxType::Dynamic || other_hb.0 == HitboxType::Ghost {
+        state
+            .read_events::<CollisionEvt>()
+            .filter(|evt| {
+                let anchored = state
+                    .select_one::<(AnchorTransform,)>(&evt.e1)
+                    .map(|(anchor,)| anchor.0 == evt.e2)
+                    .unwrap_or(false)
+                    || state
+                        .select_one::<(AnchorTransform,)>(&evt.e2)
+                        .map(|(anchor,)| anchor.0 == evt.e1)
+                        .unwrap_or(false);
+                !anchored
+            })
+            .for_each(|evt| {
+                if let Some((pos, hb)) = state.select_one::<(Transform, Hitbox)>(&evt.e1) {
+                    let mut dpos = notan::math::vec2(-evt.overlap.0, -evt.overlap.1);
+                    if dpos.length_squared() == 0. {
                         return;
                     }
-                    // this = dynamic, other = dynamic | static
-                    if other_hb.0 == HitboxType::Dynamic {
-                        dpos *= 0.5;
+                    if let Some((other_hb,)) = state.select_one::<(Hitbox,)>(&evt.e2) {
+                        if hb.0 != HitboxType::Dynamic || other_hb.0 == HitboxType::Ghost {
+                            return;
+                        }
+                        // this = dynamic, other = dynamic | static
+                        if other_hb.0 == HitboxType::Dynamic {
+                            dpos *= 0.5;
+                        }
+                        let new_pos = notan::math::vec2(pos.x, pos.y) + dpos;
+                        cmds.set_component(&evt.e1, Transform::at(new_pos.x, new_pos.y));
                     }
-                    let new_pos = notan::math::vec2(pos.x, pos.y) + dpos;
-                    cmds.set_component(&evt.e1, Transform::at(new_pos.x, new_pos.y));
                 }
-            }
-        })
+            })
     }
 }

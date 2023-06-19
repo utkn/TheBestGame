@@ -1,28 +1,6 @@
 use std::{collections::HashSet, marker::PhantomData};
 
-use crate::{
-    core::*,
-    entity_insights::EntityLocation,
-    interaction::{Interactable, InteractionType},
-};
-
-/// Represents a location from where an entity can be activated.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ActivationLoc {
-    Ground,
-    Equipment,
-    Storage,
-}
-
-impl From<EntityLocation> for ActivationLoc {
-    fn from(item_loc: EntityLocation) -> Self {
-        match item_loc {
-            EntityLocation::Ground => Self::Ground,
-            EntityLocation::Equipment(_) => Self::Equipment,
-            EntityLocation::Storage(_) => Self::Storage,
-        }
-    }
-}
+use crate::{core::*, interaction::InteractionType};
 
 /// An activatable entity. The activation is performed by interacting with the entity.
 #[derive(Clone, Debug)]
@@ -97,7 +75,7 @@ pub trait ActivatableComponent: Component {
 pub struct ActivationInteraction<C: ActivatableComponent>(PhantomData<C>);
 
 impl<C: ActivatableComponent> InteractionType for ActivationInteraction<C> {
-    fn valid_actors(target: &EntityRef, state: &State) -> Option<HashSet<EntityRef>> {
+    fn valid_actors(_: &EntityRef, _: &State) -> Option<HashSet<EntityRef>> {
         None
     }
 

@@ -64,9 +64,6 @@ pub struct FaceMouse;
 pub struct AnchorTransform(pub EntityRef, pub (f32, f32));
 
 #[derive(Clone, Copy, Debug)]
-pub struct AnchorRotation(pub EntityRef, pub f32);
-
-#[derive(Clone, Copy, Debug)]
 pub struct Name(pub &'static str);
 
 #[derive(Clone, Copy, Debug)]

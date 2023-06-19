@@ -13,7 +13,7 @@ use crate::{
 pub struct Storage(pub EntityRefSet);
 
 impl Storage {
-    pub fn can_store(&self, e: &EntityRef, state: &State) -> bool {
+    pub fn can_store(&self, _: &EntityRef, _: &State) -> bool {
         true
     }
 }
@@ -22,7 +22,7 @@ impl ActivatableComponent for Storage {
     fn can_activate(
         actor: &EntityRef,
         target: &EntityRef,
-        target_component: &Self,
+        _target_component: &Self,
         state: &State,
     ) -> bool {
         state
