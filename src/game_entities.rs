@@ -1,10 +1,11 @@
 use crate::{
+    ai::VisionField,
     camera::CameraFollow,
     controller::{Controller, UserInputDriver},
     core::*,
     effects::{Affected, Effect, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
-    interaction::{HandInteractor, Interactable, InteractionDelegate, ProximityInteractable},
+    interaction::{HandInteractor, InteractTarget, InteractionDelegate, ProximityInteractable},
     item::Item,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
@@ -17,16 +18,17 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
     let vehicle = cmds.create_from((
         trans,
         Vehicle,
-        Interactable::<Vehicle>::default(),
+        InteractTarget::<Vehicle>::default(),
         Velocity::default(),
         TargetVelocity::default(),
         Acceleration(2000.),
         MaxSpeed(1000.),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
+        InteractTarget::<VisionField>::default(),
     ));
     let _vehicle_door = cmds.create_from((
         Transform::default(),
-        AnchorTransform(vehicle, (-10., -10.)),
+        AnchorTransform(vehicle, (0., 0.)),
         ProximityInteractable,
         CollisionState::default(),
         InteractionDelegate(vehicle),
@@ -37,7 +39,7 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
 }
 
 pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
-    cmds.create_from((
+    let character = cmds.create_from((
         trans,
         Velocity::default(),
         Acceleration(2000.),
@@ -53,7 +55,16 @@ pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef
             (NeedType::Hunger, NeedStatus::with_zero(100.)),
             (NeedType::Thirst, NeedStatus::with_zero(100.)),
         ]),
-    ))
+        InteractTarget::<VisionField>::default(),
+    ));
+    let _character_vision_field = cmds.create_from((
+        Transform::default(),
+        AnchorTransform(character, (0., 0.)),
+        CollisionState::default(),
+        Hitbox(HitboxType::Ghost, Shape::Circle(50.)),
+        VisionField(50.),
+    ));
+    character
 }
 
 pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
@@ -77,12 +88,13 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         trans,
         Name("Some random chest"),
         Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
-        Interactable::<Storage>::default(),
+        InteractTarget::<Storage>::default(),
         Storage::default(),
+        InteractTarget::<VisionField>::default(),
     ));
     let _chest_activator = cmds.create_from((
         Transform::default(),
-        AnchorTransform(chest, (-10., -10.)),
+        AnchorTransform(chest, (0., 0.)),
         ProximityInteractable,
         CollisionState::default(),
         InteractionDelegate(chest),
@@ -103,10 +115,11 @@ pub fn create_item(
         name,
         Item,
         ProximityInteractable,
-        Interactable::<Item>::default(),
+        InteractTarget::<Item>::default(),
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
         CollisionState::default(),
         Equippable(slots),
+        InteractTarget::<VisionField>::default(),
     ))
 }
 
@@ -121,8 +134,8 @@ pub fn create_handgun(trans: Transform, name: Name, cmds: &mut StateCommands) ->
         &item,
         (
             Storage::default(),
-            Interactable::<Storage>::default(),
-            Interactable::<ProjectileGenerator>::default(),
+            InteractTarget::<Storage>::default(),
+            InteractTarget::<ProjectileGenerator>::default(),
             ProjectileGenerator {
                 cooldown: None,
                 proj: ProjectileDefn {
@@ -150,8 +163,8 @@ pub fn create_machinegun(trans: Transform, name: Name, cmds: &mut StateCommands)
         &item,
         (
             Storage::default(),
-            Interactable::<Storage>::default(),
-            Interactable::<ProjectileGenerator>::default(),
+            InteractTarget::<Storage>::default(),
+            InteractTarget::<ProjectileGenerator>::default(),
             ProjectileGenerator {
                 cooldown: Some(0.1),
                 proj: ProjectileDefn {

@@ -7,7 +7,7 @@ use crate::{
     entity_insights::EntityInsights,
     equipment::{EntityUnequippedEvt, Equipment},
     interaction::{
-        Interactable, Interaction, InteractionStartedEvt, InteractionSystem,
+        InteractTarget, Interaction, InteractionStartedEvt, InteractionSystem,
         TryUninteractTargetedReq,
     },
     needs::NeedMutator,
@@ -84,7 +84,7 @@ impl System for ProjectileGenerationSystem {
             .filter_map(|evt| {
                 state
                     .select_one::<(
-                        Interactable<ProjectileGenerator>,
+                        InteractTarget<ProjectileGenerator>,
                         ProjectileGenerator,
                         Transform,
                     )>(&evt.0)

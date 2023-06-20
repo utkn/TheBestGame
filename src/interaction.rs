@@ -1,4 +1,4 @@
-use std::{any::TypeId, marker::PhantomData};
+use std::{any::TypeId, collections::HashSet, marker::PhantomData};
 
 use itertools::Itertools;
 use rand::random;
@@ -21,12 +21,12 @@ pub trait Interaction: 'static + std::fmt::Debug + Clone {
 
 /// Denotes an interactable entity.
 #[derive(Clone, Debug)]
-pub struct Interactable<I: Interaction> {
+pub struct InteractTarget<I: Interaction> {
     pub actors: EntityRefSet,
     pd: PhantomData<I>,
 }
 
-impl<I: Interaction> Default for Interactable<I> {
+impl<I: Interaction> Default for InteractTarget<I> {
     fn default() -> Self {
         Self {
             actors: Default::default(),
@@ -62,6 +62,24 @@ pub struct TryUninteractReq {
 impl TryUninteractReq {
     pub fn new(actor: EntityRef, target: EntityRef) -> Self {
         Self { actor, target }
+    }
+}
+
+/// A request to explicitly start an interaction.
+#[derive(Clone, Copy, Debug)]
+pub struct TryInteractTargetedReq<I: Interaction> {
+    pub actor: EntityRef,
+    pub target: EntityRef,
+    pd: PhantomData<I>,
+}
+
+impl<I: Interaction> TryInteractTargetedReq<I> {
+    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
+        Self {
+            actor,
+            target,
+            pd: PhantomData::default(),
+        }
     }
 }
 
@@ -194,16 +212,24 @@ impl<I: Interaction> Default for InteractionSystem<I> {
 
 impl<I: Interaction> InteractionSystem<I> {
     pub fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        if let Some((intr,)) = state.select_one::<(Interactable<I>,)>(target) {
+        if let Some((intr,)) = state.select_one::<(InteractTarget<I>,)>(target) {
             intr.actors.contains(actor)
         } else {
             false
         }
     }
 
-    pub fn interactions<'a>(state: &'a State) -> impl Iterator<Item = (EntityRef, EntityRef)> + 'a {
+    fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        if let Some(_) = state.select_one::<(InteractTarget<I>,)>(target) {
+            !Self::interaction_exists(actor, target, state) && I::can_start(actor, target, state)
+        } else {
+            false
+        }
+    }
+
+    fn interactions<'a>(state: &'a State) -> impl Iterator<Item = (EntityRef, EntityRef)> + 'a {
         state
-            .select::<(Interactable<I>,)>()
+            .select::<(InteractTarget<I>,)>()
             .flat_map(|(target, (intr,))| {
                 intr.actors
                     .iter()
@@ -216,56 +242,54 @@ impl<I: Interaction> InteractionSystem<I> {
 impl<I: Interaction> System for InteractionSystem<I> {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Auto invalidate interactions.
-        let invalidated_interactions = Self::interactions(state)
-            .filter(|(actor, target)| state.will_be_removed(actor) || state.will_be_removed(target))
-            .collect_vec();
-        invalidated_interactions
-            .into_iter()
-            .for_each(|(actor, target)| {
-                cmds.emit_event(InteractionEndedEvt::<I>::new(actor, target));
-                cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
-                    interactable.actors.try_remove(&actor);
-                });
-            });
-        // End interactions in response to explicit uninteract requests.
-        let uninteract_requests = state
-            .read_events::<TryUninteractTargetedReq<I>>()
+        let invalidated_interactions = Self::interactions(state).filter(|(actor, target)| {
+            state.will_be_removed(actor) || state.will_be_removed(target)
+        });
+        // End interactions in response to explicit uninteract requests as well.
+        let to_end: HashSet<_> = state
+            .read_events::<TryUninteractReq>()
             .map(|evt| (evt.actor, evt.target))
             .chain(
                 state
-                    .read_events::<TryUninteractReq>()
+                    .read_events::<TryUninteractTargetedReq<I>>()
                     .map(|evt| (evt.actor, evt.target)),
-            );
-        uninteract_requests.for_each(|(actor, target)| {
+            )
+            .chain(invalidated_interactions)
+            .collect();
+        to_end.into_iter().for_each(|(actor, target)| {
             if Self::interaction_exists(&actor, &target, state) {
+                // println!("ending {:?} -> {:?}: {:?}", actor, target, self.pd);
                 cmds.emit_event(InteractionEndedEvt::<I>::new(actor, target));
-                cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
+                cmds.update_component(&target, move |interactable: &mut InteractTarget<I>| {
                     interactable.actors.try_remove(&actor);
                 });
             }
         });
         // Propose interactions in response to try interaction requests.
         state.read_events::<TryInteractReq>().for_each(|evt| {
-            if !Self::interaction_exists(&evt.actor, &evt.target, state)
-                && I::can_start(&evt.actor, &evt.target, state)
-            {
+            if Self::can_start(&evt.actor, &evt.target, state) {
                 // Otherwise, propose normally.
                 cmds.emit_event(ProposeInteractionEvt::from_req::<I>(evt));
             };
         });
-        // Check if our proposal was accepted.
-        state
+        let to_start: HashSet<_> = state
             .read_events::<InteractionAcceptedEvt>()
-            .for_each(|evt| {
-                if !Self::interaction_exists(&evt.actor, &evt.target, state)
-                    && evt.proposer_tid == TypeId::of::<I>()
-                {
-                    let (actor, target) = (evt.actor, evt.target);
-                    cmds.emit_event(InteractionStartedEvt::<I>::new(actor, target));
-                    cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
-                        interactable.actors.insert(actor);
-                    });
-                }
+            .filter(|evt| evt.proposer_tid == TypeId::of::<I>())
+            .map(|evt| (evt.actor, evt.target))
+            .chain(
+                // Bypass the consensus for targeted interaction requests
+                state
+                    .read_events::<TryInteractTargetedReq<I>>()
+                    .map(|evt| (evt.actor, evt.target)),
+            )
+            .filter(|(actor, target)| Self::can_start(&actor, &target, state))
+            .collect();
+        to_start.into_iter().for_each(|(actor, target)| {
+            cmds.emit_event(InteractionStartedEvt::<I>::new(actor, target));
+            // println!("starting {:?} -> {:?}: {:?}", actor, target, self.pd);
+            cmds.update_component(&target, move |interactable: &mut InteractTarget<I>| {
+                interactable.actors.insert(actor);
             });
+        });
     }
 }

@@ -1,13 +1,14 @@
 #![allow(dead_code)]
 
 use crate::core::*;
+use ai::{VisionField, VisionSystem};
 use camera::{map_to_screen_cords, map_to_world_cords};
 use controller::{ControlSystem, UserInputDriver};
 use effects::EffectSystem;
 use equipment::EquipmentSystem;
 use game_entities::*;
 use interaction::{
-    HandInteractionSystem, Interactable, InteractionAcceptorSystem, InteractionDelegateSystem,
+    HandInteractionSystem, InteractTarget, InteractionAcceptorSystem, InteractionDelegateSystem,
     InteractionSystem, ProximityInteractionSystem,
 };
 use item::{Item, ItemAnchorSystem, ItemPickupSystem, ItemTransferSystem};
@@ -90,6 +91,9 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     // Vehicle stuff
     world.register_system(VehicleSystem);
     world.register_system(InteractionSystem::<Vehicle>::default());
+    // AI stuff
+    world.register_system(VisionSystem);
+    world.register_system(InteractionSystem::<VisionField>::default());
     // Misc
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());
@@ -131,7 +135,7 @@ fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
         .select::<(Transform, Hitbox)>()
         .for_each(|(e, (trans, hitbox))| {
             let is_being_interacted = state
-                .select_one::<(Interactable<Storage>,)>(&e)
+                .select_one::<(InteractTarget<Storage>,)>(&e)
                 .map(|(interactable,)| interactable.actors.len() > 0)
                 .unwrap_or(false);
             let color = if is_being_interacted {
@@ -140,12 +144,17 @@ fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
                 notan::prelude::Color::RED
             };
             let (x, y) = map_to_screen_cords(trans.x, trans.y, rnd.width(), rnd.height(), state);
+            rnd.circle(1.)
+                .position(x, y)
+                .fill_color(notan::prelude::Color::BLUE);
             match hitbox.1 {
                 Shape::Circle(r) => {
                     rnd.circle(r).position(x, y).stroke(1.).stroke_color(color);
                 }
                 Shape::Rect(w, h) => {
-                    rnd.rect((x, y), (w, h)).stroke(1.).stroke_color(color);
+                    rnd.rect((x - w / 2., y - h / 2.), (w, h))
+                        .stroke(1.)
+                        .stroke_color(color);
                 }
             };
         });

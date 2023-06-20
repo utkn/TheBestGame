@@ -3,7 +3,7 @@ use notan::egui;
 
 use crate::core::*;
 use crate::entity_insights::EntityLocation;
-use crate::interaction::Interactable;
+use crate::interaction::InteractTarget;
 use crate::storage::Storage;
 
 use super::widgets::*;
@@ -104,7 +104,7 @@ impl Window for StorageWindow {
             .resizable(false);
         // Get the active storages, i.e., the storages that are being interacted by this storage.
         let active_storages = game_state
-            .select::<(Interactable<Storage>, Transform)>()
+            .select::<(InteractTarget<Storage>, Transform)>()
             .filter(|(_, (intr, _))| intr.actors.contains(&self.storage_entity))
             .collect_vec();
         // Calculate the position through them.

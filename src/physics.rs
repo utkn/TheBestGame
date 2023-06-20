@@ -59,14 +59,18 @@ pub enum TransformedShape {
 }
 
 impl TransformedShape {
-    fn new(pos: &Transform, primitive_shape: &Shape) -> Self {
+    pub fn new(pos: &Transform, primitive_shape: &Shape) -> Self {
         match primitive_shape {
             Shape::Circle(r) => Self::Circle(sepax2d::circle::Circle::new((pos.x, pos.y), *r)),
-            Shape::Rect(w, h) => Self::AABB(sepax2d::aabb::AABB::new((pos.x, pos.y), *w, *h)),
+            Shape::Rect(w, h) => Self::AABB(sepax2d::aabb::AABB::new(
+                (pos.x - w / 2., pos.y - h / 2.),
+                *w,
+                *h,
+            )),
         }
     }
 
-    fn shape_ref(&self) -> &dyn sepax2d::Shape {
+    pub fn shape_ref(&self) -> &dyn sepax2d::Shape {
         match self {
             Self::Circle(shape) => shape,
             Self::AABB(shape) => shape,
@@ -77,15 +81,19 @@ impl TransformedShape {
 /// Represents a collider that should be checked against collisions.
 #[derive(Clone, Debug)]
 pub struct EffectiveHitbox {
-    entity: EntityRef,
-    shape: TransformedShape,
+    pub entity: EntityRef,
+    pub hb: Hitbox,
+    pub trans: Transform,
+    pub shape: TransformedShape,
 }
 
 impl EffectiveHitbox {
-    fn new(e: &EntityRef, pos: &Transform, hb: &Hitbox) -> Self {
+    pub fn new(e: &EntityRef, trans: &Transform, hb: &Hitbox) -> Self {
         Self {
             entity: *e,
-            shape: TransformedShape::new(pos, &hb.1),
+            hb: *hb,
+            trans: *trans,
+            shape: TransformedShape::new(trans, &hb.1),
         }
     }
 }

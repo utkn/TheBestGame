@@ -5,7 +5,7 @@ use notan::egui;
 
 use crate::{
     core::{EntityRef, EntityRefBag, Name, State, StateCommands},
-    interaction::Interactable,
+    interaction::InteractTarget,
     item::ItemTransferReq,
     storage::Storage,
 };
@@ -36,7 +36,7 @@ impl<'a> UiBuilder<'a> {
             storage_entity: player_entity,
         });
         let active_storages = game_state
-            .select::<(Storage, Interactable<Storage>)>()
+            .select::<(Storage, InteractTarget<Storage>)>()
             .filter(|(_, (_, intr))| intr.actors.contains(&player_entity))
             .collect_vec();
         for (storage_entity, _) in active_storages {
