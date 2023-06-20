@@ -8,13 +8,18 @@ use crate::{
     storage::{Storage, StoreEntityReq, UnstoreEntityReq},
 };
 
+/// Represents an entity that can be equipped, stored, and dropped on the ground.
 #[derive(Clone, Copy, Debug)]
 pub struct Item;
 
+/// A request to transfer an item entity between locations. Handled by [`ItemTransferSystem`].
 #[derive(Clone, Copy, Debug)]
 pub struct ItemTransferReq {
+    /// The item entity to transfer.
     pub item_entity: EntityRef,
+    /// Current location.
     pub from_loc: EntityLocation,
+    /// Requested location.
     pub to_loc: EntityLocation,
 }
 
@@ -29,6 +34,7 @@ impl ItemTransferReq {
     }
 }
 
+/// Emitted by [`ItemTransferSystem`] when an item transfer occurs.
 #[derive(Clone, Copy, Debug)]
 pub struct ItemTransferEvt {
     pub item_entity: EntityRef,
@@ -36,21 +42,25 @@ pub struct ItemTransferEvt {
     pub to_loc: EntityLocation,
 }
 
+/// A system that handles item transfers by listening to [`ItemTransferReq`]s and emitting [`ItemTransferEvt`]s.
 #[derive(Clone, Copy, Debug)]
 pub struct ItemTransferSystem;
 
 impl ItemTransferSystem {
+    /// Returns true if the given item is indeed in the given location.
     fn from_loc_valid(&self, item_e: &EntityRef, loc: &EntityLocation, state: &State) -> bool {
         let is_item_entity_valid = state.select_one::<(Item,)>(item_e).is_some();
         let curr_location = EntityLocation::of(item_e, state);
         is_item_entity_valid && curr_location == *loc
     }
 
+    /// Returns true if the given item can be moved to the given location.
     fn to_loc_valid(&self, item_e: &EntityRef, loc: &EntityLocation, state: &State) -> bool {
         let is_item_entity_valid = state.select_one::<(Item,)>(item_e).is_some();
         is_item_entity_valid
             && match loc {
                 EntityLocation::Ground => true,
+                // Check if the item is equippable by the target [`Equipment`].
                 EntityLocation::Equipment(equipment_entity) if equipment_entity != item_e => {
                     if let Some((equippable,)) = state.select_one::<(Equippable,)>(item_e) {
                         state
@@ -61,6 +71,7 @@ impl ItemTransferSystem {
                         false
                     }
                 }
+                // Check if the item is storable by the target [`Storage`].
                 EntityLocation::Storage(storage_entity) if storage_entity != item_e => {
                     if let Some((_storage,)) = state.select_one::<(Storage,)>(storage_entity) {
                         // TODO: storage limits
@@ -115,11 +126,27 @@ impl System for ItemTransferSystem {
     }
 }
 
+/// A system that anchors the item's transformation to the [`Storage`] or [`Equipment`] that it is in.
 #[derive(Clone, Copy, Debug)]
 pub struct ItemAnchorSystem;
 
 impl System for ItemAnchorSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        // Handle transfer from equipment/storage.
+        state
+            .read_events::<ItemTransferEvt>()
+            .filter(|evt| evt.to_loc == EntityLocation::Ground)
+            .filter_map(|evt| match evt.from_loc {
+                EntityLocation::Ground => None,
+                EntityLocation::Equipment(e) | EntityLocation::Storage(e) => {
+                    Some((evt.item_entity, e))
+                }
+            })
+            .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
+            .for_each(|(item, _)| {
+                cmds.remove_component::<AnchorTransform>(&item);
+            });
+        // Handle transfer to equipment/storage.
         state
             .read_events::<ItemTransferEvt>()
             .filter(|evt| evt.from_loc == EntityLocation::Ground)
@@ -136,22 +163,10 @@ impl System for ItemAnchorSystem {
                     (Transform::default(), AnchorTransform(actor, (0., 0.))),
                 );
             });
-        state
-            .read_events::<ItemTransferEvt>()
-            .filter(|evt| evt.to_loc == EntityLocation::Ground)
-            .filter_map(|evt| match evt.from_loc {
-                EntityLocation::Ground => None,
-                EntityLocation::Equipment(e) | EntityLocation::Storage(e) => {
-                    Some((evt.item_entity, e))
-                }
-            })
-            .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
-            .for_each(|(item, _)| {
-                cmds.remove_component::<AnchorTransform>(&item);
-            });
     }
 }
 
+/// [`Item`]s can be interacted with to pick them up.
 impl InteractionType for Item {
     fn priority() -> usize {
         100
@@ -176,6 +191,7 @@ impl InteractionType for Item {
     }
 }
 
+/// Handles [`Item`] interaction, i.e., item pick ups.
 #[derive(Clone, Copy, Debug)]
 pub struct ItemPickupSystem;
 

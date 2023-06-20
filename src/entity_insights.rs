@@ -4,10 +4,11 @@ use crate::{
     core::{AnchorTransform, EntityRef, EntityRefBag, EntityRefSet, State},
     equipment::{EntityEquippedEvt, EntityUnequippedEvt, Equipment},
     physics::{CollisionEndEvt, CollisionEvt, CollisionStartEvt, CollisionState},
-    projectile::ProjectileHitEvt,
+    projectile::HitEvt,
     storage::{EntityStoredEvt, EntityUnstoredEvt, Storage},
 };
 
+/// Represents the location of an entity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EntityLocation {
     Ground,
@@ -101,12 +102,12 @@ impl EntityInsights {
                 .map(|evt| evt.e2)
                 .collect(),
             new_hitters: state
-                .read_events::<ProjectileHitEvt>()
+                .read_events::<HitEvt>()
                 .filter(|evt| evt.target == *e)
                 .map(|evt| evt.hitter)
                 .collect(),
             new_hit_targets: state
-                .read_events::<ProjectileHitEvt>()
+                .read_events::<HitEvt>()
                 .filter(|evt| evt.hitter == *e)
                 .map(|evt| evt.target)
                 .collect(),

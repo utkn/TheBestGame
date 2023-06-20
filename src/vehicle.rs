@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::core::*;
 
 use crate::interaction::{InteractionEndedEvt, InteractionStartedEvt, InteractionType};
-use crate::projectile::{Projectile, SuicideOnHit};
+use crate::projectile::{Hitter, SuicideOnHit};
 use crate::storage::Storage;
 
 #[derive(Clone, Copy, Debug)]
@@ -43,8 +43,8 @@ impl System for VehicleSystem {
                 if let Some((vehicle_transform,)) = state.select_one::<(Transform,)>(vehicle) {
                     cmds.set_component(driver, vehicle_transform.clone());
                 }
-                cmds.set_component(vehicle, SuicideOnHit);
-                cmds.set_component(vehicle, Projectile::new([*driver]));
+                // cmds.set_component(vehicle, SuicideOnHit);
+                // cmds.set_component(vehicle, Projectile::new([*driver]));
             });
         state
             .read_events::<InteractionEndedEvt<Vehicle>>()

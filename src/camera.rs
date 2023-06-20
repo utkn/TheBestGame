@@ -1,5 +1,6 @@
 use crate::core::*;
 
+/// The entity tagged by this component will be followed by the camera.
 #[derive(Clone, Copy, Debug)]
 pub struct CameraFollow;
 

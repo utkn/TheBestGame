@@ -18,8 +18,8 @@ use notan::{
 };
 use physics::*;
 use projectile::{
-    ApplyOnHitSystem, GenerateProjectileReq, ProjectileGenerationSystem, ProjectileGenerator,
-    ProjectileHitSystem, SuicideOnHitSystem,
+    ApplyOnHitSystem, GenerateProjectileReq, HitSystem, ProjectileGenerationSystem,
+    ProjectileGenerator, SuicideOnHitSystem,
 };
 use storage::{Storage, StorageSystem};
 use timed::{TimedEmitSystem, TimedRemoveSystem};
@@ -82,7 +82,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     // Projectiles
     world.register_system(InteractionSystem::<ProjectileGenerator>::default());
     world.register_system(ProjectileGenerationSystem);
-    world.register_system(ProjectileHitSystem);
+    world.register_system(HitSystem);
     world.register_system(SuicideOnHitSystem);
     world.register_system(TimedEmitSystem::<GenerateProjectileReq>::default());
     world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
