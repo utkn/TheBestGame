@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{collections::HashMap, marker::PhantomData};
 
 use crate::{
     core::*,
@@ -9,6 +9,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct Controller<D: ControlDriver>(pub D);
 
+/// A command that can be emitted by a [`ControlDriver`].
 pub enum ControlCommand {
     SetTargetVelocity(TargetVelocity),
     ProximityInteract,
@@ -17,17 +18,33 @@ pub enum ControlCommand {
 }
 
 pub trait ControlDriver: 'static + Clone + std::fmt::Debug {
-    fn get_command(&self, ctx: &UpdateContext, state: &State, actor: &EntityRef) -> ControlCommand;
+    /// The type of the mutable state of the driver.
+    type State: Default;
+    /// Returns a [`ControlCommand`] from the given state of itself and the game.
+    fn get_command(
+        &self,
+        actor: &EntityRef,
+        ctx: &UpdateContext,
+        game_state: &State,
+        driver_state: &mut Self::State,
+    ) -> ControlCommand;
 }
 
-/// A [`ControlDriver`] using key presses to emit [`ControlCommand`]s.
+/// Uses key presses to control the entities.
 #[derive(Clone, Copy, Debug)]
-pub struct UserInput {
+pub struct UserInputDriver {
     pub default_speed: f32,
 }
 
-impl ControlDriver for UserInput {
-    fn get_command(&self, ctx: &UpdateContext, state: &State, actor: &EntityRef) -> ControlCommand {
+impl ControlDriver for UserInputDriver {
+    type State = ();
+    fn get_command(
+        &self,
+        actor: &EntityRef,
+        ctx: &UpdateContext,
+        game_state: &State,
+        _: &mut Self::State,
+    ) -> ControlCommand {
         // Try to start the proximity interaction with explicit key press.
         if ctx.control_map.start_interact_was_pressed {
             return ControlCommand::ProximityInteract;
@@ -36,7 +53,7 @@ impl ControlDriver for UserInput {
         if ctx.control_map.end_interact_was_pressed {
             return ControlCommand::ProximityUninteract;
         }
-        let speed = state
+        let speed = game_state
             .select_one::<(MaxSpeed,)>(&actor)
             .map(|(max_speed,)| max_speed.0)
             .unwrap_or(self.default_speed);
@@ -64,12 +81,18 @@ impl ControlDriver for UserInput {
 }
 
 /// A system that handles user control.
-#[derive(Clone, Copy, Debug)]
-pub struct ControlSystem<A: ControlDriver>(PhantomData<A>);
+#[derive(Clone, Debug)]
+pub struct ControlSystem<A: ControlDriver> {
+    states: HashMap<EntityRef, A::State>,
+    pd: PhantomData<A>,
+}
 
 impl<D: ControlDriver> Default for ControlSystem<D> {
     fn default() -> Self {
-        Self(Default::default())
+        Self {
+            states: Default::default(),
+            pd: Default::default(),
+        }
     }
 }
 
@@ -103,7 +126,8 @@ impl<D: ControlDriver> System for ControlSystem<D> {
         state
             .select::<(Controller<D>,)>()
             .for_each(|(actor, (controller,))| {
-                match controller.0.get_command(ctx, state, &actor) {
+                let driver_state = self.states.entry(actor).or_default();
+                match controller.0.get_command(&actor, ctx, state, driver_state) {
                     ControlCommand::SetTargetVelocity(vel) => {
                         cmds.set_component::<TargetVelocity>(&actor, vel)
                     }

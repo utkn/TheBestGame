@@ -1,6 +1,6 @@
 use crate::{
     camera::CameraFollow,
-    controller::{Controller, UserInput},
+    controller::{Controller, UserInputDriver},
     core::*,
     effects::{Affected, Effect, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
@@ -63,7 +63,7 @@ pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         (
             HandInteractor,
             CameraFollow,
-            Controller(UserInput { default_speed: 5. }),
+            Controller(UserInputDriver { default_speed: 5. }),
             FaceMouse,
             Affected::<MaxSpeed>::default(),
             Affected::<Acceleration>::default(),

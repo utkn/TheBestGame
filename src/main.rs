@@ -2,7 +2,7 @@
 
 use crate::core::*;
 use camera::{map_to_screen_cords, map_to_world_cords};
-use controller::{ControlSystem, UserInput};
+use controller::{ControlSystem, UserInputDriver};
 use effects::EffectSystem;
 use equipment::EquipmentSystem;
 use game_entities::*;
@@ -57,7 +57,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     // Control & movement
     world.register_system(MovementSystem);
     world.register_system(AnchorSystem);
-    world.register_system(ControlSystem::<UserInput>::default());
+    world.register_system(ControlSystem::<UserInputDriver>::default());
     world.register_system(LifetimeSystem);
     world.register_system(ApproachVelocitySystem);
     world.register_system(FaceMouseSystem);
