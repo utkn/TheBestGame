@@ -1,3 +1,4 @@
+use crate::controller::{CopyControllersReq, DeleteControllersReq};
 use crate::core::*;
 
 use crate::interaction::{Interaction, InteractionEndedEvt, InteractionStartedEvt};
@@ -26,10 +27,8 @@ impl System for VehicleSystem {
             .for_each(|evt| {
                 let driver = &evt.actor;
                 let vehicle = &evt.target;
-                // Copy the controller to the vehicle.
-                if let Some((driver_controller,)) = state.select_one::<(Controller,)>(driver) {
-                    cmds.set_component(vehicle, driver_controller.clone());
-                }
+                // Copy the driver's controllers to the vehicle.
+                cmds.emit_event(CopyControllersReq::new(*driver, *vehicle));
                 // Anchor the driver to the vehicle.
                 cmds.set_component(driver, AnchorTransform(*vehicle, (0., 0.)));
                 if let Some((vehicle_transform,)) = state.select_one::<(Transform,)>(vehicle) {
@@ -41,8 +40,8 @@ impl System for VehicleSystem {
             .for_each(|evt| {
                 let driver = &evt.actor;
                 let vehicle = &evt.target;
-                // Transfer back the controller.
-                cmds.remove_component::<Controller>(vehicle);
+                // Remove the controllers from the vehicle.
+                cmds.emit_event(DeleteControllersReq(*vehicle));
                 // Stop moving.
                 cmds.set_component(driver, TargetVelocity { x: 0., y: 0. });
                 cmds.set_component(vehicle, TargetVelocity { x: 0., y: 0. });

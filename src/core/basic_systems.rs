@@ -1,7 +1,4 @@
-use crate::{
-    core::*,
-    interaction::{EndProximityInteractReq, StartProximityInteractReq},
-};
+use crate::core::*;
 
 /// A system that handles simple translation using the velocities.
 #[derive(Clone, Copy, Debug, Default)]
@@ -24,58 +21,6 @@ impl System for MovementSystem {
                     trans.y = new_pos_y;
                 });
             });
-    }
-}
-
-/// A system that handles user control.
-#[derive(Clone, Copy, Debug)]
-pub struct ControlSystem;
-
-impl System for ControlSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        // Interaction press
-        state.select::<(Controller,)>().for_each(|(actor, _)| {
-            // Try to end the proximity interaction with explicit key press.
-            if ctx.control_map.end_interact_was_pressed {
-                cmds.emit_event(EndProximityInteractReq(actor));
-            }
-            // Try to start a proximity interaction with explicit key press.
-            if ctx.control_map.start_interact_was_pressed {
-                cmds.emit_event(StartProximityInteractReq(actor));
-            }
-        });
-        // Movement press
-        state
-            .select::<(Velocity, TargetVelocity, Controller)>()
-            .for_each(|(e, (_, _, controller))| {
-                let speed = state
-                    .select_one::<(MaxSpeed,)>(&e)
-                    .map(|(max_speed,)| max_speed.0)
-                    .unwrap_or(controller.default_speed);
-                // Determine the target velocity according to the current pressed keys.
-                let new_target_vel_x = if ctx.control_map.left_is_down {
-                    -1.
-                } else if ctx.control_map.right_is_down {
-                    1.
-                } else {
-                    0.
-                } * speed;
-                let new_target_vel_y = if ctx.control_map.up_is_down {
-                    -1.
-                } else if ctx.control_map.down_is_down {
-                    1.
-                } else {
-                    0.
-                } * speed;
-                // Set the target velocity.
-                cmds.set_component(
-                    &e,
-                    TargetVelocity {
-                        x: new_target_vel_x,
-                        y: new_target_vel_y,
-                    },
-                )
-            })
     }
 }
 

@@ -52,12 +52,6 @@ pub struct MaxSpeed(pub f32);
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Acceleration(pub f32);
 
-/// Entities with this component will be able to be moved by user input.
-#[derive(Clone, Copy, Default, Debug)]
-pub struct Controller {
-    pub default_speed: f32,
-}
-
 /// Entities with this component will always face the mouse.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct FaceMouse;
