@@ -1,7 +1,10 @@
 use std::{collections::HashMap, marker::PhantomData};
 
 use crate::{
-    interaction::{EndProximityInteractReq, StartProximityInteractReq},
+    interaction::{
+        EndProximityInteractReq, HandInteractReq, HandSide, HandUninteractReq,
+        StartProximityInteractReq,
+    },
     prelude::*,
 };
 
@@ -14,20 +17,21 @@ pub enum ControlCommand {
     SetTargetVelocity(TargetVelocity),
     ProximityInteract,
     ProximityUninteract,
-    None,
+    HandInteract(HandSide),
+    HandUninteract(HandSide),
 }
 
 pub trait ControlDriver: 'static + Clone + std::fmt::Debug {
     /// The type of the mutable state of the driver.
     type State: Default;
-    /// Returns a [`ControlCommand`] from the given state of itself and the game.
-    fn get_command(
+    /// Returns [`ControlCommand`]s from the given state of itself and the game.
+    fn get_commands(
         &self,
         actor: &EntityRef,
         ctx: &UpdateContext,
         game_state: &State,
         driver_state: &mut Self::State,
-    ) -> ControlCommand;
+    ) -> Vec<ControlCommand>;
 }
 
 /// Uses key presses to control the entities.
@@ -38,20 +42,32 @@ pub struct UserInputDriver {
 
 impl ControlDriver for UserInputDriver {
     type State = ();
-    fn get_command(
+    fn get_commands(
         &self,
         actor: &EntityRef,
         ctx: &UpdateContext,
         game_state: &State,
         _: &mut Self::State,
-    ) -> ControlCommand {
+    ) -> Vec<ControlCommand> {
         // Try to start the proximity interaction with explicit key press.
         if ctx.control_map.start_interact_was_pressed {
-            return ControlCommand::ProximityInteract;
+            return vec![ControlCommand::ProximityInteract];
         }
         // Try to end a proximity interaction with explicit key press.
         if ctx.control_map.end_interact_was_pressed {
-            return ControlCommand::ProximityUninteract;
+            return vec![ControlCommand::ProximityUninteract];
+        }
+        if ctx.control_map.mouse_left_was_pressed {
+            return vec![ControlCommand::HandInteract(HandSide::Left)];
+        }
+        if ctx.control_map.mouse_right_was_pressed {
+            return vec![ControlCommand::HandInteract(HandSide::Right)];
+        }
+        if ctx.control_map.mouse_left_was_released {
+            return vec![ControlCommand::HandUninteract(HandSide::Left)];
+        }
+        if ctx.control_map.mouse_right_was_released {
+            return vec![ControlCommand::HandUninteract(HandSide::Left)];
         }
         let speed = game_state
             .select_one::<(MaxSpeed,)>(&actor)
@@ -73,10 +89,10 @@ impl ControlDriver for UserInputDriver {
             0.
         } * speed;
         // Set the target velocity.
-        ControlCommand::SetTargetVelocity(TargetVelocity {
+        vec![ControlCommand::SetTargetVelocity(TargetVelocity {
             x: new_target_vel_x,
             y: new_target_vel_y,
-        })
+        })]
     }
 }
 
@@ -102,7 +118,6 @@ pub struct CopyControllersReq {
     from: EntityRef,
     to: EntityRef,
 }
-
 impl CopyControllersReq {
     pub fn new(from: EntityRef, to: EntityRef) -> Self {
         Self { from, to }
@@ -127,18 +142,27 @@ impl<D: ControlDriver> System for ControlSystem<D> {
             .select::<(Controller<D>,)>()
             .for_each(|(actor, (controller,))| {
                 let driver_state = self.states.entry(actor).or_default();
-                match controller.0.get_command(&actor, ctx, state, driver_state) {
-                    ControlCommand::SetTargetVelocity(vel) => {
-                        cmds.set_component::<TargetVelocity>(&actor, vel)
-                    }
-                    ControlCommand::ProximityInteract => {
-                        cmds.emit_event(StartProximityInteractReq(actor))
-                    }
-                    ControlCommand::ProximityUninteract => {
-                        cmds.emit_event(EndProximityInteractReq(actor))
-                    }
-                    ControlCommand::None => {}
-                }
+                controller
+                    .0
+                    .get_commands(&actor, ctx, state, driver_state)
+                    .into_iter()
+                    .for_each(|cmd| match cmd {
+                        ControlCommand::SetTargetVelocity(vel) => {
+                            cmds.set_component::<TargetVelocity>(&actor, vel)
+                        }
+                        ControlCommand::ProximityInteract => {
+                            cmds.emit_event(StartProximityInteractReq(actor))
+                        }
+                        ControlCommand::ProximityUninteract => {
+                            cmds.emit_event(EndProximityInteractReq(actor))
+                        }
+                        ControlCommand::HandInteract(hand) => {
+                            cmds.emit_event(HandInteractReq(actor, hand))
+                        }
+                        ControlCommand::HandUninteract(hand) => {
+                            cmds.emit_event(HandUninteractReq(actor, hand))
+                        }
+                    });
             });
     }
 }

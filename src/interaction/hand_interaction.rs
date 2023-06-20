@@ -9,42 +9,49 @@ use super::{TryInteractReq, TryUninteractReq};
 #[derive(Clone, Copy, Debug)]
 pub struct HandInteractor;
 
+#[derive(Clone, Copy, Debug)]
+pub enum HandSide {
+    Left,
+    Right,
+}
+
+impl From<HandSide> for EquipmentSlot {
+    fn from(value: HandSide) -> Self {
+        match value {
+            HandSide::Left => EquipmentSlot::LeftHand,
+            HandSide::Right => EquipmentSlot::RightHand,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct HandInteractReq(pub EntityRef, pub HandSide);
+
+#[derive(Clone, Copy, Debug)]
+pub struct HandUninteractReq(pub EntityRef, pub HandSide);
+
 /// A system that handles the entities that can interact with their equipment.
 #[derive(Clone, Copy, Debug)]
 pub struct HandInteractionSystem;
 
+/// TODO: integrate with the new controller system. Refactor as `EquipmentInteractorSystem` that listens to equipment interaction events.
 impl System for HandInteractionSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state
-            .select::<(HandInteractor, Equipment)>()
-            .for_each(|(e, (_, equipment))| {
-                // Get the left & right hand items of the hand interactor actor.
-                let (lh_item, rh_item) = (
-                    equipment.get(EquipmentSlot::LeftHand),
-                    equipment.get(EquipmentSlot::RightHand),
-                );
-                // If left mouse is pressed, try to interact with the left hand item.
-                if ctx.control_map.mouse_left_was_pressed {
-                    if let Some(lh_item) = lh_item {
-                        cmds.emit_event(TryInteractReq::new(e, *lh_item));
-                    }
+    fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state.read_events::<HandInteractReq>().for_each(|evt| {
+            if let Some((equipment,)) = state.select_one::<(Equipment,)>(&evt.0) {
+                let item = equipment.get(evt.1.into());
+                if let Some(item) = item {
+                    cmds.emit_event(TryInteractReq::new(evt.0, *item));
                 }
-                if ctx.control_map.mouse_left_was_released {
-                    if let Some(lh_item) = lh_item {
-                        cmds.emit_event(TryUninteractReq::new(e, *lh_item));
-                    }
+            }
+        });
+        state.read_events::<HandUninteractReq>().for_each(|evt| {
+            if let Some((equipment,)) = state.select_one::<(Equipment,)>(&evt.0) {
+                let item = equipment.get(evt.1.into());
+                if let Some(item) = item {
+                    cmds.emit_event(TryUninteractReq::new(evt.0, *item));
                 }
-                // If right mouse is pressed, try to interact with the right hand item.
-                if ctx.control_map.mouse_right_was_pressed {
-                    if let Some(rh_item) = rh_item {
-                        cmds.emit_event(TryInteractReq::new(e, *rh_item));
-                    }
-                }
-                if ctx.control_map.mouse_right_was_released {
-                    if let Some(rh_item) = rh_item {
-                        cmds.emit_event(TryUninteractReq::new(e, *rh_item));
-                    }
-                }
-            })
+            }
+        });
     }
 }
