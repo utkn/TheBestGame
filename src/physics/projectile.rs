@@ -1,19 +1,13 @@
 use std::marker::PhantomData;
 
-use notan::egui::epaint::ahash::HashSet;
-
 use crate::{
-    core::*,
-    entity_insights::EntityInsights,
-    equipment::{EntityUnequippedEvt, Equipment},
     interaction::{
         InteractTarget, Interaction, InteractionStartedEvt, InteractionSystem,
         TryUninteractTargetedReq,
     },
+    item::{EntityUnequippedEvt, Equipment, Storage},
     needs::NeedMutator,
-    physics::{Hitbox, HitboxType, Shape},
-    storage::Storage,
-    timed::{TimedEmit, TimedRemove},
+    physics::*,
 };
 
 use rand::Rng;
@@ -110,7 +104,7 @@ impl System for ProjectileGenerationSystem {
                 new_trans.y = new_pos.y;
                 let vel = dir * p_gen.proj.speed;
                 let vel = Velocity { x: vel.x, y: vel.y };
-                let anchor_parent = EntityInsights::of(&p_gen_entity, state).anchor_parent;
+                let anchor_parent = EntityInsights::of(&p_gen_entity, state).anchor_parent();
                 // Determine the friendly entities of the projectile, which are...
                 // ... the generator itself
                 let mut friendly_entities = vec![p_gen_entity];
@@ -169,27 +163,28 @@ pub struct HitSystem;
 impl System for HitSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Emit the projectile hit events.
-        state.select::<(Hitter,)>().for_each(|(e, (hitter,))| {
-            let hitter_insights = EntityInsights::of(&e, state);
-            hitter_insights
-                .new_collision_starters
-                .into_iter()
-                // Make sure that we do not consider friendly entities.
-                .filter(|coll_target| !hitter.friendly_entities.contains(coll_target))
-                // Make sure that the target's hitbox is concrete.
-                .filter(|coll_target| {
-                    state
-                        .select_one::<(Hitbox,)>(coll_target)
-                        .map(|(hb,)| hb.0.is_concrete())
-                        .unwrap_or(false)
-                })
-                .for_each(|coll_target| {
-                    cmds.emit_event(HitEvt {
-                        hitter: e,
-                        target: coll_target,
+        state
+            .select::<(Hitter,)>()
+            .for_each(|(hitter_entity, (hitter,))| {
+                EntityInsights::of(&hitter_entity, state)
+                    .new_collision_starters()
+                    .into_iter()
+                    // Make sure that we do not consider friendly entities.
+                    .filter(|coll_target| !hitter.friendly_entities.contains(coll_target))
+                    // Make sure that the target's hitbox is concrete.
+                    .filter(|coll_target| {
+                        state
+                            .select_one::<(Hitbox,)>(coll_target)
+                            .map(|(hb,)| hb.0.is_concrete())
+                            .unwrap_or(false)
                     })
-                });
-        });
+                    .for_each(|coll_target| {
+                        cmds.emit_event(HitEvt {
+                            hitter: hitter_entity,
+                            target: coll_target,
+                        })
+                    });
+            });
     }
 }
 

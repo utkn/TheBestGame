@@ -1,16 +1,13 @@
 use crate::{
-    ai::VisionField,
     camera::CameraFollow,
     controller::{Controller, UserInputDriver},
-    core::*,
     effects::{Affected, Effect, Effector, EffectorTarget},
-    equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
     interaction::{HandInteractor, InteractTarget, InteractionDelegate, ProximityInteractable},
     item::Item,
+    item::*,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
-    physics::{CollisionState, Hitbox, HitboxType, Shape},
-    projectile::{ProjectileDefn, ProjectileGenerator},
-    storage::Storage,
+    physics::*,
+    prelude::*,
     vehicle::Vehicle,
 };
 

@@ -2,11 +2,9 @@ use itertools::Itertools;
 use notan::egui;
 
 use crate::{
-    core::*,
-    equipment::{Equipment, EquipmentSlot},
-    item::Item,
+    item::{Equipment, EquipmentSlot, Item, Storage},
     needs::Needs,
-    storage::Storage,
+    prelude::*,
 };
 
 use super::UiState;

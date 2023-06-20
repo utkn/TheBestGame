@@ -1,6 +1,6 @@
 use notan::egui;
 
-use crate::core::EntityRef;
+use crate::prelude::EntityRef;
 
 #[derive(Clone, Debug)]
 pub(super) struct DragResult {

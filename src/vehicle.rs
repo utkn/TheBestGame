@@ -1,8 +1,8 @@
 use crate::controller::{CopyControllersReq, DeleteControllersReq};
-use crate::core::*;
+use crate::prelude::*;
 
 use crate::interaction::{Interaction, InteractionEndedEvt, InteractionStartedEvt};
-use crate::storage::Storage;
+use crate::item::Storage;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vehicle;

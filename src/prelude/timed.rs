@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::core::*;
+use crate::prelude::*;
 
 /// A wrapper compoonent that replaces itself with the inner component after a certain time.
 #[derive(Clone, Debug)]

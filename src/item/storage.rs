@@ -1,9 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{
-    core::{EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, UpdateContext},
-    interaction::Interaction,
-};
+use crate::{interaction::Interaction, prelude::*};
 
 /// An entity that can store other entities.
 #[derive(Clone, Default, Debug)]

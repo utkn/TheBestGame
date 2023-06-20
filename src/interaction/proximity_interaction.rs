@@ -1,6 +1,6 @@
 use crate::{
-    core::*,
     physics::{CollisionEndEvt, CollisionState},
+    prelude::*,
 };
 
 use super::{TryInteractReq, TryUninteractReq};

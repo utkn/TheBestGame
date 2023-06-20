@@ -2,20 +2,24 @@ mod basic_systems;
 mod component;
 mod component_tuple;
 mod entity;
+mod entity_insights;
 mod event;
 mod generic_bag;
 mod primitive_components;
 mod state;
 mod system;
+mod timed;
 
 pub use basic_systems::*;
 pub use component::Component;
 pub use entity::*;
+pub use entity_insights::*;
 pub use event::Event;
 pub use event::EventManager;
 pub use primitive_components::*;
 pub use state::*;
 pub use system::*;
+pub use timed::*;
 
 /// Represents the game world.
 pub struct World {

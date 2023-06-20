@@ -1,6 +1,6 @@
 use crate::{
-    core::*,
-    equipment::{Equipment, EquipmentSlot},
+    item::{Equipment, EquipmentSlot},
+    prelude::*,
 };
 
 use super::{TryInteractReq, TryUninteractReq};

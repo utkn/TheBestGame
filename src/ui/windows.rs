@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use notan::egui;
 
-use crate::core::*;
-use crate::entity_insights::EntityLocation;
 use crate::interaction::InteractTarget;
-use crate::storage::Storage;
+use crate::item::ItemLocation;
+use crate::item::Storage;
+use crate::prelude::*;
 
 use super::widgets::*;
 use super::UiState;
@@ -16,12 +16,12 @@ pub enum WindowType {
     Needs(EntityRef),
 }
 
-impl From<Option<WindowType>> for EntityLocation {
+impl From<Option<WindowType>> for ItemLocation {
     fn from(opt_win_type: Option<WindowType>) -> Self {
         match opt_win_type {
-            Some(WindowType::Storage(entity)) => EntityLocation::Storage(entity),
-            Some(WindowType::Equipment(entity)) => EntityLocation::Equipment(entity),
-            _ => EntityLocation::Ground,
+            Some(WindowType::Storage(entity)) => ItemLocation::Storage(entity),
+            Some(WindowType::Equipment(entity)) => ItemLocation::Equipment(entity),
+            _ => ItemLocation::Ground,
         }
     }
 }

@@ -3,7 +3,15 @@ use std::collections::HashSet;
 use itertools::Itertools;
 use sepax2d::{sat_collision, sat_overlap};
 
-use crate::core::*;
+use crate::prelude::*;
+
+pub use collider_insights::*;
+pub use projectile::*;
+pub use vision_field::*;
+
+mod collider_insights;
+mod projectile;
+mod vision_field;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Shape {

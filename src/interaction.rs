@@ -4,22 +4,24 @@ use itertools::Itertools;
 use rand::random;
 
 mod hand_interaction;
+mod interaction_acceptor;
 mod interaction_delegate;
 mod proximity_interaction;
 
 pub use hand_interaction::*;
+pub use interaction_acceptor::*;
 pub use interaction_delegate::*;
 pub use proximity_interaction::*;
 
-use crate::core::*;
+use crate::prelude::*;
 
-#[allow(unused_variables)]
+/// Represents an interaction that can occur between two entities in the game.
 pub trait Interaction: 'static + std::fmt::Debug + Clone {
     fn priority() -> usize;
     fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool;
 }
 
-/// Denotes an interactable entity.
+/// Denotes an interactable entity as the target of the interaction `I`.
 #[derive(Clone, Debug)]
 pub struct InteractTarget<I: Interaction> {
     pub actors: EntityRefSet,
@@ -98,101 +100,6 @@ impl<I: Interaction> TryUninteractTargetedReq<I> {
             target,
             pd: PhantomData::default(),
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct ProposeInteractionEvt {
-    proposer_id: std::any::TypeId,
-    consensus_id: usize,
-    priority: usize,
-    actor: EntityRef,
-    target: EntityRef,
-}
-
-impl ProposeInteractionEvt {
-    /// Creates a new proposal in response to the given [`TryInteractReq`].
-    pub fn from_req<I: Interaction>(req: &TryInteractReq) -> Self {
-        Self {
-            consensus_id: req.consensus_id,
-            proposer_id: std::any::TypeId::of::<I>(),
-            priority: I::priority(),
-            actor: req.actor,
-            target: req.target,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct InteractionAcceptedEvt {
-    consensus_id: usize,
-    /// The unique type id of the proposer. Used to distinguish between different proposals for the same request.
-    proposer_tid: std::any::TypeId,
-    actor: EntityRef,
-    target: EntityRef,
-}
-
-impl From<&ProposeInteractionEvt> for InteractionAcceptedEvt {
-    /// Constructs from the given proposal.
-    fn from(proposal: &ProposeInteractionEvt) -> Self {
-        InteractionAcceptedEvt {
-            consensus_id: proposal.consensus_id,
-            proposer_tid: proposal.proposer_id,
-            actor: proposal.actor,
-            target: proposal.target,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct InteractionStartedEvt<I: Interaction> {
-    pub actor: EntityRef,
-    pub target: EntityRef,
-    pd: PhantomData<I>,
-}
-
-impl<I: Interaction> InteractionStartedEvt<I> {
-    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
-        Self {
-            actor,
-            target,
-            pd: Default::default(),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct InteractionEndedEvt<I: Interaction> {
-    pub actor: EntityRef,
-    pub target: EntityRef,
-    pd: PhantomData<I>,
-}
-
-impl<I: Interaction> InteractionEndedEvt<I> {
-    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
-        Self {
-            actor,
-            target,
-            pd: Default::default(),
-        }
-    }
-}
-
-pub struct InteractionAcceptorSystem;
-
-impl System for InteractionAcceptorSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        let consensus_instances = state
-            .read_events::<ProposeInteractionEvt>()
-            .into_group_map_by(|evt| evt.consensus_id);
-        consensus_instances.into_iter().for_each(|(_, proposals)| {
-            let picked_proposal = proposals
-                .into_iter()
-                .max_by_key(|proposal| proposal.priority);
-            if let Some(picked_proposal) = picked_proposal {
-                cmds.emit_event(InteractionAcceptedEvt::from(picked_proposal));
-            }
-        });
     }
 }
 
@@ -291,5 +198,61 @@ impl<I: Interaction> System for InteractionSystem<I> {
                 interactable.actors.insert(actor);
             });
         });
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ProposeInteractionEvt {
+    proposer_id: std::any::TypeId,
+    consensus_id: usize,
+    priority: usize,
+    actor: EntityRef,
+    target: EntityRef,
+}
+
+impl ProposeInteractionEvt {
+    /// Creates a new proposal in response to the given [`TryInteractReq`].
+    fn from_req<I: Interaction>(req: &TryInteractReq) -> Self {
+        Self {
+            consensus_id: req.consensus_id,
+            proposer_id: std::any::TypeId::of::<I>(),
+            priority: I::priority(),
+            actor: req.actor,
+            target: req.target,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct InteractionStartedEvt<I: Interaction> {
+    pub actor: EntityRef,
+    pub target: EntityRef,
+    pd: PhantomData<I>,
+}
+
+impl<I: Interaction> InteractionStartedEvt<I> {
+    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
+        Self {
+            actor,
+            target,
+            pd: Default::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct InteractionEndedEvt<I: Interaction> {
+    pub actor: EntityRef,
+    pub target: EntityRef,
+    pd: PhantomData<I>,
+}
+
+impl<I: Interaction> InteractionEndedEvt<I> {
+    pub fn new(actor: EntityRef, target: EntityRef) -> Self {
+        Self {
+            actor,
+            target,
+            pd: Default::default(),
+        }
     }
 }

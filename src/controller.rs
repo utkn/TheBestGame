@@ -1,8 +1,8 @@
 use std::{collections::HashMap, marker::PhantomData};
 
 use crate::{
-    core::*,
     interaction::{EndProximityInteractReq, StartProximityInteractReq},
+    prelude::*,
 };
 
 /// Entities with this component will be able to be moved by the given [`ControlDriver`].

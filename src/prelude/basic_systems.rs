@@ -1,4 +1,4 @@
-use crate::core::*;
+use crate::prelude::*;
 
 /// A system that handles simple translation using the velocities.
 #[derive(Clone, Copy, Debug, Default)]

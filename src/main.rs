@@ -1,47 +1,34 @@
 #![allow(dead_code)]
 
-use crate::core::*;
-use ai::{VisionField, VisionSystem};
+use crate::prelude::*;
 use camera::{map_to_screen_cords, map_to_world_cords};
 use controller::{ControlSystem, UserInputDriver};
 use effects::EffectSystem;
-use equipment::EquipmentSystem;
 use game_entities::*;
 use interaction::{
     HandInteractionSystem, InteractTarget, InteractionAcceptorSystem, InteractionDelegateSystem,
     InteractionSystem, ProximityInteractionSystem,
 };
-use item::{Item, ItemAnchorSystem, ItemPickupSystem, ItemTransferSystem};
+use item::*;
 use needs::*;
 use notan::{
     draw::{CreateDraw, DrawShapes},
     egui::EguiPluginSugar,
 };
 use physics::*;
-use projectile::{
-    ApplyOnHitSystem, GenerateProjectileReq, HitSystem, ProjectileGenerationSystem,
-    ProjectileGenerator, SuicideOnHitSystem,
-};
-use storage::{Storage, StorageSystem};
-use timed::{TimedEmitSystem, TimedRemoveSystem};
 use ui::{draw_ui, UiState};
-use vehicle::{Vehicle, VehicleSystem};
+use vehicle::*;
 
 mod ai;
 mod camera;
 mod controller;
-mod core;
 mod effects;
-mod entity_insights;
-mod equipment;
 mod game_entities;
 mod interaction;
 mod item;
 mod needs;
 mod physics;
-mod projectile;
-mod storage;
-mod timed;
+mod prelude;
 mod ui;
 mod vehicle;
 
@@ -54,7 +41,7 @@ struct AppState {
 fn setup(app: &mut notan::prelude::App) -> AppState {
     app.backend.window().set_title("TheBestGame v0");
     // Create the world from an empty state.
-    let mut world = core::World::from(core::State::default());
+    let mut world = prelude::World::from(prelude::State::default());
     // Control & movement
     world.register_system(MovementSystem);
     world.register_system(AnchorSystem);
