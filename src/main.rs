@@ -136,10 +136,16 @@ fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
         .for_each(|(e, (trans, hitbox))| {
             let is_being_interacted = state
                 .select_one::<(InteractTarget<Storage>,)>(&e)
-                .map(|(interactable,)| interactable.actors.len() > 0)
+                .map(|(intr1,)| intr1.actors.len() > 0)
+                .unwrap_or(false);
+            let is_being_viewed = state
+                .select_one::<(InteractTarget<VisionField>,)>(&e)
+                .map(|(intr1,)| intr1.actors.len() > 0)
                 .unwrap_or(false);
             let color = if is_being_interacted {
                 notan::prelude::Color::GREEN
+            } else if is_being_viewed {
+                notan::prelude::Color::MAGENTA
             } else {
                 notan::prelude::Color::RED
             };
