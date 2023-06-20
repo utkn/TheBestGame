@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use itertools::Itertools;
 
 use super::{
@@ -11,6 +13,7 @@ pub struct State {
     component_mgr: ComponentManager,
     entity_mgr: EntityManager,
     event_mgr: EventManager,
+    to_remove: HashSet<EntityRef>,
 }
 
 impl State {
@@ -31,6 +34,11 @@ impl State {
     /// Returns true if the given entity reference is valid.
     pub fn is_valid(&self, e: &EntityRef) -> bool {
         self.entity_mgr.is_valid(e)
+    }
+
+    /// Returns true if the given entity reference will be removed in the next update.
+    pub fn will_be_removed(&self, e: &EntityRef) -> bool {
+        self.to_remove.contains(e)
     }
 
     /// Returns an iterator over the emitted events of the given type in the last frame.
@@ -67,6 +75,22 @@ impl State {
         }
         self.component_mgr.select_one::<S>(e.id())
     }
+
+    /// Marks the given entity for removal.
+    pub fn mark_for_removal(&mut self, e: &EntityRef) {
+        self.to_remove.insert(*e);
+    }
+
+    /// Converts the entities marked as invalid to eager entity removals and copies them into the given `StateCommands`.
+    pub fn transfer_removals(&mut self, cmds: &mut StateCommands) {
+        self.to_remove.iter().for_each(|to_remove| {
+            cmds.remove_entity_for_sure(to_remove);
+        });
+    }
+
+    pub fn reset_removal_requests(&mut self) {
+        self.to_remove.clear()
+    }
 }
 
 pub struct StateMod(pub u8, pub Box<dyn FnOnce(&mut State)>);
@@ -74,7 +98,7 @@ pub struct StateMod(pub u8, pub Box<dyn FnOnce(&mut State)>);
 pub struct StateCommands {
     tmp_entity_mgr: EntityManager,
     tmp_event_mgr: EventManager,
-    modifications: Vec<StateMod>,
+    pub(super) modifications: Vec<StateMod>,
 }
 
 impl From<&State> for StateCommands {
@@ -159,7 +183,7 @@ impl StateCommands {
         self.modifications.push(StateMod(1, f));
     }
 
-    /// Dispatches a request to remove a component from the given entity in the next update.
+    /// Dispatches a request to remove a component from the given entity in the `next next` update.
     pub fn remove_component<T: Component>(&mut self, e: &EntityRef) {
         let e = *e;
         let f = Box::new(move |state: &mut State| {
@@ -172,8 +196,20 @@ impl StateCommands {
         self.modifications.push(StateMod(2, f));
     }
 
+    /// Dispatches a request to remove the given entity from the system in the next next update.
+    pub fn mark_for_removal(&mut self, e: &EntityRef) {
+        let e = *e;
+        let f = Box::new(move |state: &mut State| {
+            if !state.is_valid(&e) {
+                return;
+            }
+            state.mark_for_removal(&e);
+        });
+        self.modifications.push(StateMod(3, f));
+    }
+
     /// Dispatches a request to remove the given entity from the system in the next update.
-    pub fn remove_entity(&mut self, e: &EntityRef) {
+    fn remove_entity_for_sure(&mut self, e: &EntityRef) {
         let e = *e;
         let f = Box::new(move |state: &mut State| {
             if !state.is_valid(&e) {

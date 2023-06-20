@@ -117,10 +117,26 @@ impl System for AnchorSystem {
             .select::<(AnchorTransform, Transform)>()
             .for_each(|(child_entity, (anchor, _))| {
                 if !state.is_valid(&anchor.0) {
-                    cmds.remove_component::<AnchorTransform>(&child_entity)
+                    cmds.remove_component::<AnchorTransform>(&child_entity);
                 } else if let Some((parent_trans,)) = state.select_one::<(Transform,)>(&anchor.0) {
                     let new_trans = parent_trans.translated(anchor.1);
                     cmds.set_component(&child_entity, new_trans);
+                }
+            });
+    }
+}
+
+/// A system that handles position and rotation anchoring.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ExistenceDependencySystem;
+
+impl System for ExistenceDependencySystem {
+    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state
+            .select::<(ExistenceDependency,)>()
+            .for_each(|(child_entity, (dependency,))| {
+                if !state.is_valid(&dependency.0) {
+                    cmds.mark_for_removal(&child_entity);
                 }
             });
     }
@@ -135,7 +151,7 @@ impl System for LifetimeSystem {
         state.select::<(Lifetime,)>().for_each(|(e, (lifetime,))| {
             // Remove the entities with ended lifetime.
             if lifetime.remaining_time <= 0. {
-                cmds.remove_entity(&e);
+                cmds.mark_for_removal(&e);
             } else {
                 // Update the alive entities' lifetimes.
                 let dt = ctx.dt;

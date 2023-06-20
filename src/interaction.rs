@@ -213,7 +213,7 @@ impl<I: InteractionType> System for InteractionSystem<I> {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Auto invalidate interactions.
         let invalidated_interactions = Self::interactions(state)
-            .filter(|(actor, target)| !state.is_valid(actor) || !state.is_valid(target))
+            .filter(|(actor, target)| state.will_be_removed(actor) || state.will_be_removed(target))
             .collect_vec();
         invalidated_interactions
             .into_iter()
@@ -371,6 +371,13 @@ pub struct InteractionDelegateSystem;
 
 impl System for InteractionDelegateSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state
+            .select::<(InteractionDelegate,)>()
+            .for_each(|(delegee, (delegate,))| {
+                if !state.is_valid(&delegate.0) {
+                    cmds.remove_component::<InteractionDelegate>(&delegee);
+                }
+            });
         state.read_events::<TryInteractReq>().for_each(|evt| {
             if let Some((target_delegate,)) =
                 state.select_one::<(InteractionDelegate,)>(&evt.target)

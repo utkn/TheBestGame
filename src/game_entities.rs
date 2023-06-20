@@ -35,6 +35,7 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         CollisionState::default(),
         InteractionDelegate(vehicle_entity),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
+        ExistenceDependency(vehicle_entity),
     ));
     vehicle_entity
 }
@@ -87,6 +88,7 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         Interactable::<Storage>::default(),
         Storage::default(),
         AnchorTransform(chest_center, (-10., -10.)),
+        ExistenceDependency(chest_center),
     ));
     chest
 }

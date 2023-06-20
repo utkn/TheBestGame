@@ -54,11 +54,14 @@ impl World {
     /// Updates the state of the world with the registered systems.
     pub fn update_with_systems(&mut self, update_ctx: UpdateContext) {
         let mut cmds = StateCommands::from(&self.state);
+        // Take in the removals.
+        self.state.transfer_removals(&mut cmds);
         for s in &mut self.systems {
             s.update(&update_ctx, &self.state, &mut cmds);
         }
         // Systems should consume all the events.
         self.state.clear_events();
+        self.state.reset_removal_requests();
         self.state.apply_cmds(cmds)
     }
 }

@@ -87,12 +87,13 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(TimedEmitSystem::<GenerateProjectileReq>::default());
     world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
     // Riding
-    world.register_system(VehicleSystem);
+    world.register_system(VehicleSystem::default());
     world.register_system(InteractionSystem::<Vehicle>::default());
     // Misc
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());
     world.register_system(EffectSystem::<Acceleration>::default());
+    world.register_system(ExistenceDependencySystem);
     // Initialize the scene for debugging.
     world.update_with(|_, cmds| {
         create_player(Transform::at(0., 0.), cmds);

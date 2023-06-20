@@ -198,7 +198,7 @@ impl System for SuicideOnHitSystem {
         // Remove the entities that should be removed after a hit.
         state.read_events::<ProjectileHitEvt>().for_each(|evt| {
             if let Some(_) = state.select_one::<(SuicideOnHit,)>(&evt.hitter) {
-                cmds.remove_entity(&evt.hitter);
+                cmds.mark_for_removal(&evt.hitter);
             }
         });
     }
