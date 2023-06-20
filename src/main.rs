@@ -65,7 +65,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(SeparateCollisionsSystem);
     // Interactions
     world.register_system(InteractionAcceptorSystem);
-    world.register_system(ProximityInteractionSystem::default());
+    world.register_system(ProximityInteractionSystem);
     world.register_system(HandInteractionSystem);
     world.register_system(InteractionDelegateSystem);
     // Item stuff
@@ -77,7 +77,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(InteractionSystem::<Item>::default());
     world.register_system(InteractionSystem::<Storage>::default());
     // Needs
-    world.register_system(NeedsSystem::default());
+    world.register_system(NeedStateSystem::default());
     world.register_system(NeedMutatorSystem);
     // Projectiles
     world.register_system(InteractionSystem::<ProjectileGenerator>::default());

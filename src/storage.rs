@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     core::{EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, UpdateContext},
-    interaction::{interaction_exists, InteractionType, TryUninteractTargetedReq},
+    interaction::{InteractionSystem, InteractionType, TryUninteractTargetedReq},
     physics::{CollisionEndEvt, CollisionState},
 };
 
@@ -59,7 +59,7 @@ pub struct StorageSystem;
 impl System for StorageSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state.read_events::<CollisionEndEvt>().for_each(|evt| {
-            if interaction_exists::<Storage>(&evt.e1, &evt.e2, state) {
+            if InteractionSystem::<Storage>::interaction_exists(&evt.e1, &evt.e2, state) {
                 cmds.emit_event(TryUninteractTargetedReq::<Storage>::new(evt.e1, evt.e2));
             }
         });

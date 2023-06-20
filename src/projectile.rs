@@ -7,7 +7,7 @@ use crate::{
     entity_insights::EntityInsights,
     equipment::{EntityUnequippedEvt, Equipment},
     interaction::{
-        interaction_exists, Interactable, InteractionStartedEvt, InteractionType,
+        Interactable, InteractionStartedEvt, InteractionSystem, InteractionType,
         TryUninteractTargetedReq,
     },
     needs::NeedMutator,
@@ -54,8 +54,11 @@ pub struct ProjectileGenerationSystem;
 impl System for ProjectileGenerationSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state.read_events::<EntityUnequippedEvt>().for_each(|evt| {
-            if interaction_exists::<ProjectileGenerator>(&evt.equipment_entity, &evt.entity, state)
-            {
+            if InteractionSystem::<Storage>::interaction_exists(
+                &evt.equipment_entity,
+                &evt.entity,
+                state,
+            ) {
                 cmds.emit_event(TryUninteractTargetedReq::<ProjectileGenerator>::new(
                     evt.equipment_entity,
                     evt.entity,

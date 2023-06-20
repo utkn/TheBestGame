@@ -1,7 +1,7 @@
 use crate::{
     camera::CameraFollow,
     core::*,
-    effects::{Affected, Effector, EffectorTarget},
+    effects::{Affected, Effect, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
     interaction::{
         HandInteractor, Interactable, InteractionDelegate, ProximityInteractable,
@@ -175,10 +175,8 @@ pub fn create_shoes(trans: Transform, name: Name, cmds: &mut StateCommands) -> E
     cmds.set_components(
         &item,
         (
-            Effector::<MaxSpeed>::new([EffectorTarget::Equipper], |old| MaxSpeed(old.0 * 2.)),
-            Effector::<Acceleration>::new([EffectorTarget::Equipper], |old| {
-                Acceleration(old.0 * 4.)
-            }),
+            Effector::<MaxSpeed>::new([EffectorTarget::Equipper], Effect::Multiply(2.)),
+            Effector::<Acceleration>::new([EffectorTarget::Equipper], Effect::Multiply(4.)),
         ),
     );
     item

@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::HashSet, marker::PhantomData};
+use std::{any::TypeId, marker::PhantomData};
 
 use itertools::Itertools;
 use rand::random;
@@ -177,32 +177,47 @@ impl System for InteractionAcceptorSystem {
 /// A system that proposes interactions defined by `I` in response to [`TryInteractReq`]s.
 #[derive(Clone, Debug)]
 pub struct InteractionSystem<I: InteractionType> {
-    interactions: HashSet<(EntityRef, EntityRef)>,
     pd: PhantomData<I>,
 }
 
 impl<I: InteractionType> Default for InteractionSystem<I> {
     fn default() -> Self {
         Self {
-            interactions: Default::default(),
             pd: Default::default(),
         }
+    }
+}
+
+impl<I: InteractionType> InteractionSystem<I> {
+    pub fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        if let Some((intr,)) = state.select_one::<(Interactable<I>,)>(target) {
+            intr.actors.contains(actor)
+        } else {
+            false
+        }
+    }
+
+    pub fn interactions<'a>(state: &'a State) -> impl Iterator<Item = (EntityRef, EntityRef)> + 'a {
+        state
+            .select::<(Interactable<I>,)>()
+            .flat_map(|(target, (intr,))| {
+                intr.actors
+                    .iter()
+                    .map(|actor| (*actor, target))
+                    .collect_vec()
+            })
     }
 }
 
 impl<I: InteractionType> System for InteractionSystem<I> {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Auto invalidate interactions.
-        let invalidated_interactions = self
-            .interactions
-            .iter()
+        let invalidated_interactions = Self::interactions(state)
             .filter(|(actor, target)| !state.is_valid(actor) || !state.is_valid(target))
-            .cloned()
             .collect_vec();
         invalidated_interactions
             .into_iter()
             .for_each(|(actor, target)| {
-                self.interactions.remove(&(actor, target));
                 cmds.emit_event(InteractionEndedEvt::<I>::new(actor, target));
                 cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
                     interactable.actors.try_remove(&actor);
@@ -218,7 +233,7 @@ impl<I: InteractionType> System for InteractionSystem<I> {
                     .map(|evt| (evt.actor, evt.target)),
             );
         uninteract_requests.for_each(|(actor, target)| {
-            if self.interactions.remove(&(actor, target)) {
+            if Self::interaction_exists(&actor, &target, state) {
                 cmds.emit_event(InteractionEndedEvt::<I>::new(actor, target));
                 cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
                     interactable.actors.try_remove(&actor);
@@ -227,7 +242,7 @@ impl<I: InteractionType> System for InteractionSystem<I> {
         });
         // Propose interactions in response to try interaction requests.
         state.read_events::<TryInteractReq>().for_each(|evt| {
-            if !self.interactions.contains(&(evt.actor, evt.target))
+            if !Self::interaction_exists(&evt.actor, &evt.target, state)
                 && I::can_start(&evt.actor, &evt.target, state)
             {
                 // Otherwise, propose normally.
@@ -238,11 +253,10 @@ impl<I: InteractionType> System for InteractionSystem<I> {
         state
             .read_events::<InteractionAcceptedEvt>()
             .for_each(|evt| {
-                if !self.interactions.contains(&(evt.actor, evt.target))
+                if !Self::interaction_exists(&evt.actor, &evt.target, state)
                     && evt.proposer_tid == TypeId::of::<I>()
                 {
                     let (actor, target) = (evt.actor, evt.target);
-                    self.interactions.insert((actor, target));
                     cmds.emit_event(InteractionStartedEvt::<I>::new(actor, target));
                     cmds.update_component(&target, move |interactable: &mut Interactable<I>| {
                         interactable.actors.insert(actor);
@@ -261,7 +275,7 @@ pub struct ProximityInteractor;
 pub struct ProximityInteractable;
 
 /// A system that handles the entities that can interact with their surroundings.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct ProximityInteractionSystem;
 
 impl System for ProximityInteractionSystem {
@@ -364,17 +378,5 @@ impl System for InteractionDelegateSystem {
                 cmds.emit_event(TryInteractReq::new(evt.actor, target_delegate.0));
             }
         });
-    }
-}
-
-pub fn interaction_exists<I: InteractionType>(
-    actor: &EntityRef,
-    target: &EntityRef,
-    state: &State,
-) -> bool {
-    if let Some((intr,)) = state.select_one::<(Interactable<I>,)>(target) {
-        intr.actors.contains(actor)
-    } else {
-        false
     }
 }

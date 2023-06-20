@@ -5,19 +5,51 @@ use std::{
 
 use crate::{core::*, entity_insights::EntityInsights};
 
-/// An effect is simply a function that takes in a component and returns a new one.
-pub type Effect<T> = fn(T) -> T;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Effect {
+    Multiply(f32),
+    Add(f32),
+    Set(f32),
+}
+
+/// Represents a component that can be effected by an [`Effector<Self>`].
+/// Allows generating a corresponding [`Affected<Self>`] component on the same entity.
+pub trait AffectibleComponent: Component {
+    fn apply_effect(self, effect: Effect) -> Self;
+}
+
+impl AffectibleComponent for MaxSpeed {
+    fn apply_effect(mut self, effect: Effect) -> Self {
+        match effect {
+            Effect::Multiply(val) => self.0 *= val,
+            Effect::Add(val) => self.0 += val,
+            Effect::Set(val) => self.0 = val,
+        }
+        self
+    }
+}
+
+impl AffectibleComponent for Acceleration {
+    fn apply_effect(mut self, effect: Effect) -> Self {
+        match effect {
+            Effect::Multiply(val) => self.0 *= val,
+            Effect::Add(val) => self.0 += val,
+            Effect::Set(val) => self.0 = val,
+        }
+        self
+    }
+}
 
 /// A component representing another affected component.
 #[derive(Clone, Debug)]
-pub struct Affected<T: Component> {
+pub struct Affected<T: AffectibleComponent> {
     /// The initial state of the component.
     initial_state: Option<T>,
     /// The applied effects.
-    effects: VecDeque<Effect<T>>,
+    effects: VecDeque<Effect>,
 }
 
-impl<T: Component> Default for Affected<T> {
+impl<T: AffectibleComponent> Default for Affected<T> {
     fn default() -> Self {
         Self {
             initial_state: None,
@@ -26,12 +58,12 @@ impl<T: Component> Default for Affected<T> {
     }
 }
 
-impl<T: Component> Affected<T> {
+impl<T: AffectibleComponent> Affected<T> {
     /// Computes the final state of the component using the saved effects.
     pub fn final_state(&self, init: T) -> T {
         self.effects
             .iter()
-            .fold(init, |state, effect| effect(state))
+            .fold(init, |state, effect| state.apply_effect(*effect))
     }
 }
 
@@ -47,31 +79,33 @@ pub enum EffectorTarget {
 
 /// A component representing an entity that can apply effects to other entities.
 #[derive(Clone, Debug)]
-pub struct Effector<T: Component> {
-    effect: Effect<T>,
+pub struct Effector<T: AffectibleComponent> {
+    effect: Effect,
     targets: HashSet<EffectorTarget>,
+    pd: PhantomData<T>,
 }
 
-impl<T: Component> Effector<T> {
-    pub fn new(targets: impl IntoIterator<Item = EffectorTarget>, effect: Effect<T>) -> Self {
+impl<T: AffectibleComponent> Effector<T> {
+    pub fn new(targets: impl IntoIterator<Item = EffectorTarget>, effect: Effect) -> Self {
         Self {
             effect,
             targets: HashSet::from_iter(targets),
+            pd: Default::default(),
         }
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-struct ApplyEffectReq<T: Component>(EntityRef, Effect<T>);
+struct ApplyEffectReq<T: AffectibleComponent>(EntityRef, Effect, PhantomData<T>);
 
 #[derive(Clone, Copy, Debug)]
-struct UnapplyEffectReq<T: Component>(EntityRef, Effect<T>);
+struct UnapplyEffectReq<T: Component>(EntityRef, Effect, PhantomData<T>);
 
 #[derive(Clone, Copy, Debug)]
-struct EffectAppliedEvt<T: Component>(EntityRef, Effect<T>);
+struct EffectAppliedEvt<T: Component>(EntityRef, Effect, PhantomData<T>);
 
 #[derive(Clone, Copy, Debug)]
-struct EffectUnappliedEvt<T: Component>(EntityRef, Effect<T>);
+struct EffectUnappliedEvt<T: Component>(EntityRef, Effect, PhantomData<T>);
 
 /// A system that handles effects that apply to type `T`.
 #[derive(Clone, Copy, Debug)]
@@ -83,7 +117,7 @@ impl<T> Default for EffectSystem<T> {
     }
 }
 
-impl<T: Component> System for EffectSystem<T> {
+impl<T: AffectibleComponent> System for EffectSystem<T> {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Apply the effects.
         state
@@ -125,10 +159,18 @@ impl<T: Component> System for EffectSystem<T> {
                 }
                 // Emit an application/unapplication request for the targets.
                 unapply_targets.into_iter().for_each(|target| {
-                    cmds.emit_event(UnapplyEffectReq(target, effector.effect));
+                    cmds.emit_event(UnapplyEffectReq::<T>(
+                        target,
+                        effector.effect,
+                        Default::default(),
+                    ));
                 });
                 apply_targets.into_iter().for_each(|target| {
-                    cmds.emit_event(ApplyEffectReq(target, effector.effect));
+                    cmds.emit_event(ApplyEffectReq::<T>(
+                        target,
+                        effector.effect,
+                        Default::default(),
+                    ));
                 });
             });
         // Handle effect application/unapplication requests. Yes, on the same system that emits them.

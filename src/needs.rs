@@ -93,11 +93,11 @@ impl Needs {
 pub struct NeedChangeEvt(EntityRef, NeedType, NeedChange);
 
 #[derive(Clone, Debug, Default)]
-pub struct NeedsSystem {
+pub struct NeedStateSystem {
     old_state: HashMap<EntityRef, Needs>,
 }
 
-impl System for NeedsSystem {
+impl System for NeedStateSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Remove the invalidated entities from the entities for which we maintain needs.
         let invalids = self
