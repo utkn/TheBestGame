@@ -3,10 +3,7 @@ use crate::{
     core::*,
     effects::{Affected, Effect, Effector, EffectorTarget},
     equipment::{Equipment, EquipmentSlot, Equippable, SlotSelector},
-    interaction::{
-        HandInteractor, Interactable, InteractionDelegate, ProximityInteractable,
-        ProximityInteractor,
-    },
+    interaction::{HandInteractor, Interactable, InteractionDelegate, ProximityInteractable},
     item::Item,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::{CollisionState, Hitbox, HitboxType, Shape},
@@ -16,28 +13,26 @@ use crate::{
 };
 
 pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
-    let vehicle_entity = cmds.create_from((
+    let vehicle = cmds.create_from((
         trans,
         Vehicle,
         Interactable::<Vehicle>::default(),
         Velocity::default(),
         TargetVelocity::default(),
-        ProximityInteractable,
-        CollisionState::default(),
         Acceleration(2000.),
         MaxSpeed(1000.),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
     ));
     let _vehicle_door = cmds.create_from((
         Transform::default(),
-        AnchorTransform(vehicle_entity, (-10., -10.)),
+        AnchorTransform(vehicle, (-10., -10.)),
         ProximityInteractable,
         CollisionState::default(),
-        InteractionDelegate(vehicle_entity),
+        InteractionDelegate(vehicle),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
-        ExistenceDependency(vehicle_entity),
+        ExistenceDependency(vehicle),
     ));
-    vehicle_entity
+    vehicle
 }
 
 pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
@@ -67,7 +62,6 @@ pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         (
             HandInteractor,
             CameraFollow,
-            ProximityInteractor,
             Controller { default_speed: 5. },
             FaceMouse,
             Affected::<MaxSpeed>::default(),
@@ -78,17 +72,21 @@ pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
 }
 
 pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
-    let chest_center = cmds.create_from((trans, Hitbox(HitboxType::Static, Shape::Rect(20., 20.))));
     let chest = cmds.create_from((
-        Transform::default(),
+        trans,
         Name("Some random chest"),
-        Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
-        CollisionState::default(),
-        ProximityInteractable,
+        Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
         Interactable::<Storage>::default(),
         Storage::default(),
-        AnchorTransform(chest_center, (-10., -10.)),
-        ExistenceDependency(chest_center),
+    ));
+    let _chest_activator = cmds.create_from((
+        Transform::default(),
+        AnchorTransform(chest, (-10., -10.)),
+        ProximityInteractable,
+        CollisionState::default(),
+        InteractionDelegate(chest),
+        Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
+        ExistenceDependency(chest),
     ));
     chest
 }

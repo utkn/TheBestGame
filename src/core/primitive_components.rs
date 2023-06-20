@@ -1,5 +1,6 @@
 use super::EntityRef;
 
+/// Represent the transformation of an entity.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Transform {
     pub x: f32,
@@ -29,46 +30,51 @@ impl Transform {
     }
 }
 
-#[derive(Clone, Copy, Default, Debug)]
-pub struct TargetRotation {
-    pub deg: f32,
-}
-
+/// Represents the velocity of a component.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Velocity {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(Clone, Copy, Default, Debug)]
-pub struct MaxSpeed(pub f32);
-
+/// Represents the velocity that an entity wishes to achieve.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct TargetVelocity {
     pub x: f32,
     pub y: f32,
 }
 
+/// Represents the maximum speed achievable by an entity.
+#[derive(Clone, Copy, Default, Debug)]
+pub struct MaxSpeed(pub f32);
+
+/// Represents the acceleration of an entity. Used to determine the rate in which [`Velocity`] will be brought closer to [`TargetVelocity`].
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Acceleration(pub f32);
 
+/// Entities with this component will be able to be moved by user input.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Controller {
     pub default_speed: f32,
 }
 
+/// Entities with this component will always face the mouse.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct FaceMouse;
 
+/// The [`Transform`] of the entities with this component will be fixed to the [`Transform`] of the given parent with an optional offset.
 #[derive(Clone, Copy, Debug)]
 pub struct AnchorTransform(pub EntityRef, pub (f32, f32));
 
+/// Entities tagged with this component will be removed if the given parent entity is removed.
 #[derive(Clone, Copy, Debug)]
 pub struct ExistenceDependency(pub EntityRef);
 
+/// A name.
 #[derive(Clone, Copy, Debug)]
 pub struct Name(pub &'static str);
 
+/// Entities with this component will be removed after a period of time.
 #[derive(Clone, Copy, Debug)]
 pub struct Lifetime {
     pub remaining_time: f32,

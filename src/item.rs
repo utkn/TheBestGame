@@ -3,7 +3,7 @@ use crate::{
     entity_insights::{EntityInsights, EntityLocation},
     equipment::{EquipEntityReq, Equipment, Equippable, UnequipEntityReq},
     interaction::{
-        InteractionStartedEvt, InteractionType, ProximityInteractable, TryUninteractTargetedReq,
+        Interaction, InteractionStartedEvt, ProximityInteractable, TryUninteractTargetedReq,
     },
     storage::{Storage, StoreEntityReq, UnstoreEntityReq},
 };
@@ -167,7 +167,7 @@ impl System for ItemAnchorSystem {
 }
 
 /// [`Item`]s can be interacted with to pick them up.
-impl InteractionType for Item {
+impl Interaction for Item {
     fn priority() -> usize {
         100
     }

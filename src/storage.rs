@@ -2,29 +2,28 @@ use std::collections::HashSet;
 
 use crate::{
     core::{EntityRef, EntityRefBag, EntityRefSet, State, StateCommands, System, UpdateContext},
-    interaction::{InteractionSystem, InteractionType, TryUninteractTargetedReq},
-    physics::{CollisionEndEvt, CollisionState},
+    interaction::Interaction,
 };
 
+/// An entity that can store other entities.
 #[derive(Clone, Default, Debug)]
 pub struct Storage(pub EntityRefSet);
 
 impl Storage {
+    /// Returns true iff the given entity can be stored in this storage.
     pub fn can_store(&self, _: &EntityRef, _: &State) -> bool {
         true
     }
 }
 
-impl InteractionType for Storage {
+/// A [`Storage`] can act as an activation/unactivation [`Interaction`].
+impl Interaction for Storage {
     fn priority() -> usize {
         0
     }
 
-    fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        state
-            .select_one::<(CollisionState,)>(actor)
-            .map(|(actor_coll_state,)| actor_coll_state.colliding.contains(target))
-            .unwrap_or(false)
+    fn can_start(_: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        state.select_one::<(Storage,)>(target).is_some()
     }
 }
 
@@ -58,11 +57,6 @@ pub struct StorageSystem;
 
 impl System for StorageSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state.read_events::<CollisionEndEvt>().for_each(|evt| {
-            if InteractionSystem::<Storage>::interaction_exists(&evt.e1, &evt.e2, state) {
-                cmds.emit_event(TryUninteractTargetedReq::<Storage>::new(evt.e1, evt.e2));
-            }
-        });
         // Keep a set of events to emit at the end of the execution.
         let mut unstored_events = HashSet::<EntityUnstoredEvt>::new();
         let mut stored_events = HashSet::<EntityStoredEvt>::new();

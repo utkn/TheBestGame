@@ -50,11 +50,11 @@ impl SlotSelector {
     }
 }
 
-/// An entity that can be equipped by `Equipment` entities.
+/// An entity that can be equipped by [`Equipment`] entities.
 #[derive(Clone, Debug)]
 pub struct Equippable(pub SlotSelector);
 
-/// An entity that can equip `Equippable` entities.
+/// An entity that can equip [`Equippable`] entities.
 #[derive(Clone, Default, Debug)]
 pub struct Equipment(HashMap<EquipmentSlot, EntityRef>);
 

@@ -1,4 +1,7 @@
-use crate::core::*;
+use crate::{
+    core::*,
+    interaction::{EndProximityInteractReq, StartProximityInteractReq},
+};
 
 /// A system that handles simple translation using the velocities.
 #[derive(Clone, Copy, Debug, Default)]
@@ -9,6 +12,10 @@ impl System for MovementSystem {
         state
             .select::<(Transform, Velocity)>()
             .for_each(|(e, (trans, vel))| {
+                // No movement for anchored entities!
+                if let Some(_) = state.select_one::<(AnchorTransform,)>(&e) {
+                    return;
+                };
                 let (mut new_pos_x, mut new_pos_y) = (trans.x, trans.y);
                 new_pos_x += vel.x * ctx.dt;
                 new_pos_y += vel.y * ctx.dt;
@@ -26,6 +33,18 @@ pub struct ControlSystem;
 
 impl System for ControlSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        // Interaction press
+        state.select::<(Controller,)>().for_each(|(actor, _)| {
+            // Try to end the proximity interaction with explicit key press.
+            if ctx.control_map.end_interact_was_pressed {
+                cmds.emit_event(EndProximityInteractReq(actor));
+            }
+            // Try to start a proximity interaction with explicit key press.
+            if ctx.control_map.start_interact_was_pressed {
+                cmds.emit_event(StartProximityInteractReq(actor));
+            }
+        });
+        // Movement press
         state
             .select::<(Velocity, TargetVelocity, Controller)>()
             .for_each(|(e, (_, _, controller))| {

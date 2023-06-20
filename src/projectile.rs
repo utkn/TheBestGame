@@ -7,7 +7,7 @@ use crate::{
     entity_insights::EntityInsights,
     equipment::{EntityUnequippedEvt, Equipment},
     interaction::{
-        Interactable, InteractionStartedEvt, InteractionSystem, InteractionType,
+        Interactable, Interaction, InteractionStartedEvt, InteractionSystem,
         TryUninteractTargetedReq,
     },
     needs::NeedMutator,
@@ -35,7 +35,7 @@ pub struct ProjectileGenerator {
 }
 
 /// [`ProjectileGenerator`]s denote an interaction, which lets them shoot a projectile.
-impl InteractionType for ProjectileGenerator {
+impl Interaction for ProjectileGenerator {
     fn priority() -> usize {
         Storage::priority() + 10
     }

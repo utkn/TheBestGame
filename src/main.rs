@@ -10,7 +10,6 @@ use interaction::{
     InteractionSystem, ProximityInteractionSystem,
 };
 use item::{Item, ItemAnchorSystem, ItemPickupSystem, ItemTransferSystem};
-use misc_systems::*;
 use needs::*;
 use notan::{
     draw::{CreateDraw, DrawShapes},
@@ -34,7 +33,6 @@ mod equipment;
 mod game_entities;
 mod interaction;
 mod item;
-mod misc_systems;
 mod needs;
 mod physics;
 mod projectile;
@@ -86,8 +84,8 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(SuicideOnHitSystem);
     world.register_system(TimedEmitSystem::<GenerateProjectileReq>::default());
     world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
-    // Riding
-    world.register_system(VehicleSystem::default());
+    // Vehicle stuff
+    world.register_system(VehicleSystem);
     world.register_system(InteractionSystem::<Vehicle>::default());
     // Misc
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
