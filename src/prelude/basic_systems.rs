@@ -83,6 +83,7 @@ impl System for AnchorSystem {
                 if !state.is_valid(&anchor.0) {
                     cmds.remove_component::<AnchorTransform>(&child_entity);
                 } else if let Some((parent_trans,)) = state.select_one::<(Transform,)>(&anchor.0) {
+                    // Translate by the offset.
                     let new_trans = parent_trans.translated(anchor.1);
                     cmds.set_component(&child_entity, new_trans);
                 }

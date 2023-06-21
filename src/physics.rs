@@ -7,11 +7,9 @@ use crate::prelude::*;
 
 pub use collider_insights::*;
 pub use projectile::*;
-pub use vision_field::*;
 
 mod collider_insights;
 mod projectile;
-mod vision_field;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Shape {
@@ -35,9 +33,22 @@ impl HitboxType {
 #[derive(Clone, Copy, Debug)]
 pub struct Hitbox(pub HitboxType, pub Shape);
 
-#[derive(Clone, Default, Debug)]
-pub struct CollisionState {
-    pub colliding: EntityRefSet,
+impl Interaction for Hitbox {
+    fn priority() -> usize {
+        0
+    }
+
+    fn can_start_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        true
+    }
+
+    fn can_start_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        false
+    }
+
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -45,18 +56,6 @@ pub struct CollisionEvt {
     pub e1: EntityRef,
     pub e2: EntityRef,
     pub overlap: (f32, f32),
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct CollisionStartEvt {
-    pub e1: EntityRef,
-    pub e2: EntityRef,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct CollisionEndEvt {
-    pub e1: EntityRef,
-    pub e2: EntityRef,
 }
 
 /// Represents a transformed shape that can be directly checked against other `TransformedShape`s for collisions.
@@ -113,11 +112,9 @@ pub struct CollisionResponse {
     overlap: (f32, f32),
 }
 
-/// A system that detects collisions. Emits `CollisionStartEvt`, `CollisionEndEvt`, and `CollisionEvt` events.
-#[derive(Clone, Debug, Default)]
-pub struct CollisionDetectionSystem {
-    colliding_pairs: HashSet<(EntityRef, EntityRef)>,
-}
+/// A system that detects collisions. Emits `CollisionEvt` events.
+#[derive(Clone, Debug)]
+pub struct CollisionDetectionSystem;
 
 impl CollisionDetectionSystem {
     fn resolve_collision(
@@ -167,38 +164,22 @@ impl System for CollisionDetectionSystem {
             .iter()
             .flat_map(|resp| [(resp.e1, resp.e2), (resp.e2, resp.e1)])
             .collect();
-        // Detect the newly started collisions.
-        let new_collisions: HashSet<_> = colliding_pairs
-            .difference(&self.colliding_pairs)
-            .cloned()
+        let all_pairs: HashSet<_> = state
+            .select_all()
+            .collect_vec()
+            .into_iter()
+            .tuple_combinations()
+            .flat_map(|(e1, e2)| [(e1, e2), (e2, e1)])
             .collect();
-        // Detect the removed collisions.
-        let mut old_collisions: HashSet<_> = self
-            .colliding_pairs
-            .difference(&colliding_pairs)
-            .cloned()
-            .collect();
-        // Removed collisions should also contain the invalidated entities.
-        self.colliding_pairs.iter().for_each(|(e1, e2)| {
-            if !state.is_valid(e1) {
-                old_collisions.insert((*e1, *e2));
+        all_pairs.into_iter().for_each(|(e1, e2)| {
+            if colliding_pairs.contains(&(e1, e2)) {
+                cmds.emit_event(InteractReq::<Hitbox>::new(e1, e2));
+                cmds.emit_event(InteractReq::<Hitbox>::new(e2, e1));
+            } else {
+                cmds.emit_event(UninteractReq::<Hitbox>::new(e1, e2));
+                cmds.emit_event(UninteractReq::<Hitbox>::new(e2, e1));
             }
         });
-        // Emit the appropriate events & update the staet.
-        new_collisions.into_iter().for_each(|(e1, e2)| {
-            cmds.emit_event(CollisionStartEvt { e1, e2 });
-            cmds.update_component(&e1, move |c: &mut CollisionState| {
-                c.colliding.insert(e2);
-            });
-        });
-        old_collisions.into_iter().for_each(|(e1, e2)| {
-            cmds.emit_event(CollisionEndEvt { e1, e2 });
-            cmds.update_component(&e1, move |c: &mut CollisionState| {
-                c.colliding.try_remove(&e2);
-            });
-        });
-        // Update the collisions.
-        self.colliding_pairs = colliding_pairs;
     }
 }
 
@@ -211,10 +192,10 @@ impl System for SeparateCollisionsSystem {
         state
             .read_events::<CollisionEvt>()
             .filter(|evt| {
-                let anchored = state.select_one::<(AnchorTransform,)>(&evt.e1).is_some()
-                    || state
-                        .select_one::<(AnchorTransform,)>(&evt.e2)
-                        .map(|(anchor,)| anchor.0 == evt.e1)
+                let anchored = EntityInsights::of(&evt.e1, state).anchor_parent().is_some()
+                    || EntityInsights::of(&evt.e2, state)
+                        .anchor_parent()
+                        .map(|parent| parent == evt.e1)
                         .unwrap_or(false);
                 !anchored
             })

@@ -1,5 +1,9 @@
 use super::EntityRef;
 
+/// Represents a character in the game.
+#[derive(Clone, Copy, Debug)]
+pub struct Character;
+
 /// Represent the transformation of an entity.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Transform {
@@ -25,8 +29,14 @@ impl Transform {
         Transform {
             x: self.x + translation.0,
             y: self.y + translation.1,
-            deg: self.deg,
+            ..self
         }
+    }
+
+    /// Returns a unit size vector in the direction.
+    pub fn dir_vec(&self) -> (f32, f32) {
+        let (y, x) = self.deg.to_radians().sin_cos();
+        (x, -y) // y-axis is inverted!
     }
 }
 

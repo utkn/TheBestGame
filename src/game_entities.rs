@@ -1,9 +1,8 @@
 use crate::{
+    ai::*,
     camera::CameraFollow,
     controller::{Controller, UserInputDriver},
     effects::{Affected, Effect, Effector, EffectorTarget},
-    interaction::{HandInteractor, InteractTarget, InteractionDelegate, ProximityInteractable},
-    item::Item,
     item::*,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::*,
@@ -20,16 +19,20 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         TargetVelocity::default(),
         Acceleration(2000.),
         MaxSpeed(1000.),
+        Storage::default(),
+        InteractTarget::<Storage>::default(),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
+        InteractTarget::<Hitbox>::default(),
         InteractTarget::<VisionField>::default(),
     ));
+    cmds.set_components(&vehicle, (Name("vehicle"),));
     let _vehicle_door = cmds.create_from((
         Transform::default(),
         AnchorTransform(vehicle, (0., 0.)),
         ProximityInteractable,
-        CollisionState::default(),
-        InteractionDelegate(vehicle),
+        UntargetedInteractionDelegate(vehicle),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
+        InteractTarget::<Hitbox>::default(),
         ExistenceDependency(vehicle),
     ));
     vehicle
@@ -38,12 +41,13 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
 pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
     let character = cmds.create_from((
         trans,
+        Character,
         Velocity::default(),
         Acceleration(2000.),
         TargetVelocity::default(),
         MaxSpeed(300.),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
-        CollisionState::default(),
+        InteractTarget::<Hitbox>::default(),
         Storage::default(),
         Equipment::default(),
         Needs::new([
@@ -57,8 +61,8 @@ pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef
     let _character_vision_field = cmds.create_from((
         Transform::default(),
         AnchorTransform(character, (0., 0.)),
-        CollisionState::default(),
         Hitbox(HitboxType::Ghost, Shape::Circle(50.)),
+        InteractTarget::<Hitbox>::default(),
         VisionField(50.),
     ));
     character
@@ -85,6 +89,7 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         trans,
         Name("Some random chest"),
         Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
+        InteractTarget::<Hitbox>::default(),
         InteractTarget::<Storage>::default(),
         Storage::default(),
         InteractTarget::<VisionField>::default(),
@@ -93,9 +98,9 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         Transform::default(),
         AnchorTransform(chest, (0., 0.)),
         ProximityInteractable,
-        CollisionState::default(),
-        InteractionDelegate(chest),
+        UntargetedInteractionDelegate(chest),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
+        InteractTarget::<Hitbox>::default(),
         ExistenceDependency(chest),
     ));
     chest
@@ -114,7 +119,7 @@ pub fn create_item(
         ProximityInteractable,
         InteractTarget::<Item>::default(),
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
-        CollisionState::default(),
+        InteractTarget::<Hitbox>::default(),
         Equippable(slots),
         InteractTarget::<VisionField>::default(),
     ))

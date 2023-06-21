@@ -1,8 +1,6 @@
 use crate::controller::{CopyControllersReq, DeleteControllersReq};
-use crate::prelude::*;
-
-use crate::interaction::{Interaction, InteractionEndedEvt, InteractionStartedEvt};
 use crate::item::Storage;
+use crate::prelude::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vehicle;
@@ -12,8 +10,17 @@ impl Interaction for Vehicle {
         Storage::priority() + 10
     }
 
-    fn can_start(_: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
         state.select_one::<(Vehicle,)>(target).is_some()
+            && state.select_one::<(Character,)>(actor).is_some()
+    }
+
+    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        Self::can_start_targeted(actor, target, state)
+    }
+
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        true
     }
 }
 

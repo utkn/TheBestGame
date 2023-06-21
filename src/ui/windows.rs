@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use notan::egui;
 
-use crate::interaction::InteractTarget;
+use crate::camera::map_to_screen_cords;
+use crate::camera::map_to_world_cords;
 use crate::item::ItemLocation;
 use crate::item::Storage;
 use crate::prelude::*;
@@ -93,6 +94,8 @@ impl Window for StorageWindow {
         ui_cmds: &mut StateCommands,
         ui_state: &mut UiState,
     ) {
+        let screen_width = ctx.input().screen_rect().width();
+        let screen_height = ctx.input().screen_rect().height();
         let window_width = 140.;
         let is_player_storage = game_state
             .select_one::<(FaceMouse,)>(&self.storage_entity)
@@ -102,29 +105,16 @@ impl Window for StorageWindow {
             .collapsible(false)
             .default_width(window_width)
             .resizable(false);
-        // Get the active storages, i.e., the storages that are being interacted by this storage.
-        let active_storages = game_state
-            .select::<(InteractTarget<Storage>, Transform)>()
-            .filter(|(_, (intr, _))| intr.actors.contains(&self.storage_entity))
-            .collect_vec();
-        // Calculate the position through them.
-        let position_with_active_storage = active_storages
-            .into_iter()
-            .map(|(_, (_, trans))| ((trans.x + window_width).ceil() as i32, trans.y))
-            .max_by_key(|(x, _)| *x);
         // Handle alignment & positioning.
         if is_player_storage {
-            if let Some((x, y)) = position_with_active_storage {
-                win = win.fixed_pos((x as f32 + 30., y + 10.));
-            } else {
-                win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 270.));
-            }
+            win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 270.));
         } else {
-            let storage_pos = game_state
+            let (x, y) = game_state
                 .select_one::<(Transform,)>(&self.storage_entity)
-                .map(|(pos,)| *pos)
+                .map(|(pos,)| (pos.x, pos.y))
+                .map(|(x, y)| map_to_screen_cords(x, y, screen_width, screen_height, game_state))
                 .unwrap_or_default();
-            win = win.fixed_pos((storage_pos.x + 10., storage_pos.y + 10.));
+            win = win.current_pos((x + 10., y + 10.));
         }
         win.show(ctx, |ui| {
             ui.set_width(ui.available_width());

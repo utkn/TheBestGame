@@ -1,21 +1,19 @@
 #![allow(dead_code)]
 
-use crate::prelude::*;
-use camera::{map_to_screen_cords, map_to_world_cords};
-use controller::{ControlSystem, UserInputDriver};
-use effects::EffectSystem;
-use game_entities::*;
-use interaction::{
-    HandInteractionSystem, InteractTarget, InteractionAcceptorSystem, InteractionDelegateSystem,
-    InteractionSystem, ProximityInteractionSystem,
-};
-use item::*;
-use needs::*;
 use notan::{
     draw::{CreateDraw, DrawShapes},
     egui::EguiPluginSugar,
 };
+
+use ai::*;
+use camera::{map_to_screen_cords, map_to_world_cords};
+use controller::{ControlSystem, UserInputDriver};
+use effects::EffectSystem;
+use game_entities::*;
+use item::*;
+use needs::*;
 use physics::*;
+use prelude::*;
 use ui::{draw_ui, UiState};
 use vehicle::*;
 
@@ -24,7 +22,6 @@ mod camera;
 mod controller;
 mod effects;
 mod game_entities;
-mod interaction;
 mod item;
 mod needs;
 mod physics;
@@ -49,14 +46,18 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(LifetimeSystem);
     world.register_system(ApproachVelocitySystem);
     world.register_system(FaceMouseSystem);
-    // Basic physics
-    world.register_system(CollisionDetectionSystem::default());
-    world.register_system(SeparateCollisionsSystem);
     // Interactions
-    world.register_system(InteractionAcceptorSystem);
+    world.register_system(InteractionAcceptorSystem(
+        ConsensusStrategy::MaxPriority,
+        ConsensusStrategy::MinPriority,
+    ));
     world.register_system(ProximityInteractionSystem);
     world.register_system(HandInteractionSystem);
-    world.register_system(InteractionDelegateSystem);
+    world.register_system(UntargetedInteractionDelegateSystem);
+    // Basic physics
+    world.register_system(CollisionDetectionSystem);
+    world.register_system(SeparateCollisionsSystem);
+    world.register_system(InteractionSystem::<Hitbox>::default());
     // Item stuff
     world.register_system(StorageSystem);
     world.register_system(EquipmentSystem);
@@ -137,9 +138,12 @@ fn draw_game(rnd: &mut notan::draw::Draw, state: &State) {
                 notan::prelude::Color::RED
             };
             let (x, y) = map_to_screen_cords(trans.x, trans.y, rnd.width(), rnd.height(), state);
+            let (dir_x, dir_y) = trans.dir_vec();
             rnd.circle(1.)
                 .position(x, y)
                 .fill_color(notan::prelude::Color::BLUE);
+            rnd.line((x, y), (x + dir_x * 5., y + dir_y * 5.))
+                .color(notan::prelude::Color::BLUE);
             match hitbox.1 {
                 Shape::Circle(r) => {
                     rnd.circle(r).position(x, y).stroke(1.).stroke_color(color);

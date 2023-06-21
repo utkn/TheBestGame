@@ -19,10 +19,6 @@ impl EntityRef {
     }
 }
 
-/// A group of entities.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct EntityGroup(Vec<EntityRef>);
-
 /// A storage type that contains entity references that could be invalidated at any time.
 pub trait EntityRefBag {
     /// Removes the invalidated entities from this storage.

@@ -2,12 +2,7 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
-use crate::{
-    interaction::{InteractTarget, Interaction, TryInteractTargetedReq, TryUninteractTargetedReq},
-    prelude::*,
-};
-
-use super::{CollisionEndEvt, CollisionState, EffectiveHitbox, Hitbox};
+use crate::{physics::*, prelude::*};
 
 /// Entities tagged with this component will initiate interactions with the entities that collide and are visible from the position of this entity.
 #[derive(Clone, Copy, Debug)]
@@ -18,8 +13,19 @@ impl Interaction for VisionField {
         0
     }
 
-    fn can_start(actor: &EntityRef, _target: &EntityRef, state: &State) -> bool {
-        state.select_one::<(VisionField,)>(actor).is_some()
+    /// Returns true. Can only be started explicitly by targeted requests.
+    fn can_start_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        true
+    }
+
+    /// Returns false. Can only be started explicitly by targeted requests.
+    fn can_start_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        false
+    }
+
+    /// Can only be ended explicitly by targeted requests.
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        false
     }
 }
 
@@ -28,35 +34,37 @@ pub struct VisionSystem;
 
 impl System for VisionSystem {
     fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state.read_events::<CollisionEndEvt>().for_each(|evt| {
-            if let Some(_) = state.select_one::<(VisionField,)>(&evt.e1) {
-                cmds.emit_event(TryUninteractTargetedReq::<VisionField>::new(evt.e1, evt.e2));
-            }
+        state.select::<(VisionField,)>().for_each(|(e, _)| {
+            EntityInsights::of(&e, state)
+                .new_collision_enders()
+                .into_iter()
+                .for_each(|target| {
+                    cmds.emit_event(UninteractReq::<VisionField>::new(e, target));
+                });
         });
-        state
-            .select::<(VisionField, CollisionState, Transform)>()
-            .for_each(|(vision_field, (_, coll_state, ref_trans))| {
+        state.select::<(VisionField, Transform)>().for_each(
+            |(vision_field_entity, (_, ref_trans))| {
                 let ref_pos = notan::math::vec2(ref_trans.x, ref_trans.y);
-                let vf_anchor_parent = state
-                    .select_one::<(AnchorTransform,)>(&vision_field)
-                    .map(|(anchor,)| anchor.0);
-                let colliding_entities: HashSet<_> = coll_state
-                    .colliding
-                    .iter()
-                    // Do not consider the anchor parent in the vision.
-                    .filter(|colliding_e| {
-                        let is_anchor_parent = vf_anchor_parent
-                            .map(|anchor_parent| anchor_parent == **colliding_e)
-                            .unwrap_or(false);
-                        !is_anchor_parent
-                    })
-                    .filter(|colliding_e| {
-                        state
-                            .select_one::<(InteractTarget<VisionField>,)>(colliding_e)
-                            .is_some()
-                    })
-                    .cloned()
-                    .collect();
+                let vf_anchor_parent =
+                    EntityInsights::of(&vision_field_entity, state).anchor_parent();
+                let colliding_entities: HashSet<_> =
+                    EntityInsights::of(&vision_field_entity, state)
+                        .contacts()
+                        .iter()
+                        // Do not consider the anchor parent in the vision.
+                        .filter(|colliding_e| {
+                            let is_anchor_parent = vf_anchor_parent
+                                .map(|anchor_parent| anchor_parent == **colliding_e)
+                                .unwrap_or(false);
+                            !is_anchor_parent
+                        })
+                        .filter(|colliding_e| {
+                            state
+                                .select_one::<(InteractTarget<VisionField>,)>(colliding_e)
+                                .is_some()
+                        })
+                        .cloned()
+                        .collect();
                 let colliding_hitboxes = colliding_entities
                     .iter()
                     .filter_map(|colliding_e| {
@@ -104,17 +112,18 @@ impl System for VisionSystem {
                     .cloned()
                     .collect();
                 unobstructed_entities.into_iter().for_each(|vision_target| {
-                    cmds.emit_event(TryInteractTargetedReq::<VisionField>::new(
-                        vision_field,
+                    cmds.emit_event(InteractReq::<VisionField>::new(
+                        vision_field_entity,
                         vision_target,
                     ))
                 });
                 obstructed_entities.into_iter().for_each(|vision_target| {
-                    cmds.emit_event(TryUninteractTargetedReq::<VisionField>::new(
-                        vision_field,
+                    cmds.emit_event(UninteractReq::<VisionField>::new(
+                        vision_field_entity,
                         vision_target,
                     ))
                 })
-            });
+            },
+        );
     }
 }

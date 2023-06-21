@@ -4,9 +4,8 @@ use itertools::Itertools;
 use notan::egui;
 
 use crate::{
-    interaction::InteractTarget,
     item::{ItemTransferReq, Storage},
-    prelude::{EntityRef, EntityRefBag, Name, State, StateCommands},
+    prelude::*,
 };
 
 mod ui_state;

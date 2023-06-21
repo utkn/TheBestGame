@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use crate::{interaction::Interaction, prelude::*};
+use crate::prelude::*;
+
+use super::{Item, ItemInsights, ItemLocation};
 
 /// An entity that can store other entities.
 #[derive(Clone, Default, Debug)]
@@ -8,7 +10,7 @@ pub struct Storage(pub EntityRefSet);
 
 impl Storage {
     /// Returns true iff the given entity can be stored in this storage.
-    pub fn can_store(&self, _: &EntityRef, _: &State) -> bool {
+    pub fn can_store(&self, _: &Item) -> bool {
         true
     }
 }
@@ -16,11 +18,21 @@ impl Storage {
 /// A [`Storage`] can act as an activation/unactivation [`Interaction`].
 impl Interaction for Storage {
     fn priority() -> usize {
-        0
+        50
     }
 
-    fn can_start(_: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
         state.select_one::<(Storage,)>(target).is_some()
+            && state.select_one::<(Character,)>(actor).is_some()
+    }
+
+    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        Self::can_start_targeted(actor, target, state)
+            && EntityInsights::of(target, state).location() == ItemLocation::Ground
+    }
+
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        true
     }
 }
 

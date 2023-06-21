@@ -1,12 +1,6 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-use crate::{
-    interaction::{
-        EndProximityInteractReq, HandInteractReq, HandSide, HandUninteractReq,
-        StartProximityInteractReq,
-    },
-    prelude::*,
-};
+use crate::prelude::*;
 
 /// Entities with this component will be able to be moved by the given [`ControlDriver`].
 #[derive(Clone, Debug)]
@@ -14,6 +8,7 @@ pub struct Controller<D: ControlDriver>(pub D);
 
 /// A command that can be emitted by a [`ControlDriver`].
 pub enum ControlCommand {
+    SetRotation(f32),
     SetTargetVelocity(TargetVelocity),
     ProximityInteract,
     ProximityUninteract,
@@ -149,6 +144,11 @@ impl<D: ControlDriver> System for ControlSystem<D> {
                     .for_each(|cmd| match cmd {
                         ControlCommand::SetTargetVelocity(vel) => {
                             cmds.set_component::<TargetVelocity>(&actor, vel)
+                        }
+                        ControlCommand::SetRotation(deg) => {
+                            cmds.update_component(&actor, move |trans: &mut Transform| {
+                                trans.deg = deg
+                            });
                         }
                         ControlCommand::ProximityInteract => {
                             cmds.emit_event(StartProximityInteractReq(actor))

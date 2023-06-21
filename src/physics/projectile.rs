@@ -1,11 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::{
-    interaction::{
-        InteractTarget, Interaction, InteractionStartedEvt, InteractionSystem,
-        TryUninteractTargetedReq,
-    },
-    item::{EntityUnequippedEvt, Equipment, Storage},
+    item::{EntityUnequippedEvt, EquipmentInsights, Storage},
     needs::NeedMutator,
     physics::*,
 };
@@ -34,12 +30,17 @@ impl Interaction for ProjectileGenerator {
         Storage::priority() + 10
     }
 
-    fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        // A [`ProjectileGenerator`] can be interacted with iff they are being equipped.
-        state
-            .select_one::<(Equipment,)>(actor)
-            .map(|(actor_equipment,)| actor_equipment.contains(target))
-            .unwrap_or(false)
+    fn can_start_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        true
+    }
+
+    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        EntityInsights::of(actor, state).is_equipping(target)
+            && state.select_one::<(Character,)>(actor).is_some()
+    }
+
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        true
     }
 }
 
@@ -60,7 +61,7 @@ impl System for ProjectileGenerationSystem {
                 &evt.entity,
                 state,
             ) {
-                cmds.emit_event(TryUninteractTargetedReq::<ProjectileGenerator>::new(
+                cmds.emit_event(UninteractReq::<ProjectileGenerator>::new(
                     evt.equipment_entity,
                     evt.entity,
                 ));
@@ -95,9 +96,9 @@ impl System for ProjectileGenerationSystem {
                 } else {
                     0.
                 };
-                let angles = trans.deg + rand_spread;
-                let mut dir = notan::math::Vec2::from_angle(angles.to_radians());
-                dir.y = -dir.y; // y axis is inverted!
+                let new_trans = trans.with_deg(trans.deg + rand_spread);
+                let dir = new_trans.dir_vec();
+                let dir = notan::math::vec2(dir.0, dir.1);
                 let new_pos = notan::math::vec2(trans.x, trans.y) + dir * 20.;
                 let mut new_trans = *trans;
                 new_trans.x = new_pos.x;
@@ -118,6 +119,7 @@ impl System for ProjectileGenerationSystem {
                         remaining_time: p_gen.proj.lifetime,
                     },
                     Hitbox(HitboxType::Ghost, Shape::Circle(5.)),
+                    InteractTarget::<Hitbox>::default(),
                     // Do not hit the anchor parent.
                     Hitter::new(friendly_entities),
                     SuicideOnHit,

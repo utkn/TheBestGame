@@ -1,10 +1,4 @@
-use crate::{
-    interaction::{
-        Interaction, InteractionStartedEvt, ProximityInteractable, TryUninteractTargetedReq,
-    },
-    physics::ColliderInsights,
-    prelude::*,
-};
+use crate::{physics::*, prelude::*};
 
 pub use equipment::*;
 pub use item_insights::*;
@@ -145,7 +139,7 @@ impl System for ItemTransferSystem {
 pub struct ItemAnchorSystem;
 
 impl System for ItemAnchorSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+    fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Handle transfer from equipment/storage.
         state
             .read_events::<ItemTransferEvt>()
@@ -157,6 +151,7 @@ impl System for ItemAnchorSystem {
             .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
             .for_each(|(item, _)| {
                 cmds.remove_component::<AnchorTransform>(&item);
+                cmds.set_component(&item, Hitbox(HitboxType::Ghost, Shape::Circle(10.)));
             });
         // Handle transfer to equipment/storage.
         state
@@ -168,6 +163,7 @@ impl System for ItemAnchorSystem {
             })
             .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
             .for_each(|(item, actor)| {
+                cmds.remove_component::<Hitbox>(&item);
                 cmds.set_components(
                     &item,
                     (Transform::default(), AnchorTransform(actor, (0., 0.))),
@@ -182,22 +178,20 @@ impl Interaction for Item {
         100
     }
 
-    fn can_start(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
         let target_insights = EntityInsights::of(target, state);
-        if target_insights.location() != ItemLocation::Ground {
-            return false;
-        }
-        if !target_insights.contacts().contains(actor) {
-            return false;
-        }
-        if state.select_one::<(Item,)>(target).is_none() {
-            return false;
-        }
-        if let Some((actor_storage,)) = state.select_one::<(Storage,)>(actor) {
-            actor_storage.can_store(target, state)
-        } else {
-            false
-        }
+        target_insights.is_item()
+            && target_insights.location() == ItemLocation::Ground
+            && state.select_one::<(Character,)>(actor).is_some()
+            && EntityInsights::of(actor, state).can_store(target)
+    }
+
+    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        Self::can_start_targeted(actor, target, state)
+    }
+
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        true
     }
 }
 
@@ -229,7 +223,7 @@ impl System for ItemPickupSystem {
                 cmds.emit_event(ItemTransferReq::pick_up(evt.target, evt.actor));
                 cmds.remove_component::<ProximityInteractable>(&evt.target);
                 // Stop the interaction immediately.
-                cmds.emit_event(TryUninteractTargetedReq::<Item>::new(evt.actor, evt.target));
+                cmds.emit_event(UninteractReq::<Item>::new(evt.actor, evt.target));
             });
     }
 }

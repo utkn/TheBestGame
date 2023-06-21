@@ -3,6 +3,12 @@ use crate::{
     prelude::*,
 };
 
+pub use vision_field::*;
+pub use vision_insights::*;
+
+mod vision_field;
+mod vision_insights;
+
 #[derive(Clone, Copy, Debug)]
 pub struct AiDriver;
 
