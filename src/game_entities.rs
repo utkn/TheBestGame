@@ -25,7 +25,14 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         InteractTarget::<Hitbox>::default(),
         InteractTarget::<VisionField>::default(),
     ));
-    cmds.set_components(&vehicle, (Name("vehicle"),));
+    cmds.set_components(
+        &vehicle,
+        (
+            Name("vehicle"),
+            Equipment::new([EquipmentSlot::VehicleGas, EquipmentSlot::VehicleModule]),
+            InteractTarget::<Equipment>::default(),
+        ),
+    );
     let _vehicle_door = cmds.create_from((
         Transform::default(),
         AnchorTransform(vehicle, (0., 0.)),

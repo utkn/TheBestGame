@@ -1,10 +1,7 @@
-use itertools::Itertools;
 use notan::egui;
 
 use crate::camera::map_to_screen_cords;
-use crate::camera::map_to_world_cords;
 use crate::item::ItemLocation;
-use crate::item::Storage;
 use crate::prelude::*;
 
 use super::widgets::*;
@@ -39,15 +36,18 @@ pub trait Window {
     );
 }
 
-pub(super) struct EquipmentWindow(pub(super) EntityRef);
+pub(super) struct EquipmentWindow {
+    pub(super) title: &'static str,
+    pub(super) equipment_entity: EntityRef,
+}
 
 impl Window for EquipmentWindow {
     fn window_id(&self) -> egui::Id {
-        format!("EquipmentWindow[{:?}]", self.0).into()
+        format!("EquipmentWindow[{:?}]", self.equipment_entity).into()
     }
 
     fn window_type(&self) -> WindowType {
-        WindowType::Equipment(self.0)
+        WindowType::Equipment(self.equipment_entity)
     }
 
     fn add_into(
@@ -57,19 +57,37 @@ impl Window for EquipmentWindow {
         ui_cmds: &mut StateCommands,
         ui_state: &mut UiState,
     ) {
-        egui::Window::new("Equipment")
+        let screen_width = ctx.input().screen_rect().width();
+        let screen_height = ctx.input().screen_rect().height();
+        let window_width = 140.;
+        let is_player_storage = game_state
+            .select_one::<(FaceMouse,)>(&self.equipment_entity)
+            .is_some();
+        let mut win = egui::Window::new(self.title)
             .id(self.window_id())
-            .anchor(egui::Align2::RIGHT_TOP, (-10., 120.))
             .collapsible(false)
-            .title_bar(false)
-            .fixed_size((140., 90.))
-            .resizable(false)
-            // .frame(egui::Frame::none())
-            .show(ctx, |ui| {
-                ui.set_width(ui.available_width());
-                ui.set_height(ui.available_height());
-                ui.add(EquipmentWidget(&self.0, game_state, ui_cmds, ui_state));
-            });
+            .default_width(window_width)
+            .resizable(false);
+        // Handle alignment & positioning.
+        if is_player_storage {
+            win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 120.));
+        } else {
+            let (x, y) = game_state
+                .select_one::<(Transform,)>(&self.equipment_entity)
+                .map(|(pos,)| (pos.x, pos.y))
+                .map(|(x, y)| map_to_screen_cords(x, y, screen_width, screen_height, game_state))
+                .unwrap_or_default();
+            win = win.current_pos((x + 10., y + 10.));
+        }
+        win.show(ctx, |ui| {
+            ui.set_width(ui.available_width());
+            ui.add(EquipmentWidget(
+                &self.equipment_entity,
+                game_state,
+                ui_cmds,
+                ui_state,
+            ));
+        });
     }
 }
 
@@ -107,14 +125,14 @@ impl Window for StorageWindow {
             .resizable(false);
         // Handle alignment & positioning.
         if is_player_storage {
-            win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 270.));
+            win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 400.));
         } else {
             let (x, y) = game_state
                 .select_one::<(Transform,)>(&self.storage_entity)
                 .map(|(pos,)| (pos.x, pos.y))
                 .map(|(x, y)| map_to_screen_cords(x, y, screen_width, screen_height, game_state))
                 .unwrap_or_default();
-            win = win.current_pos((x + 10., y + 10.));
+            win = win.current_pos((x + 10., y + 120.));
         }
         win.show(ctx, |ui| {
             ui.set_width(ui.available_width());

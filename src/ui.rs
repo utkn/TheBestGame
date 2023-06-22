@@ -4,7 +4,7 @@ use itertools::Itertools;
 use notan::egui;
 
 use crate::{
-    item::{ItemTransferReq, Storage},
+    item::{Equipment, ItemTransferReq, Storage},
     prelude::*,
 };
 
@@ -28,13 +28,20 @@ impl<'a> UiBuilder<'a> {
     fn build(&mut self, game_state: &'a State) -> HashMap<egui::Id, WindowType> {
         let player_entity = EntityRef::new(0, 0);
         self.add_window(NeedsWindow(player_entity));
-        self.add_window(EquipmentWindow(player_entity));
+        self.add_window(EquipmentWindow {
+            title: "Equipment",
+            equipment_entity: player_entity,
+        });
         self.add_window(StorageWindow {
             title: "Backpack",
             storage_entity: player_entity,
         });
         let active_storages = game_state
             .select::<(Storage, InteractTarget<Storage>)>()
+            .filter(|(_, (_, intr))| intr.actors.contains(&player_entity))
+            .collect_vec();
+        let active_equipments = game_state
+            .select::<(Equipment, InteractTarget<Equipment>)>()
             .filter(|(_, (_, intr))| intr.actors.contains(&player_entity))
             .collect_vec();
         for (storage_entity, _) in active_storages {
@@ -45,6 +52,16 @@ impl<'a> UiBuilder<'a> {
             self.add_window(StorageWindow {
                 title: storage_name,
                 storage_entity,
+            });
+        }
+        for (equipment_entity, _) in active_equipments {
+            let storage_name = game_state
+                .select_one::<(Name,)>(&equipment_entity)
+                .map(|(name,)| name.0)
+                .unwrap_or("unnamed");
+            self.add_window(EquipmentWindow {
+                title: storage_name,
+                equipment_entity,
             });
         }
         self.windows

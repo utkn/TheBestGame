@@ -71,42 +71,23 @@ pub(super) struct EquipmentWidget<'a>(
 
 impl<'a> egui::Widget for EquipmentWidget<'a> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let equipment_grid = [
-            [None, Some(EquipmentSlot::Head), None],
-            [
-                Some(EquipmentSlot::LeftHand),
-                Some(EquipmentSlot::Torso),
-                Some(EquipmentSlot::RightHand),
-            ],
-            [
-                Some(EquipmentSlot::Legs),
-                Some(EquipmentSlot::Backpack),
-                None,
-            ],
-            [None, Some(EquipmentSlot::Feet), None],
-        ];
         egui::Grid::new(format!("Equipment[{:?}]", self.0))
             .show(ui, |ui| {
                 if let Some((equipment,)) = self.1.select_one::<(Equipment,)>(self.0) {
-                    for slots_row in equipment_grid {
-                        for opt_slot in slots_row {
-                            if let Some(slot) = opt_slot {
-                                let item_in_slot = equipment
-                                    .get_item_stack(&slot)
-                                    .and_then(|item_stack| item_stack.head_item());
-                                ui.add(EquipmentSlotWidget(
-                                    slot,
-                                    item_in_slot,
-                                    self.1,
-                                    self.2,
-                                    self.3,
-                                ));
-                            } else {
-                                ui.label("");
-                            }
-                        }
-                        ui.end_row();
-                    }
+                    equipment
+                        .slots()
+                        .map(|(slot, stack)| (slot, stack.and_then(|stack| stack.head_item())))
+                        .for_each(|(slot, item_in_slot)| {
+                            ui.label(format!("{:?}", slot));
+                            ui.add(EquipmentSlotWidget(
+                                *slot,
+                                item_in_slot,
+                                self.1,
+                                self.2,
+                                self.3,
+                            ));
+                            ui.end_row();
+                        })
                 }
             })
             .response

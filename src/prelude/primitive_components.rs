@@ -75,7 +75,7 @@ pub struct AnchorTransform(pub EntityRef, pub (f32, f32));
 pub struct ExistenceDependency(pub EntityRef);
 
 /// A name.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Name(pub &'static str);
 
 /// Entities with this component will be removed after a period of time.

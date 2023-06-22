@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::prelude::{EntityInsights, EntityRef, EntityRefBag};
 
 use super::{
-    Equipment, Equippable, Item, ItemEquippedEvt, ItemLocation, ItemStoredEvt, ItemUnequippedEvt,
+    Equipment, Item, ItemEquippedEvt, ItemLocation, ItemStoredEvt, ItemUnequippedEvt,
     ItemUnstoredEvt, Storage,
 };
 

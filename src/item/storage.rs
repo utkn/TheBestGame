@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::prelude::*;
 
-use super::{ItemInsights, ItemLocation, ItemStack};
+use super::{ItemDescription, ItemInsights, ItemLocation, ItemStack};
 
 /// An entity that can store other entities.
 #[derive(Clone, Debug)]
@@ -42,6 +42,19 @@ impl Storage {
             .iter()
             .find_position(|item_stack| item_stack.contains(item_entity))
             .map(|(idx, _)| idx)
+    }
+
+    pub fn content_description<'a>(&'a self, state: &'a State) -> Vec<ItemDescription<'a>> {
+        self.stacks
+            .iter()
+            .filter_map(|item_stack| {
+                if let Some(desc) = item_stack.head_item_description(state) {
+                    Some(desc)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 

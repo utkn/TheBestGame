@@ -66,6 +66,7 @@ fn setup(app: &mut notan::prelude::App) -> AppState {
     world.register_system(ItemPickupSystem);
     world.register_system(InteractionSystem::<Item>::default());
     world.register_system(InteractionSystem::<Storage>::default());
+    world.register_system(InteractionSystem::<Equipment>::default());
     // Needs
     world.register_system(NeedStateSystem::default());
     world.register_system(NeedMutatorSystem);

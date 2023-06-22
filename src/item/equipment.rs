@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::prelude::*;
 
-use super::{ItemDescription, ItemStack};
+use super::{ItemDescription, ItemInsights, ItemLocation, ItemStack, Storage};
 
 /// Represent a slot in the equipment.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -60,7 +60,6 @@ impl SlotSelector {
             })?;
             chosen_slots.insert(*chosen_slot);
         }
-        println!("{:?}", chosen_slots);
         Some(chosen_slots)
     }
 }
@@ -84,13 +83,25 @@ impl Equipment {
         }
     }
 
+    pub fn slots(&self) -> impl Iterator<Item = (&EquipmentSlot, Option<&ItemStack>)> {
+        self.accepting_slots
+            .iter()
+            .map(|eq_slot| (eq_slot, self.get_item_stack(eq_slot)))
+    }
+
     pub fn content_description<'a>(
         &'a self,
         state: &'a State,
     ) -> HashMap<EquipmentSlot, ItemDescription<'a>> {
         self.occupied_slots
             .iter()
-            .map(|(k, v)| (*k, v.head_item_description(state).unwrap()))
+            .filter_map(|(eq_slot, item_stack)| {
+                if let Some(desc) = item_stack.head_item_description(state) {
+                    Some((*eq_slot, desc))
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 
@@ -165,6 +176,27 @@ impl EntityRefBag for Equipment {
             item_stack.try_remove(e);
         });
         old_size != self.len()
+    }
+}
+
+/// An [`Equipment`] can act as an activation/unactivation [`Interaction`].
+impl Interaction for Equipment {
+    fn priority() -> usize {
+        Storage::priority()
+    }
+
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        state.select_one::<(Equipment,)>(target).is_some()
+            && state.select_one::<(Character,)>(actor).is_some()
+    }
+
+    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        Self::can_start_targeted(actor, target, state)
+            && EntityInsights::of(target, state).location() == ItemLocation::Ground
+    }
+
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+        true
     }
 }
 
