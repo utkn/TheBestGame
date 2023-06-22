@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use crate::prelude::{EntityInsights, EntityRef, EntityRefBag};
 
 use super::{
-    Equipment, Item, ItemEquippedEvt, ItemLocation, ItemStoredEvt, ItemUnequippedEvt,
-    ItemUnstoredEvt, Storage,
+    Equipment, EquipmentSlot, Item, ItemEquippedEvt, ItemLocation, ItemStoredEvt,
+    ItemUnequippedEvt, ItemUnstoredEvt, Storage,
 };
 
 /// Provides insights about an entity that could be possibly be an item.
@@ -21,6 +21,12 @@ pub trait ItemInsights {
     fn new_equippers(&self) -> HashSet<EntityRef>;
     /// Returns the set of entities that unequipped this item in the last update.
     fn new_unequippers(&self) -> HashSet<EntityRef>;
+    /// Returns the storer of this item entity.
+    fn storer(&self) -> Option<EntityRef>;
+    /// Returns the equipper of this item entity.
+    fn equipper(&self) -> Option<EntityRef>;
+    /// Returns the slots that this item entity is equipped in.
+    fn equipped_slots(&self) -> Option<HashSet<EquipmentSlot>>;
 }
 
 impl<'a> ItemInsights for EntityInsights<'a> {
@@ -76,6 +82,27 @@ impl<'a> ItemInsights for EntityInsights<'a> {
             .filter(|evt| &evt.entity == self.0)
             .map(|evt| evt.equipment_entity)
             .collect()
+    }
+
+    fn storer(&self) -> Option<EntityRef> {
+        self.1
+            .select::<(Storage,)>()
+            .find(|(_, (storage,))| storage.contains(self.0))
+            .map(|(e, _)| e)
+    }
+
+    fn equipper(&self) -> Option<EntityRef> {
+        self.1
+            .select::<(Equipment,)>()
+            .find(|(_, (equipment,))| equipment.contains(self.0))
+            .map(|(e, _)| e)
+    }
+
+    fn equipped_slots(&self) -> Option<HashSet<EquipmentSlot>> {
+        self.1
+            .select::<(Equipment,)>()
+            .find(|(_, (equipment,))| equipment.contains(self.0))
+            .and_then(|(_, (equipment,))| equipment.get_containing_slots(self.0))
     }
 }
 
