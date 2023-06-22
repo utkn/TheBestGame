@@ -24,7 +24,7 @@ pub trait EntityRefBag {
     /// Removes the invalidated entities from this storage.
     fn remove_invalids(&mut self, validity_set: &EntityValiditySet) -> HashSet<EntityRef> {
         let invalids = self.get_invalids(validity_set);
-        self.try_remove_all(invalids)
+        self.try_remove_all(&invalids)
     }
     /// Returns the size of the storage.
     fn len(&self) -> usize;
@@ -33,7 +33,7 @@ pub trait EntityRefBag {
     /// Returns true if the given entity is stored in this storage.
     fn contains(&self, e: &EntityRef) -> bool;
     /// Tries to remove all the given entities. Returns the set of entities that were actually removed.
-    fn try_remove_all(&mut self, entities: HashSet<EntityRef>) -> HashSet<EntityRef>;
+    fn try_remove_all(&mut self, entities: &HashSet<EntityRef>) -> HashSet<EntityRef>;
     /// Tries to remove the given entity. Returns true if the removal was successful.
     fn try_remove(&mut self, e: &EntityRef) -> bool;
 }
@@ -73,7 +73,7 @@ impl EntityRefBag for EntityRefSet {
         self.0.remove(e)
     }
 
-    fn try_remove_all(&mut self, entities: HashSet<EntityRef>) -> HashSet<EntityRef> {
+    fn try_remove_all(&mut self, entities: &HashSet<EntityRef>) -> HashSet<EntityRef> {
         let to_remove: HashSet<_> = self
             .0
             .iter()

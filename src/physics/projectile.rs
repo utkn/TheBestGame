@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::{
-    item::{EntityUnequippedEvt, EquipmentInsights, Storage},
+    item::{EquipmentInsights, ItemUnequippedEvt, Storage},
     needs::NeedMutator,
     physics::*,
 };
@@ -22,6 +22,7 @@ pub struct ProjectileDefn {
 pub struct ProjectileGenerator {
     pub proj: ProjectileDefn,
     pub cooldown: Option<f32>,
+    pub knockback: Option<f32>,
 }
 
 /// [`ProjectileGenerator`]s denote an interaction, which lets them shoot a projectile.
@@ -46,7 +47,10 @@ impl Interaction for ProjectileGenerator {
 
 /// A request to generate a projectile from the wrapped entity.
 #[derive(Clone, Copy, Debug)]
-pub struct GenerateProjectileReq(EntityRef);
+pub struct GenerateProjectileReq {
+    actor_entity: EntityRef,
+    gen_entity: EntityRef,
+}
 
 /// A system that handles projectile generation by [`ProjectileGenerator`]s.
 #[derive(Clone, Copy, Debug)]
@@ -55,12 +59,8 @@ pub struct ProjectileGenerationSystem;
 impl System for ProjectileGenerationSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Try to automatically uninteract from the activated [`ProjectileGenerator`]s upon unequipping them.
-        state.read_events::<EntityUnequippedEvt>().for_each(|evt| {
-            if InteractionSystem::<Storage>::interaction_exists(
-                &evt.equipment_entity,
-                &evt.entity,
-                state,
-            ) {
+        state.read_events::<ItemUnequippedEvt>().for_each(|evt| {
+            if Storage::interaction_exists(&evt.equipment_entity, &evt.entity, state) {
                 cmds.emit_event(UninteractReq::<ProjectileGenerator>::new(
                     evt.equipment_entity,
                     evt.entity,
@@ -71,7 +71,10 @@ impl System for ProjectileGenerationSystem {
         state
             .read_events::<InteractionStartedEvt<ProjectileGenerator>>()
             .for_each(|evt| {
-                cmds.emit_event(GenerateProjectileReq(evt.target));
+                cmds.emit_event(GenerateProjectileReq {
+                    actor_entity: evt.actor,
+                    gen_entity: evt.target,
+                });
             });
         // Handle the generate projectile requests.
         state
@@ -82,57 +85,73 @@ impl System for ProjectileGenerationSystem {
                         InteractTarget<ProjectileGenerator>,
                         ProjectileGenerator,
                         Transform,
-                    )>(&evt.0)
-                    .map(|c| (evt.0, c))
+                    )>(&evt.gen_entity)
+                    .map(|c| (evt.actor_entity, evt.gen_entity, c))
             })
-            .for_each(|(p_gen_entity, (interactable, p_gen, trans))| {
-                // Make sure that the generator is active.
-                if interactable.actors.len() == 0 {
-                    return;
-                }
-                // Compute the new velocity of the projectile.
-                let rand_spread = if p_gen.proj.spread > 0. {
-                    rand::thread_rng().gen_range(0.0..p_gen.proj.spread) - p_gen.proj.spread / 2.
-                } else {
-                    0.
-                };
-                let new_trans = trans.with_deg(trans.deg + rand_spread);
-                let dir = new_trans.dir_vec();
-                let dir = notan::math::vec2(dir.0, dir.1);
-                let new_pos = notan::math::vec2(trans.x, trans.y) + dir * 20.;
-                let mut new_trans = *trans;
-                new_trans.x = new_pos.x;
-                new_trans.y = new_pos.y;
-                let vel = dir * p_gen.proj.speed;
-                let vel = Velocity { x: vel.x, y: vel.y };
-                let anchor_parent = EntityInsights::of(&p_gen_entity, state).anchor_parent();
-                // Determine the friendly entities of the projectile, which are...
-                // ... the generator itself
-                let mut friendly_entities = vec![p_gen_entity];
-                // ... and the anchor parent of the generator
-                friendly_entities.extend(anchor_parent);
-                // Create the projectile entity.
-                cmds.create_from((
-                    new_trans,
-                    vel,
-                    Lifetime {
-                        remaining_time: p_gen.proj.lifetime,
-                    },
-                    Hitbox(HitboxType::Ghost, Shape::Circle(5.)),
-                    InteractTarget::<Hitbox>::default(),
-                    // Do not hit the anchor parent.
-                    Hitter::new(friendly_entities),
-                    SuicideOnHit,
-                    ApplyOnHit::new(Some(0.), p_gen.proj.on_hit.clone()),
-                ));
-                // If cooldown was set, remove the activatable component until the cooldown ends.
-                if let Some(cooldown_time) = p_gen.cooldown {
-                    cmds.set_component(
-                        &p_gen_entity,
-                        TimedEmit::new(cooldown_time, GenerateProjectileReq(p_gen_entity)),
-                    );
-                }
-            });
+            .for_each(
+                |(actor_entity, gen_entity, (interact_target, p_gen, trans))| {
+                    // Make sure that the generator is active.
+                    if interact_target.actors.len() == 0 {
+                        return;
+                    }
+                    // Compute the new velocity of the projectile.
+                    let rand_spread = if p_gen.proj.spread > 0. {
+                        rand::thread_rng().gen_range(0.0..p_gen.proj.spread)
+                            - p_gen.proj.spread / 2.
+                    } else {
+                        0.
+                    };
+                    let mut new_trans = trans.with_deg(trans.deg + rand_spread);
+                    let dir = new_trans.dir_vec();
+                    let dir = notan::math::vec2(dir.0, dir.1);
+                    let new_pos = notan::math::vec2(trans.x, trans.y) + dir * 20.;
+                    new_trans.x = new_pos.x;
+                    new_trans.y = new_pos.y;
+                    let vel = dir * p_gen.proj.speed;
+                    let vel = Velocity { x: vel.x, y: vel.y };
+                    let anchor_parent = EntityInsights::of(&gen_entity, state).anchor_parent();
+                    // Determine the friendly entities of the projectile, which are...
+                    // ... the generator itself
+                    let mut friendly_entities = vec![gen_entity];
+                    // ... and the anchor parent of the generator
+                    friendly_entities.extend(anchor_parent);
+                    // Create the projectile entity.
+                    cmds.create_from((
+                        new_trans,
+                        vel,
+                        Lifetime {
+                            remaining_time: p_gen.proj.lifetime,
+                        },
+                        Hitbox(HitboxType::Ghost, Shape::Circle(5.)),
+                        InteractTarget::<Hitbox>::default(),
+                        // Do not hit the anchor parent.
+                        Hitter::new(friendly_entities),
+                        SuicideOnHit,
+                        ApplyOnHit::new(Some(0.), p_gen.proj.on_hit.clone()),
+                    ));
+                    // Apply knockback optionally
+                    if let Some(knockback_factor) = p_gen.knockback {
+                        let knockback_vel = dir * -1. * knockback_factor;
+                        cmds.update_component(&actor_entity, move |actor_vel: &mut Velocity| {
+                            actor_vel.x += knockback_vel.x;
+                            actor_vel.y += knockback_vel.y;
+                        });
+                    }
+                    // If cooldown was set, remove the activatable component until the cooldown ends.
+                    if let Some(cooldown_time) = p_gen.cooldown {
+                        cmds.set_component(
+                            &gen_entity,
+                            TimedEmit::new(
+                                cooldown_time,
+                                GenerateProjectileReq {
+                                    actor_entity,
+                                    gen_entity,
+                                },
+                            ),
+                        );
+                    }
+                },
+            );
     }
 }
 

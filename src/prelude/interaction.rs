@@ -24,6 +24,13 @@ pub trait Interaction: 'static + std::fmt::Debug + Clone {
     fn can_end_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
         true
     }
+    fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        if let Some((target_intr,)) = state.select_one::<(InteractTarget<Self>,)>(target) {
+            target_intr.actors.contains(actor)
+        } else {
+            false
+        }
+    }
 }
 
 /// Denotes an interactable entity as the target of the interaction `I`.
@@ -128,12 +135,8 @@ impl<I: Interaction> Default for InteractionSystem<I> {
 }
 
 impl<I: Interaction> InteractionSystem<I> {
-    pub fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        if let Some((target_intr,)) = state.select_one::<(InteractTarget<I>,)>(target) {
-            target_intr.actors.contains(actor)
-        } else {
-            false
-        }
+    fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+        I::interaction_exists(actor, target, state)
     }
 
     fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {

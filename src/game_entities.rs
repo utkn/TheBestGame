@@ -19,7 +19,7 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         TargetVelocity::default(),
         Acceleration(2000.),
         MaxSpeed(1000.),
-        Storage::default(),
+        Storage::new(100),
         InteractTarget::<Storage>::default(),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
         InteractTarget::<Hitbox>::default(),
@@ -48,8 +48,16 @@ pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef
         MaxSpeed(300.),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
         InteractTarget::<Hitbox>::default(),
-        Storage::default(),
-        Equipment::default(),
+        Storage::new(100),
+        Equipment::new([
+            EquipmentSlot::Head,
+            EquipmentSlot::Torso,
+            EquipmentSlot::Backpack,
+            EquipmentSlot::LeftHand,
+            EquipmentSlot::RightHand,
+            EquipmentSlot::Legs,
+            EquipmentSlot::Feet,
+        ]),
         Needs::new([
             (NeedType::Health, NeedStatus::with_max(100.)),
             (NeedType::Sanity, NeedStatus::with_max(100.)),
@@ -91,7 +99,7 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
         InteractTarget::<Hitbox>::default(),
         InteractTarget::<Storage>::default(),
-        Storage::default(),
+        Storage::new(100),
         InteractTarget::<VisionField>::default(),
     ));
     let _chest_activator = cmds.create_from((
@@ -107,6 +115,7 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
 }
 
 pub fn create_item(
+    item: Item,
     trans: Transform,
     name: Name,
     slots: SlotSelector,
@@ -115,7 +124,7 @@ pub fn create_item(
     cmds.create_from((
         trans,
         name,
-        Item,
+        item,
         ProximityInteractable,
         InteractTarget::<Item>::default(),
         Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
@@ -127,6 +136,7 @@ pub fn create_item(
 
 pub fn create_handgun(trans: Transform, name: Name, cmds: &mut StateCommands) -> EntityRef {
     let item = create_item(
+        Item::unstackable(),
         trans,
         name,
         SlotSelector::new([[EquipmentSlot::LeftHand, EquipmentSlot::RightHand]]),
@@ -135,10 +145,11 @@ pub fn create_handgun(trans: Transform, name: Name, cmds: &mut StateCommands) ->
     cmds.set_components(
         &item,
         (
-            Storage::default(),
+            Storage::new(100),
             InteractTarget::<Storage>::default(),
             InteractTarget::<ProjectileGenerator>::default(),
             ProjectileGenerator {
+                knockback: None,
                 cooldown: None,
                 proj: ProjectileDefn {
                     lifetime: 0.5,
@@ -153,6 +164,7 @@ pub fn create_handgun(trans: Transform, name: Name, cmds: &mut StateCommands) ->
 }
 pub fn create_machinegun(trans: Transform, name: Name, cmds: &mut StateCommands) -> EntityRef {
     let item = create_item(
+        Item::unstackable(),
         trans,
         name,
         SlotSelector::new([
@@ -164,10 +176,11 @@ pub fn create_machinegun(trans: Transform, name: Name, cmds: &mut StateCommands)
     cmds.set_components(
         &item,
         (
-            Storage::default(),
+            Storage::new(100),
             InteractTarget::<Storage>::default(),
             InteractTarget::<ProjectileGenerator>::default(),
             ProjectileGenerator {
+                knockback: Some(100.),
                 cooldown: Some(0.1),
                 proj: ProjectileDefn {
                     lifetime: 1.5,
@@ -183,6 +196,7 @@ pub fn create_machinegun(trans: Transform, name: Name, cmds: &mut StateCommands)
 
 pub fn create_shoes(trans: Transform, name: Name, cmds: &mut StateCommands) -> EntityRef {
     let item = create_item(
+        Item::unstackable(),
         trans,
         name,
         SlotSelector::new([[EquipmentSlot::Feet]]),

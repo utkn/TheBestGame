@@ -1,6 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
+use itertools::Itertools;
+
 use crate::prelude::*;
+
+use super::{ItemDescription, ItemStack};
 
 /// Represent a slot in the equipment.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -13,6 +17,10 @@ pub enum EquipmentSlot {
     Backpack,
     LeftHand,
     RightHand,
+    WeaponAmmo,
+    WeaponModule,
+    VehicleGas,
+    VehicleModule,
 }
 
 /// Denotes the slots that an item can occupy.
@@ -35,15 +43,24 @@ impl SlotSelector {
     /// Chooses a set of slots from the given occupied slots. Returns `None` if the selection fails.
     pub fn choose_slots<'a>(
         &self,
-        occupied_slots: &HashSet<EquipmentSlot>,
+        item_entity: &EntityRef,
+        occupied_slots: &HashMap<EquipmentSlot, ItemStack>,
+        accepting_slots: &HashSet<EquipmentSlot>,
+        state: &State,
     ) -> Option<HashSet<EquipmentSlot>> {
         let mut chosen_slots = HashSet::new();
         for clause in &self.0 {
             let chosen_slot = clause.iter().find(|option| {
-                !occupied_slots.contains(*option) && !chosen_slots.contains(*option)
+                accepting_slots.contains(*option)
+                    && occupied_slots
+                        .get(*option)
+                        .map(|item_stack| item_stack.can_store(item_entity, state))
+                        .unwrap_or(true)
+                    && !chosen_slots.contains(*option)
             })?;
             chosen_slots.insert(*chosen_slot);
         }
+        println!("{:?}", chosen_slots);
         Some(chosen_slots)
     }
 }
@@ -53,104 +70,172 @@ impl SlotSelector {
 pub struct Equippable(pub SlotSelector);
 
 /// An entity that can equip [`Equippable`] entities.
-#[derive(Clone, Default, Debug)]
-pub struct Equipment(HashMap<EquipmentSlot, EntityRef>);
+#[derive(Clone, Debug)]
+pub struct Equipment {
+    accepting_slots: HashSet<EquipmentSlot>,
+    occupied_slots: HashMap<EquipmentSlot, ItemStack>,
+}
 
 impl Equipment {
-    /// Returns the set of occupied slots in this equipment.
-    pub fn occupied_slots(&self) -> HashSet<EquipmentSlot> {
-        self.0.keys().cloned().collect()
-    }
-    /// Returns true if the item can be equipped.
-    pub fn can_equip(&self, equippable: &Equippable) -> bool {
-        equippable.0.choose_slots(&self.occupied_slots()).is_some()
+    pub fn new(accepting_slots: impl IntoIterator<Item = EquipmentSlot>) -> Self {
+        Self {
+            accepting_slots: accepting_slots.into_iter().collect(),
+            occupied_slots: Default::default(),
+        }
     }
 
-    /// Tries to equip the given entity to the given slot. Note that this always succeeds if the slots are available.
-    pub fn try_equip(&mut self, e: EntityRef, equippable: &Equippable) -> bool {
-        if let Some(chosen_slots) = equippable.0.choose_slots(&self.occupied_slots()) {
-            self.0.extend(chosen_slots.iter().map(|slot| (*slot, e)));
+    pub fn content_description<'a>(
+        &'a self,
+        state: &'a State,
+    ) -> HashMap<EquipmentSlot, ItemDescription<'a>> {
+        self.occupied_slots
+            .iter()
+            .map(|(k, v)| (*k, v.head_item_description(state).unwrap()))
+            .collect()
+    }
+
+    /// Returns the set of equipment slots that this `item_entity` will occupy. Returns `None` if it cannot be equipped.
+    pub fn get_slots_to_occupy(
+        &self,
+        item_entity: &EntityRef,
+        state: &State,
+    ) -> Option<HashSet<EquipmentSlot>> {
+        let slot_selector = &state.select_one::<(Equippable,)>(item_entity)?.0 .0;
+        slot_selector.choose_slots(
+            item_entity,
+            &self.occupied_slots,
+            &self.accepting_slots,
+            state,
+        )
+    }
+
+    /// Returns the set of equipment slots that the given `item_entity` is stored in.
+    pub fn get_containing_slots(&self, item_entity: &EntityRef) -> Option<HashSet<EquipmentSlot>> {
+        let occupied_slots: HashSet<_> = self
+            .occupied_slots
+            .iter()
+            .filter(|(_, item_stack)| item_stack.contains(item_entity))
+            .map(|(equipment_slot, _)| *equipment_slot)
+            .collect();
+        if occupied_slots.len() == 0 {
+            None
+        } else {
+            Some(occupied_slots)
+        }
+    }
+
+    /// Returns the [`ItemStack`] at the given `equipment_slot`.
+    pub fn get_item_stack(&self, equipment_slot: &EquipmentSlot) -> Option<&ItemStack> {
+        self.occupied_slots.get(equipment_slot)
+    }
+}
+
+impl EntityRefBag for Equipment {
+    fn len(&self) -> usize {
+        self.occupied_slots
+            .values()
+            .flat_map(|item_stack| item_stack.iter())
+            .unique()
+            .count()
+    }
+
+    fn get_invalids(&self, valids: &EntityValiditySet) -> HashSet<EntityRef> {
+        self.occupied_slots
+            .iter()
+            .flat_map(|(_, item_stack)| item_stack.get_invalids(valids))
+            .collect()
+    }
+
+    fn try_remove_all(&mut self, entities: &HashSet<EntityRef>) -> HashSet<EntityRef> {
+        self.occupied_slots
+            .values_mut()
+            .flat_map(|item_stack| item_stack.try_remove_all(entities))
+            .collect()
+    }
+
+    fn contains(&self, e: &EntityRef) -> bool {
+        self.occupied_slots
+            .values()
+            .any(|item_stack| item_stack.contains(e))
+    }
+
+    fn try_remove(&mut self, e: &EntityRef) -> bool {
+        let old_size = self.len();
+        self.occupied_slots.values_mut().for_each(|item_stack| {
+            item_stack.try_remove(e);
+        });
+        old_size != self.len()
+    }
+}
+
+struct ShadowEquipment(Equipment);
+
+impl From<Equipment> for ShadowEquipment {
+    fn from(equipment: Equipment) -> Self {
+        Self(equipment)
+    }
+}
+
+impl ShadowEquipment {
+    /// Tries to place the given entity in the underlying equipment and returns `true` iff it succeeds.
+    fn try_equip(&mut self, item_entity: EntityRef, state: &State) -> bool {
+        if let Some(eq_slots) = self.0.get_slots_to_occupy(&item_entity, state) {
+            eq_slots.into_iter().for_each(|eq_slot| {
+                self.0
+                    .occupied_slots
+                    .entry(eq_slot)
+                    .or_insert(Default::default())
+                    .force_store(item_entity);
+            });
             true
         } else {
             false
         }
     }
 
-    pub fn get(&self, slot: EquipmentSlot) -> Option<&EntityRef> {
-        self.0.get(&slot)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&EquipmentSlot, &EntityRef)> {
-        self.0.iter()
-    }
-}
-
-impl EntityRefBag for Equipment {
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    fn get_invalids(&self, valids: &EntityValiditySet) -> HashSet<EntityRef> {
-        self.0
-            .iter()
-            .filter_map(|(_, v)| if !valids.is_valid(v) { Some(v) } else { None })
-            .cloned()
-            .collect()
-    }
-
-    fn try_remove_all(&mut self, entities: HashSet<EntityRef>) -> HashSet<EntityRef> {
-        let entries_to_remove: HashSet<_> = self
-            .0
-            .iter()
-            .filter_map(|(k, v)| {
-                if entities.contains(v) {
-                    Some((*k, *v))
-                } else {
-                    None
-                }
+    /// Tries to remove the given entity from the underlying equipment and returns `true` iff it succeeds.
+    fn try_unequip(&mut self, item_entity: &EntityRef) -> bool {
+        if let Some(eq_slots) = self.0.get_containing_slots(item_entity) {
+            eq_slots.into_iter().all(|eq_slot| {
+                self.0
+                    .occupied_slots
+                    .entry(eq_slot)
+                    .or_insert(Default::default())
+                    .try_remove(item_entity)
             })
-            .collect();
-        entries_to_remove.iter().for_each(|(k, _)| {
-            self.0.remove(k);
-        });
-        entries_to_remove.into_iter().map(|(_, v)| v).collect()
+        } else {
+            false
+        }
     }
 
-    fn contains(&self, e: &EntityRef) -> bool {
-        self.0.values().find(|v| *v == e).is_some()
-    }
-
-    fn try_remove(&mut self, e: &EntityRef) -> bool {
-        let old_size = self.0.len();
-        self.0.retain(|_, v| v != e);
-        old_size != self.0.len()
+    fn take(self) -> Equipment {
+        self.0
     }
 }
-
 /// Request to equip an entity.
 #[derive(Clone, Copy, Debug)]
-pub struct EquipEntityReq {
+pub struct EquipItemReq {
     pub entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
 /// Request to unequip an entity.
 #[derive(Clone, Copy, Debug)]
-pub struct UnequipEntityReq {
+pub struct UnequipItemReq {
     pub entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
 /// Emitted when an item is equipped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct EntityEquippedEvt {
+pub struct ItemEquippedEvt {
     pub entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
 /// Emitted when an item is unequipped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct EntityUnequippedEvt {
+pub struct ItemUnequippedEvt {
     pub entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
@@ -161,61 +246,48 @@ pub struct EquipmentSystem;
 
 impl System for EquipmentSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        // Keep a set of events to emit at the end of the execution.
-        let mut unequipped_events = HashSet::<EntityUnequippedEvt>::new();
-        let mut equipped_events = HashSet::<EntityEquippedEvt>::new();
-        // Remove the invalid entities from equipment.
-        let valids = state.extract_validity_set();
-        state
-            .select::<(Equipment,)>()
-            .for_each(|(e, (equipment,))| {
-                // Invalidated entities should be unequipped.
-                let invalid_entities = equipment.get_invalids(&valids).into_iter();
-                unequipped_events.extend(invalid_entities.map(|invalid_e| EntityUnequippedEvt {
-                    entity: invalid_e,
-                    equipment_entity: e,
-                }));
-            });
-        // Handle the explicit requests.
-        state.read_events::<UnequipEntityReq>().for_each(|evt| {
-            // Decide whether we need to emit an event.
+        // Maintain the shadow equipments.
+        let mut shadow_equipment_map = HashMap::<EntityRef, ShadowEquipment>::new();
+        // Perform the unequippings on the shadow equipments.
+        state.read_events::<UnequipItemReq>().for_each(|evt| {
             if let Some((equipment,)) = state.select_one::<(Equipment,)>(&evt.equipment_entity) {
-                if equipment.contains(&evt.entity) {
-                    unequipped_events.insert(EntityUnequippedEvt {
-                        entity: evt.entity,
+                let shadow_eq = shadow_equipment_map
+                    .entry(evt.equipment_entity)
+                    .or_insert(ShadowEquipment::from(equipment.clone()));
+                if shadow_eq.try_unequip(&evt.entity) {
+                    cmds.emit_event(ItemUnequippedEvt {
                         equipment_entity: evt.equipment_entity,
-                    });
+                        entity: evt.entity,
+                    })
                 }
             }
         });
-        state.read_events::<EquipEntityReq>().for_each(|evt| {
-            if let Some((equippable,)) = state.select_one::<(Equippable,)>(&evt.entity) {
-                if let Some((equipment,)) = state.select_one::<(Equipment,)>(&evt.equipment_entity)
-                {
-                    if equipment.can_equip(equippable) && evt.entity != evt.equipment_entity {
-                        equipped_events.insert(EntityEquippedEvt {
-                            entity: evt.entity,
-                            equipment_entity: evt.equipment_entity,
-                        });
-                    }
+        // Perform the equippings on the shadow equipments.
+        state.read_events::<EquipItemReq>().for_each(|evt| {
+            if let Some((equipment,)) = state.select_one::<(Equipment,)>(&evt.equipment_entity) {
+                let shadow_eq = shadow_equipment_map
+                    .entry(evt.equipment_entity)
+                    .or_insert(ShadowEquipment::from(equipment.clone()));
+                if shadow_eq.try_equip(evt.entity, state) {
+                    cmds.emit_event(ItemEquippedEvt {
+                        equipment_entity: evt.equipment_entity,
+                        entity: evt.entity,
+                    })
                 }
             }
         });
-        // Emit the events.
-        unequipped_events.into_iter().for_each(|evt| {
-            cmds.emit_event(evt);
-            cmds.update_component(&evt.equipment_entity, move |equipment: &mut Equipment| {
-                equipment.try_remove(&evt.entity);
+        // Move the shadow equipments into the game.
+        shadow_equipment_map
+            .into_iter()
+            .for_each(|(equipment_entity, shadow_equipment)| {
+                cmds.set_component(&equipment_entity, shadow_equipment.take());
             });
-        });
-        equipped_events.into_iter().for_each(|evt| {
-            if let Some((equippable,)) = state.select_one::<(Equippable,)>(&evt.entity) {
-                let equippable = equippable.clone();
-                cmds.emit_event(evt);
-                cmds.update_component(&evt.equipment_entity, move |equipment: &mut Equipment| {
-                    equipment.try_equip(evt.entity, &equippable);
-                });
-            }
-        });
+        // Now, remove the invalids from all the equipments.
+        state.select::<(Equipment,)>().for_each(|(e, _)| {
+            let validity_set = state.extract_validity_set();
+            cmds.update_component(&e, move |equipment: &mut Equipment| {
+                equipment.remove_invalids(&validity_set);
+            });
+        })
     }
 }

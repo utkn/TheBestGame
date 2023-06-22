@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use crate::prelude::{EntityInsights, EntityRef, EntityRefBag};
 
 use super::{
-    EntityEquippedEvt, EntityStoredEvt, EntityUnequippedEvt, EntityUnstoredEvt, Equipment,
-    Equippable, Item, ItemLocation, Storage,
+    Equipment, Equippable, Item, ItemEquippedEvt, ItemLocation, ItemStoredEvt, ItemUnequippedEvt,
+    ItemUnstoredEvt, Storage,
 };
 
 /// Provides insights about an entity that could be possibly be an item.
@@ -32,7 +32,7 @@ impl<'a> ItemInsights for EntityInsights<'a> {
         if let Some((storing_entity, _)) = self
             .1
             .select::<(Storage,)>()
-            .find(|(_, (storage,))| storage.0.contains(self.0))
+            .find(|(_, (storage,))| storage.contains(self.0))
         {
             ItemLocation::Storage(storing_entity)
         } else if let Some((equipping_entity, _)) = self
@@ -48,7 +48,7 @@ impl<'a> ItemInsights for EntityInsights<'a> {
 
     fn new_storers(&self) -> HashSet<EntityRef> {
         self.1
-            .read_events::<EntityStoredEvt>()
+            .read_events::<ItemStoredEvt>()
             .filter(|evt| &evt.entity == self.0)
             .map(|evt| evt.storage_entity)
             .collect()
@@ -56,7 +56,7 @@ impl<'a> ItemInsights for EntityInsights<'a> {
 
     fn new_unstorers(&self) -> HashSet<EntityRef> {
         self.1
-            .read_events::<EntityUnstoredEvt>()
+            .read_events::<ItemUnstoredEvt>()
             .filter(|evt| &evt.entity == self.0)
             .map(|evt| evt.storage_entity)
             .collect()
@@ -64,7 +64,7 @@ impl<'a> ItemInsights for EntityInsights<'a> {
 
     fn new_equippers(&self) -> HashSet<EntityRef> {
         self.1
-            .read_events::<EntityEquippedEvt>()
+            .read_events::<ItemEquippedEvt>()
             .filter(|evt| &evt.entity == self.0)
             .map(|evt| evt.equipment_entity)
             .collect()
@@ -72,7 +72,7 @@ impl<'a> ItemInsights for EntityInsights<'a> {
 
     fn new_unequippers(&self) -> HashSet<EntityRef> {
         self.1
-            .read_events::<EntityUnequippedEvt>()
+            .read_events::<ItemUnequippedEvt>()
             .filter(|evt| &evt.entity == self.0)
             .map(|evt| evt.equipment_entity)
             .collect()
@@ -80,55 +80,47 @@ impl<'a> ItemInsights for EntityInsights<'a> {
 }
 
 pub trait StorageInsights {
-    /// Returns true iff the given `item` entity can be stored by this entity.
-    fn can_store(&self, item: &EntityRef) -> bool;
-    /// Returns true iff the given `item` entity is being stored by this entity.
-    fn is_storing(&self, item: &EntityRef) -> bool;
+    /// Returns true iff the given `item_entity` can be stored by this entity.
+    fn can_store(&self, item_entity: &EntityRef) -> bool;
+    /// Returns true iff the given `item_entity` is being stored by this entity.
+    fn is_storing(&self, item_entity: &EntityRef) -> bool;
 }
 
 impl<'a> StorageInsights for EntityInsights<'a> {
-    fn can_store(&self, item: &EntityRef) -> bool {
-        if let Some((item,)) = self.1.select_one::<(Item,)>(item) {
-            self.1
-                .select_one::<(Storage,)>(self.0)
-                .map(|(storage,)| storage.can_store(item))
-                .unwrap_or(false)
-        } else {
-            false
-        }
-    }
-
-    fn is_storing(&self, item: &EntityRef) -> bool {
+    fn can_store(&self, item_entity: &EntityRef) -> bool {
         self.1
             .select_one::<(Storage,)>(self.0)
-            .map(|(storage,)| storage.0.contains(item))
+            .map(|(storage,)| storage.get_available_slot(item_entity, self.1).is_some())
+            .unwrap_or(false)
+    }
+
+    fn is_storing(&self, item_entity: &EntityRef) -> bool {
+        self.1
+            .select_one::<(Storage,)>(self.0)
+            .map(|(storage,)| storage.contains(item_entity))
             .unwrap_or(false)
     }
 }
 
 pub trait EquipmentInsights {
-    /// Returns true iff the given `item` entity can be equipped by this entity.
-    fn can_equip(&self, item: &EntityRef) -> bool;
-    /// Returns true iff the given `item` entity is being equipped by this entity.
-    fn is_equipping(&self, item: &EntityRef) -> bool;
+    /// Returns true iff the given `item_entity` can be equipped by this entity.
+    fn can_equip(&self, item_entity: &EntityRef) -> bool;
+    /// Returns true iff the given `item_entity` is being equipped by this entity.
+    fn is_equipping(&self, item_entity: &EntityRef) -> bool;
 }
 
 impl<'a> EquipmentInsights for EntityInsights<'a> {
-    fn can_equip(&self, item: &EntityRef) -> bool {
-        if let Some((equippable,)) = self.1.select_one::<(Equippable,)>(item) {
-            self.1
-                .select_one::<(Equipment,)>(self.0)
-                .map(|(storage,)| storage.can_equip(equippable))
-                .unwrap_or(false)
-        } else {
-            false
-        }
-    }
-
-    fn is_equipping(&self, item: &EntityRef) -> bool {
+    fn can_equip(&self, item_entity: &EntityRef) -> bool {
         self.1
             .select_one::<(Equipment,)>(self.0)
-            .map(|(equipment,)| equipment.contains(item))
+            .map(|(equipment,)| equipment.get_slots_to_occupy(item_entity, self.1).is_some())
+            .unwrap_or(false)
+    }
+
+    fn is_equipping(&self, item_entity: &EntityRef) -> bool {
+        self.1
+            .select_one::<(Equipment,)>(self.0)
+            .map(|(equipment,)| equipment.contains(item_entity))
             .unwrap_or(false)
     }
 }

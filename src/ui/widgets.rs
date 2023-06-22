@@ -91,7 +91,9 @@ impl<'a> egui::Widget for EquipmentWidget<'a> {
                     for slots_row in equipment_grid {
                         for opt_slot in slots_row {
                             if let Some(slot) = opt_slot {
-                                let item_in_slot = equipment.get(slot);
+                                let item_in_slot = equipment
+                                    .get_item_stack(&slot)
+                                    .and_then(|item_stack| item_stack.head_item());
                                 ui.add(EquipmentSlotWidget(
                                     slot,
                                     item_in_slot,
@@ -123,12 +125,17 @@ impl<'a> egui::Widget for StorageWidget<'a> {
         egui::Grid::new(format!("Storage[{:?}]", self.0))
             .show(ui, |ui| {
                 if let Some((storage,)) = self.1.select_one::<(Storage,)>(self.0) {
-                    storage.0.iter().chunks(3).into_iter().for_each(|row| {
-                        row.into_iter().for_each(|item| {
-                            ui.add(ItemWidget(item, self.1, self.2, self.3));
-                        });
-                        ui.end_row();
-                    })
+                    storage
+                        .stacks()
+                        .flat_map(|stack| stack.head_item())
+                        .chunks(3)
+                        .into_iter()
+                        .for_each(|row| {
+                            row.into_iter().for_each(|item| {
+                                ui.add(ItemWidget(item, self.1, self.2, self.3));
+                            });
+                            ui.end_row();
+                        })
                 }
             })
             .response

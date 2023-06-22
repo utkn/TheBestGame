@@ -1,17 +1,116 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+use itertools::Itertools;
 
 use crate::prelude::*;
 
-use super::{Item, ItemInsights, ItemLocation};
+use super::{ItemInsights, ItemLocation, ItemStack};
 
 /// An entity that can store other entities.
-#[derive(Clone, Default, Debug)]
-pub struct Storage(pub EntityRefSet);
+#[derive(Clone, Debug)]
+pub struct Storage {
+    stacks: Vec<ItemStack>,
+}
 
 impl Storage {
-    /// Returns true iff the given entity can be stored in this storage.
-    pub fn can_store(&self, _: &Item) -> bool {
-        true
+    /// Creates a new storage with the capacity to hold `num_slots` many [`ItemStacks`].
+    pub fn new(num_slots: usize) -> Self {
+        let mut item_stacks = Vec::with_capacity(num_slots);
+        item_stacks.resize_with(num_slots, || ItemStack::default());
+        Self {
+            stacks: item_stacks,
+        }
+    }
+
+    pub fn stacks(&self) -> impl Iterator<Item = &ItemStack> {
+        self.stacks.iter()
+    }
+
+    /// Returns the index of the slot in which the given `item_entity` can be stored.
+    /// Returns `None` iff `item_entity` cannot be stored.
+    pub fn get_available_slot(&self, item_entity: &EntityRef, state: &State) -> Option<usize> {
+        self.stacks
+            .iter()
+            .find_position(|item_stack| item_stack.can_store(item_entity, state))
+            .map(|(idx, _)| idx)
+    }
+
+    /// Returns the index of the slot in which the given `item_entity` is stored.
+    /// Returns `None` iff `item_entity` is not being stored.
+    pub fn get_containing_slot(&self, item_entity: &EntityRef) -> Option<usize> {
+        self.stacks
+            .iter()
+            .find_position(|item_stack| item_stack.contains(item_entity))
+            .map(|(idx, _)| idx)
+    }
+}
+
+impl EntityRefBag for Storage {
+    fn len(&self) -> usize {
+        self.stacks.iter().map(|item_stack| item_stack.len()).sum()
+    }
+
+    fn get_invalids(&self, valids: &EntityValiditySet) -> HashSet<EntityRef> {
+        self.stacks
+            .iter()
+            .flat_map(|item_stack| item_stack.get_invalids(valids))
+            .collect()
+    }
+
+    fn contains(&self, e: &EntityRef) -> bool {
+        self.stacks.iter().any(|item_stack| item_stack.contains(e))
+    }
+
+    fn try_remove_all(&mut self, entities: &HashSet<EntityRef>) -> HashSet<EntityRef> {
+        self.stacks
+            .iter_mut()
+            .flat_map(|item_stack| item_stack.try_remove_all(entities))
+            .collect()
+    }
+
+    fn try_remove(&mut self, e: &EntityRef) -> bool {
+        self.stacks
+            .iter_mut()
+            .any(|item_stack| item_stack.try_remove(e))
+    }
+}
+
+struct ShadowStorage(Storage);
+
+impl From<Storage> for ShadowStorage {
+    fn from(storage: Storage) -> Self {
+        Self(storage)
+    }
+}
+
+impl ShadowStorage {
+    /// Tries to store the given entity in the underlying storage and returns `true` iff it succeeds.
+    fn try_store(&mut self, item_entity: EntityRef, state: &State) -> bool {
+        if let Some(idx) = self.0.get_available_slot(&item_entity, state) {
+            if let Some(item_stack) = self.0.stacks.get_mut(idx) {
+                item_stack.force_store(item_entity)
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Tries to unstore the given entity in the underlying storage and returns `true` iff it succeeds.
+    fn try_unstore(&mut self, item_entity: &EntityRef) -> bool {
+        if let Some(idx) = self.0.get_containing_slot(item_entity) {
+            if let Some(item_slot) = self.0.stacks.get_mut(idx) {
+                item_slot.try_remove(item_entity)
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    fn take(self) -> Storage {
+        self.0
     }
 }
 
@@ -37,25 +136,25 @@ impl Interaction for Storage {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct StoreEntityReq {
+pub struct StoreItemReq {
     pub storage_entity: EntityRef,
     pub entity: EntityRef,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct UnstoreEntityReq {
+pub struct UnstoreItemReq {
     pub storage_entity: EntityRef,
     pub entity: EntityRef,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct EntityStoredEvt {
+pub struct ItemStoredEvt {
     pub storage_entity: EntityRef,
     pub entity: EntityRef,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct EntityUnstoredEvt {
+pub struct ItemUnstoredEvt {
     pub storage_entity: EntityRef,
     pub entity: EntityRef,
 }
@@ -66,54 +165,48 @@ pub struct StorageSystem;
 
 impl System for StorageSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        // Keep a set of events to emit at the end of the execution.
-        let mut unstored_events = HashSet::<EntityUnstoredEvt>::new();
-        let mut stored_events = HashSet::<EntityStoredEvt>::new();
-        // Remove the invalid entities from storage.
-        let valids = state.extract_validity_set();
-        state.select::<(Storage,)>().for_each(|(e, (storage,))| {
-            // Invalidated entities should be unstored & we need to emit the appropriate event.
-            let invalid_entities = storage.0.get_invalids(&valids).into_iter();
-            unstored_events.extend(invalid_entities.map(|invalid_e| EntityUnstoredEvt {
-                storage_entity: e,
-                entity: invalid_e,
-            }));
-        });
-        // Handle the explicit requests.
-        state.read_events::<UnstoreEntityReq>().for_each(|evt| {
-            // Decide whether we need to emit an event.
+        // Maintain the shadow storages.
+        let mut shadow_storage_map = HashMap::<EntityRef, ShadowStorage>::new();
+        // Perform the unstorings on the shadow storages.
+        state.read_events::<UnstoreItemReq>().for_each(|evt| {
             if let Some((storage,)) = state.select_one::<(Storage,)>(&evt.storage_entity) {
-                if storage.0.contains(&evt.entity) {
-                    unstored_events.insert(EntityUnstoredEvt {
+                let shadow_storage = shadow_storage_map
+                    .entry(evt.storage_entity)
+                    .or_insert(ShadowStorage::from(storage.clone()));
+                if shadow_storage.try_unstore(&evt.entity) {
+                    cmds.emit_event(ItemUnstoredEvt {
                         storage_entity: evt.storage_entity,
                         entity: evt.entity,
-                    });
+                    })
                 }
             }
         });
-        state.read_events::<StoreEntityReq>().for_each(|evt| {
-            // Decide whether we need to emit an event.
+        // Perform the storings on the shadow storages.
+        state.read_events::<StoreItemReq>().for_each(|evt| {
             if let Some((storage,)) = state.select_one::<(Storage,)>(&evt.storage_entity) {
-                if !storage.0.contains(&evt.entity) && evt.storage_entity != evt.entity {
-                    stored_events.insert(EntityStoredEvt {
+                let shadow_storage = shadow_storage_map
+                    .entry(evt.storage_entity)
+                    .or_insert(ShadowStorage::from(storage.clone()));
+                if shadow_storage.try_store(evt.entity, state) {
+                    cmds.emit_event(ItemStoredEvt {
                         storage_entity: evt.storage_entity,
                         entity: evt.entity,
-                    });
+                    })
                 }
             }
         });
-        // Emit the events & update the state.
-        unstored_events.into_iter().for_each(|evt| {
-            cmds.emit_event(evt);
-            cmds.update_component(&evt.storage_entity, move |storage: &mut Storage| {
-                storage.0.try_remove(&evt.entity);
+        // Move the shadow storages into the game.
+        shadow_storage_map
+            .into_iter()
+            .for_each(|(storage_entity, shadow_storage)| {
+                cmds.set_component(&storage_entity, shadow_storage.take());
             });
-        });
-        stored_events.into_iter().for_each(|evt| {
-            cmds.emit_event(evt);
-            cmds.update_component(&evt.storage_entity, move |storage: &mut Storage| {
-                storage.0.insert(evt.entity);
+        // Now, remove the invalids from all the storages.
+        state.select::<(Storage,)>().for_each(|(e, _)| {
+            let validity_set = state.extract_validity_set();
+            cmds.update_component(&e, move |storage: &mut Storage| {
+                storage.remove_invalids(&validity_set);
             });
-        });
+        })
     }
 }

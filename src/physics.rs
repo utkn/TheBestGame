@@ -160,22 +160,20 @@ impl System for CollisionDetectionSystem {
             });
         });
         // Generate the new pair of collisions.
-        let colliding_pairs: HashSet<_> = resps
-            .iter()
-            .flat_map(|resp| [(resp.e1, resp.e2), (resp.e2, resp.e1)])
-            .collect();
+        let colliding_pairs: HashSet<_> = resps.iter().map(|resp| (resp.e1, resp.e2)).collect();
         let all_pairs: HashSet<_> = state
             .select_all()
             .collect_vec()
             .into_iter()
             .tuple_combinations()
-            .flat_map(|(e1, e2)| [(e1, e2), (e2, e1)])
             .collect();
         all_pairs.into_iter().for_each(|(e1, e2)| {
-            if colliding_pairs.contains(&(e1, e2)) {
-                cmds.emit_event(InteractReq::<Hitbox>::new(e1, e2));
-                cmds.emit_event(InteractReq::<Hitbox>::new(e2, e1));
-            } else {
+            if colliding_pairs.contains(&(e1, e2)) || colliding_pairs.contains(&(e2, e1)) {
+                if !Hitbox::interaction_exists(&e1, &e2, state) {
+                    cmds.emit_event(InteractReq::<Hitbox>::new(e1, e2));
+                    cmds.emit_event(InteractReq::<Hitbox>::new(e2, e1));
+                }
+            } else if Hitbox::interaction_exists(&e1, &e2, state) {
                 cmds.emit_event(UninteractReq::<Hitbox>::new(e1, e2));
                 cmds.emit_event(UninteractReq::<Hitbox>::new(e2, e1));
             }
