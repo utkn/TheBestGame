@@ -8,7 +8,7 @@ use super::{EntityState, EntityStateGraph};
 
 pub const CHARACTER_IDLE: EntityState = EntityState {
     tag: "idle",
-    is_in_state: |e, state| {
+    is_state_of: |e, state| {
         state
             .select_one::<(TargetVelocity,)>(e)
             .map(|(target_vel,)| target_vel.x == 0. && target_vel.y == 0.)
@@ -18,12 +18,12 @@ pub const CHARACTER_IDLE: EntityState = EntityState {
 
 pub const CHARACTER_WALKING: EntityState = EntityState {
     tag: "walking",
-    is_in_state: |e, state| !(CHARACTER_IDLE.is_in_state)(e, state),
+    is_state_of: |e, state| !(CHARACTER_IDLE.is_state_of)(e, state),
 };
 
 pub const CHARACTER_DRIVING: EntityState = EntityState {
     tag: "driving",
-    is_in_state: |e, state| {
+    is_state_of: |e, state| {
         state
             .select::<(InteractTarget<Vehicle>,)>()
             .any(|(_, (vehicle_intr,))| vehicle_intr.actors.contains(e))
@@ -32,7 +32,7 @@ pub const CHARACTER_DRIVING: EntityState = EntityState {
 
 pub const CHARACTER_SHOOTING: EntityState = EntityState {
     tag: "shooting",
-    is_in_state: |e, state| {
+    is_state_of: |e, state| {
         state
             .select::<(InteractTarget<ProjectileGenerator>,)>()
             .any(|(_, (p_gen_intr,))| p_gen_intr.actors.contains(e))
@@ -41,15 +41,15 @@ pub const CHARACTER_SHOOTING: EntityState = EntityState {
 
 pub const CHARACTER_DRIVING_AND_SHOOTING: EntityState = EntityState {
     tag: "driving_shooting",
-    is_in_state: |e, state| {
-        (CHARACTER_DRIVING.is_in_state)(e, state) && (CHARACTER_SHOOTING.is_in_state)(e, state)
+    is_state_of: |e, state| {
+        (CHARACTER_DRIVING.is_state_of)(e, state) && (CHARACTER_SHOOTING.is_state_of)(e, state)
     },
 };
 
 pub const CHARACTER_WALKING_AND_SHOOTING: EntityState = EntityState {
     tag: "walking_shooting",
-    is_in_state: |e, state| {
-        (CHARACTER_WALKING.is_in_state)(e, state) && (CHARACTER_SHOOTING.is_in_state)(e, state)
+    is_state_of: |e, state| {
+        (CHARACTER_WALKING.is_state_of)(e, state) && (CHARACTER_SHOOTING.is_state_of)(e, state)
     },
 };
 

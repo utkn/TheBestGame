@@ -47,6 +47,38 @@ impl System for ApproachVelocitySystem {
     }
 }
 
+/// A system that handles rotating to a target rotation.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ApproachRotationSystem;
+
+impl System for ApproachRotationSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state
+            .select::<(Transform, TargetRotation, Acceleration)>()
+            .for_each(|(e, (trans, target_rot, acc))| {
+                let mut curr_deg = trans.deg;
+                let mut target_deg = target_rot.deg;
+                if curr_deg < 0. {
+                    curr_deg += 360.;
+                }
+                if target_deg < 0. {
+                    target_deg += 360.;
+                }
+                let mut diff = target_deg - curr_deg;
+                if diff > 270. {
+                    diff -= 360.;
+                }
+                if diff < -270. {
+                    diff += 360.;
+                }
+                let new_rot = curr_deg + diff.signum() * ctx.dt * diff.abs() * acc.0 / 400.;
+                cmds.update_component(&e, move |trans: &mut Transform| {
+                    trans.deg = new_rot;
+                });
+            })
+    }
+}
+
 /// A system that handles mouse facing.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct FaceMouseSystem;
@@ -64,8 +96,8 @@ impl System for FaceMouseSystem {
                     return;
                 }
                 let new_deg = diff.angle_between(notan::math::vec2(1., 0.)).to_degrees();
-                cmds.update_component(&e, move |trans: &mut Transform| {
-                    trans.deg = new_deg;
+                cmds.update_component(&e, move |target_rot: &mut TargetRotation| {
+                    target_rot.deg = new_deg;
                 });
             });
     }

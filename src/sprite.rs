@@ -8,11 +8,12 @@ use itertools::Itertools;
 
 mod character_states;
 mod item_states;
+mod prop_states;
 
 #[derive(Clone, Copy, Debug)]
 pub struct EntityState {
     pub tag: &'static str,
-    pub is_in_state: fn(e: &EntityRef, state: &State) -> bool,
+    pub is_state_of: fn(e: &EntityRef, state: &State) -> bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -37,7 +38,7 @@ impl EntityStateGraph {
             .filter(|(_, path)| {
                 let leaf_is_good = path
                     .last()
-                    .map(|branch_leaf| (branch_leaf.is_in_state)(e, state))
+                    .map(|branch_leaf| (branch_leaf.is_state_of)(e, state))
                     .unwrap_or(false);
                 leaf_is_good
             })

@@ -6,7 +6,7 @@ use itertools::Itertools;
 use notan::{
     draw::{CreateDraw, DrawImages, DrawShapes, DrawTransform},
     egui::EguiPluginSugar,
-    prelude::{AssetList, Assets},
+    prelude::Assets,
 };
 
 use ai::*;
@@ -73,6 +73,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
     world.register_system(ControlSystem::<UserInputDriver>::default());
     world.register_system(LifetimeSystem);
     world.register_system(ApproachVelocitySystem);
+    world.register_system(ApproachRotationSystem);
     world.register_system(FaceMouseSystem);
     // Interactions
     world.register_system(InteractionAcceptorSystem(

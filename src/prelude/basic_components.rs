@@ -54,6 +54,12 @@ pub struct TargetVelocity {
     pub y: f32,
 }
 
+/// Represents the rotation that an entity wishes to achieve.
+#[derive(Clone, Copy, Default, Debug)]
+pub struct TargetRotation {
+    pub deg: f32,
+}
+
 /// Represents the maximum speed achievable by an entity.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct MaxSpeed(pub f32);

@@ -79,7 +79,13 @@ pub fn create_character(
         ]),
         InteractTarget::<VisionField>::default(),
     ));
-    cmds.set_components(&character, (Sprite(sprite_id, CHARACTER_STATE_GRAPH),));
+    cmds.set_components(
+        &character,
+        (
+            Sprite(sprite_id, CHARACTER_STATE_GRAPH),
+            TargetRotation::default(),
+        ),
+    );
     let _character_vision_field = cmds.create_from((
         Transform::default(),
         AnchorTransform(character, (0., 0.)),
