@@ -56,7 +56,7 @@ impl System for VehicleSystem {
                 cmds.remove_component::<AnchorTransform>(driver);
                 // Position the driver a bit right for collision detection to resolve it.
                 cmds.update_component(driver, |trans: &mut Transform| {
-                    trans.x += 10.;
+                    trans.x += 40.;
                 });
             });
     }

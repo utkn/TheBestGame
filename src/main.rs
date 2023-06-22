@@ -37,6 +37,7 @@ struct AppState {
 
 fn setup(app: &mut notan::prelude::App) -> AppState {
     app.backend.window().set_title("TheBestGame v0");
+    app.backend.window().set_size(960, 720);
     // Create the world from an empty state.
     let mut world = prelude::World::from(prelude::State::default());
     // Control & movement

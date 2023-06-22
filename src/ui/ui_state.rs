@@ -1,33 +1,29 @@
 use notan::egui;
 
-use crate::prelude::EntityRef;
+use crate::item::ItemStack;
 
 #[derive(Clone, Debug)]
 pub(super) struct DragResult {
     pub(super) from_win_id: Option<egui::Id>,
     pub(super) to_win_id: Option<egui::Id>,
-    pub(super) dragged_item: EntityRef,
+    pub(super) dragged_item_stack: ItemStack,
 }
 
 #[derive(Clone, Default, Debug)]
 pub struct ItemDragState {
     from_position: Option<(f32, f32)>,
     to_position: Option<(f32, f32)>,
-    dragging_item: Option<EntityRef>,
+    dragging_item_stack: Option<ItemStack>,
 }
 
 impl ItemDragState {
     pub fn is_dragging(&self) -> bool {
-        self.dragging_item.is_some()
+        self.dragging_item_stack.is_some()
     }
 
-    pub(super) fn dragging(&self) -> Option<&EntityRef> {
-        self.dragging_item.as_ref()
-    }
-
-    pub(super) fn start(&mut self, item: EntityRef, pos: (f32, f32)) {
+    pub(super) fn start(&mut self, stack: ItemStack, pos: (f32, f32)) {
         self.from_position = Some(pos);
-        self.dragging_item = Some(item);
+        self.dragging_item_stack = Some(stack);
     }
 
     pub(super) fn stop(&mut self, pos: (f32, f32)) {
@@ -37,9 +33,9 @@ impl ItemDragState {
     }
 
     pub(super) fn try_complete(&mut self, ctx: &egui::Context) -> Option<DragResult> {
-        let dragged_item = self.dragging_item?;
         let from_pos = self.from_position?;
         let to_pos = self.to_position?;
+        let dragged_item_stack = self.dragging_item_stack.take()?;
         let from_win_id = ctx
             .layer_id_at(egui::Pos2 {
                 x: from_pos.0,
@@ -54,9 +50,8 @@ impl ItemDragState {
             .map(|layer| layer.id);
         self.from_position.take();
         self.to_position.take();
-        self.dragging_item.take();
         Some(DragResult {
-            dragged_item,
+            dragged_item_stack,
             from_win_id,
             to_win_id,
         })

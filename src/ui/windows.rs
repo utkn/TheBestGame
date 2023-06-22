@@ -7,6 +7,8 @@ use crate::prelude::*;
 use super::widgets::*;
 use super::UiState;
 
+const WINDOW_WIDTH: f32 = 165.;
+
 #[derive(Clone, Copy, Debug)]
 pub enum WindowType {
     Storage(EntityRef),
@@ -59,14 +61,13 @@ impl Window for EquipmentWindow {
     ) {
         let screen_width = ctx.input().screen_rect().width();
         let screen_height = ctx.input().screen_rect().height();
-        let window_width = 140.;
         let is_player_storage = game_state
             .select_one::<(FaceMouse,)>(&self.equipment_entity)
             .is_some();
         let mut win = egui::Window::new(self.title)
             .id(self.window_id())
             .collapsible(false)
-            .default_width(window_width)
+            .default_width(WINDOW_WIDTH)
             .resizable(false);
         // Handle alignment & positioning.
         if is_player_storage {
@@ -77,7 +78,7 @@ impl Window for EquipmentWindow {
                 .map(|(pos,)| (pos.x, pos.y))
                 .map(|(x, y)| map_to_screen_cords(x, y, screen_width, screen_height, game_state))
                 .unwrap_or_default();
-            win = win.current_pos((x + 10., y + 10.));
+            win = win.current_pos((x, y + 10.)).pivot(egui::Align2::RIGHT_TOP);
         }
         win.show(ctx, |ui| {
             ui.set_width(ui.available_width());
@@ -114,14 +115,15 @@ impl Window for StorageWindow {
     ) {
         let screen_width = ctx.input().screen_rect().width();
         let screen_height = ctx.input().screen_rect().height();
-        let window_width = 140.;
         let is_player_storage = game_state
             .select_one::<(FaceMouse,)>(&self.storage_entity)
             .is_some();
         let mut win = egui::Window::new(self.title)
             .id(self.window_id())
             .collapsible(false)
-            .default_width(window_width)
+            .default_width(WINDOW_WIDTH)
+            .default_height(150.)
+            .vscroll(true)
             .resizable(false);
         // Handle alignment & positioning.
         if is_player_storage {
@@ -132,7 +134,7 @@ impl Window for StorageWindow {
                 .map(|(pos,)| (pos.x, pos.y))
                 .map(|(x, y)| map_to_screen_cords(x, y, screen_width, screen_height, game_state))
                 .unwrap_or_default();
-            win = win.current_pos((x + 10., y + 120.));
+            win = win.current_pos((x, y + 10.));
         }
         win.show(ctx, |ui| {
             ui.set_width(ui.available_width());
@@ -169,7 +171,8 @@ impl Window for NeedsWindow {
             .anchor(egui::Align2::RIGHT_TOP, (-10., 10.))
             .collapsible(false)
             .title_bar(false)
-            .fixed_size((140., 90.))
+            .default_width(WINDOW_WIDTH)
+            .default_height(90.)
             // .frame(egui::Frame::none())
             .resizable(false)
             .show(ctx, |ui| {

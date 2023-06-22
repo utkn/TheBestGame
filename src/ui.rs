@@ -93,7 +93,6 @@ pub fn draw_ui(
 ) {
     let window_types = UiBuilder::default().build_and_draw(ctx, game_state, ui_cmds, ui_state);
     if let Some(drag_result) = ui_state.item_drag.try_complete(ctx) {
-        let item_entity = drag_result.dragged_item;
         let from_win_type = drag_result
             .from_win_id
             .and_then(|id| window_types.get(&id))
@@ -102,11 +101,16 @@ pub fn draw_ui(
             .to_win_id
             .and_then(|id| window_types.get(&id))
             .cloned();
-        let item_transfer_req = ItemTransferReq {
-            item_entity,
-            from_loc: from_win_type.into(),
-            to_loc: to_win_type.into(),
-        };
-        ui_cmds.emit_event(item_transfer_req);
+        drag_result
+            .dragged_item_stack
+            .into_iter()
+            .for_each(|item_entity| {
+                let item_transfer_req = ItemTransferReq {
+                    item_entity,
+                    from_loc: from_win_type.into(),
+                    to_loc: to_win_type.into(),
+                };
+                ui_cmds.emit_event(item_transfer_req);
+            });
     }
 }

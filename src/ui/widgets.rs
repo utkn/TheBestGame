@@ -2,34 +2,48 @@ use itertools::Itertools;
 use notan::egui;
 
 use crate::{
-    item::{Equipment, EquipmentSlot, Item, Storage},
+    item::{Equipment, Item, ItemStack, Storage},
     needs::Needs,
     prelude::*,
 };
 
 use super::UiState;
 
-pub(super) struct ItemWidget<'a>(
-    pub(super) &'a EntityRef,
+pub(super) struct ItemStackWidget<'a>(
+    pub(super) &'a ItemStack,
     pub(super) &'a State,
     pub(super) &'a mut StateCommands,
     pub(super) &'a mut UiState,
 );
 
-impl<'a> egui::Widget for ItemWidget<'a> {
+impl<'a> egui::Widget for ItemStackWidget<'a> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let name = if let Some((_, name)) = self.1.select_one::<(Item, Name)>(self.0) {
+        let head_item = self.0.head_item();
+        let head_item_name = if let Some((_, name)) =
+            head_item.and_then(|head_item| self.1.select_one::<(Item, Name)>(head_item))
+        {
             name.0
         } else {
-            "unknown"
+            ""
         };
-        let draggable_btn = egui::Button::new(name.chars().take(3).join(""))
+        let label = if head_item.is_some() {
+            format!(
+                "{} ({})",
+                head_item_name.chars().take(3).join(""),
+                self.0.len()
+            )
+        } else {
+            String::new()
+        };
+        let draggable_btn = egui::Button::new(label)
             .min_size(egui::Vec2 { x: 30., y: 30. })
             .sense(egui::Sense::drag());
         let draggable_btn = ui.add(draggable_btn);
         if draggable_btn.drag_started() {
-            if let Some(egui::Pos2 { x, y }) = draggable_btn.interact_pointer_pos() {
-                self.3.item_drag.start(*self.0, (x, y));
+            if let (Some(_), Some(egui::Pos2 { x, y })) =
+                (head_item, draggable_btn.interact_pointer_pos())
+            {
+                self.3.item_drag.start(self.0.clone(), (x, y));
             }
         } else if draggable_btn.drag_released() {
             if let Some(egui::Pos2 { x, y }) = draggable_btn.interact_pointer_pos() {
@@ -37,28 +51,6 @@ impl<'a> egui::Widget for ItemWidget<'a> {
             }
         }
         draggable_btn
-    }
-}
-
-pub(super) struct EquipmentSlotWidget<'a>(
-    pub(super) EquipmentSlot,
-    pub(super) Option<&'a EntityRef>,
-    pub(super) &'a State,
-    pub(super) &'a mut StateCommands,
-    pub(super) &'a mut UiState,
-);
-
-impl<'a> egui::Widget for EquipmentSlotWidget<'a> {
-    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        egui::Grid::new(format!("EquipmentSlot[{:?}]", self.0))
-            .show(ui, |ui| {
-                if let Some(item) = self.1 {
-                    ui.add(ItemWidget(item, self.2, self.3, self.4))
-                } else {
-                    ui.add(egui::Button::new("").min_size(egui::Vec2 { x: 30., y: 30. }))
-                }
-            })
-            .response
     }
 }
 
@@ -74,20 +66,11 @@ impl<'a> egui::Widget for EquipmentWidget<'a> {
         egui::Grid::new(format!("Equipment[{:?}]", self.0))
             .show(ui, |ui| {
                 if let Some((equipment,)) = self.1.select_one::<(Equipment,)>(self.0) {
-                    equipment
-                        .slots()
-                        .map(|(slot, stack)| (slot, stack.and_then(|stack| stack.head_item())))
-                        .for_each(|(slot, item_in_slot)| {
-                            ui.label(format!("{:?}", slot));
-                            ui.add(EquipmentSlotWidget(
-                                *slot,
-                                item_in_slot,
-                                self.1,
-                                self.2,
-                                self.3,
-                            ));
-                            ui.end_row();
-                        })
+                    equipment.slots().for_each(|(slot, item_stack)| {
+                        ui.label(format!("{:?}", slot));
+                        ui.add(ItemStackWidget(item_stack, self.1, self.2, self.3));
+                        ui.end_row();
+                    })
                 }
             })
             .response
@@ -106,17 +89,12 @@ impl<'a> egui::Widget for StorageWidget<'a> {
         egui::Grid::new(format!("Storage[{:?}]", self.0))
             .show(ui, |ui| {
                 if let Some((storage,)) = self.1.select_one::<(Storage,)>(self.0) {
-                    storage
-                        .stacks()
-                        .flat_map(|stack| stack.head_item())
-                        .chunks(3)
-                        .into_iter()
-                        .for_each(|row| {
-                            row.into_iter().for_each(|item| {
-                                ui.add(ItemWidget(item, self.1, self.2, self.3));
-                            });
-                            ui.end_row();
-                        })
+                    storage.stacks().chunks(3).into_iter().for_each(|row| {
+                        row.into_iter().for_each(|item_stack| {
+                            ui.add(ItemStackWidget(item_stack, self.1, self.2, self.3));
+                        });
+                        ui.end_row();
+                    })
                 }
             })
             .response

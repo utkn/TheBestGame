@@ -44,15 +44,14 @@ impl SlotSelector {
     pub fn choose_slots<'a>(
         &self,
         item_entity: &EntityRef,
-        occupied_slots: &HashMap<EquipmentSlot, ItemStack>,
-        accepting_slots: &HashSet<EquipmentSlot>,
+        slots: &HashMap<EquipmentSlot, ItemStack>,
         state: &State,
     ) -> Option<HashSet<EquipmentSlot>> {
         let mut chosen_slots = HashSet::new();
         for clause in &self.0 {
             let chosen_slot = clause.iter().find(|option| {
-                accepting_slots.contains(*option)
-                    && occupied_slots
+                slots.contains_key(*option)
+                    && slots
                         .get(*option)
                         .map(|item_stack| item_stack.can_store(item_entity, state))
                         .unwrap_or(true)
@@ -71,29 +70,30 @@ pub struct Equippable(pub SlotSelector);
 /// An entity that can equip [`Equippable`] entities.
 #[derive(Clone, Debug)]
 pub struct Equipment {
-    accepting_slots: HashSet<EquipmentSlot>,
-    occupied_slots: HashMap<EquipmentSlot, ItemStack>,
+    slots: HashMap<EquipmentSlot, ItemStack>,
 }
 
 impl Equipment {
     pub fn new(accepting_slots: impl IntoIterator<Item = EquipmentSlot>) -> Self {
-        Self {
-            accepting_slots: accepting_slots.into_iter().collect(),
-            occupied_slots: Default::default(),
-        }
+        let slots = HashMap::from_iter(
+            accepting_slots
+                .into_iter()
+                .map(|slot| (slot, ItemStack::one())),
+        );
+        Self { slots }
     }
 
-    pub fn slots(&self) -> impl Iterator<Item = (&EquipmentSlot, Option<&ItemStack>)> {
-        self.accepting_slots
+    pub fn slots(&self) -> impl Iterator<Item = (&EquipmentSlot, &ItemStack)> {
+        self.slots
             .iter()
-            .map(|eq_slot| (eq_slot, self.get_item_stack(eq_slot)))
+            .map(|(eq_slot, item_stack)| (eq_slot, item_stack))
     }
 
     pub fn content_description<'a>(
         &'a self,
         state: &'a State,
     ) -> HashMap<EquipmentSlot, ItemDescription<'a>> {
-        self.occupied_slots
+        self.slots
             .iter()
             .filter_map(|(eq_slot, item_stack)| {
                 if let Some(desc) = item_stack.head_item_description(state) {
@@ -112,18 +112,13 @@ impl Equipment {
         state: &State,
     ) -> Option<HashSet<EquipmentSlot>> {
         let slot_selector = &state.select_one::<(Equippable,)>(item_entity)?.0 .0;
-        slot_selector.choose_slots(
-            item_entity,
-            &self.occupied_slots,
-            &self.accepting_slots,
-            state,
-        )
+        slot_selector.choose_slots(item_entity, &self.slots, state)
     }
 
     /// Returns the set of equipment slots that the given `item_entity` is stored in.
     pub fn get_containing_slots(&self, item_entity: &EntityRef) -> Option<HashSet<EquipmentSlot>> {
         let occupied_slots: HashSet<_> = self
-            .occupied_slots
+            .slots
             .iter()
             .filter(|(_, item_stack)| item_stack.contains(item_entity))
             .map(|(equipment_slot, _)| *equipment_slot)
@@ -137,13 +132,13 @@ impl Equipment {
 
     /// Returns the [`ItemStack`] at the given `equipment_slot`.
     pub fn get_item_stack(&self, equipment_slot: &EquipmentSlot) -> Option<&ItemStack> {
-        self.occupied_slots.get(equipment_slot)
+        self.slots.get(equipment_slot)
     }
 }
 
 impl EntityRefBag for Equipment {
     fn len(&self) -> usize {
-        self.occupied_slots
+        self.slots
             .values()
             .flat_map(|item_stack| item_stack.iter())
             .unique()
@@ -151,28 +146,26 @@ impl EntityRefBag for Equipment {
     }
 
     fn get_invalids(&self, valids: &EntityValiditySet) -> HashSet<EntityRef> {
-        self.occupied_slots
+        self.slots
             .iter()
             .flat_map(|(_, item_stack)| item_stack.get_invalids(valids))
             .collect()
     }
 
     fn try_remove_all(&mut self, entities: &HashSet<EntityRef>) -> HashSet<EntityRef> {
-        self.occupied_slots
+        self.slots
             .values_mut()
             .flat_map(|item_stack| item_stack.try_remove_all(entities))
             .collect()
     }
 
     fn contains(&self, e: &EntityRef) -> bool {
-        self.occupied_slots
-            .values()
-            .any(|item_stack| item_stack.contains(e))
+        self.slots.values().any(|item_stack| item_stack.contains(e))
     }
 
     fn try_remove(&mut self, e: &EntityRef) -> bool {
         let old_size = self.len();
-        self.occupied_slots.values_mut().for_each(|item_stack| {
+        self.slots.values_mut().for_each(|item_stack| {
             item_stack.try_remove(e);
         });
         old_size != self.len()
@@ -214,10 +207,10 @@ impl ShadowEquipment {
         if let Some(eq_slots) = self.0.get_slots_to_occupy(&item_entity, state) {
             eq_slots.into_iter().for_each(|eq_slot| {
                 self.0
-                    .occupied_slots
+                    .slots
                     .entry(eq_slot)
-                    .or_insert(Default::default())
-                    .force_store(item_entity);
+                    .or_insert(ItemStack::one())
+                    .try_store(item_entity, state);
             });
             true
         } else {
@@ -230,9 +223,9 @@ impl ShadowEquipment {
         if let Some(eq_slots) = self.0.get_containing_slots(item_entity) {
             eq_slots.into_iter().all(|eq_slot| {
                 self.0
-                    .occupied_slots
+                    .slots
                     .entry(eq_slot)
-                    .or_insert(Default::default())
+                    .or_insert(ItemStack::one())
                     .try_remove(item_entity)
             })
         } else {

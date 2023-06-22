@@ -52,6 +52,16 @@ impl EntityRefSet {
     }
 }
 
+impl IntoIterator for EntityRefSet {
+    type Item = EntityRef;
+
+    type IntoIter = std::collections::hash_set::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 impl EntityRefBag for EntityRefSet {
     fn len(&self) -> usize {
         self.0.len()

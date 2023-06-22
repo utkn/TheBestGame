@@ -17,12 +17,14 @@ mod storage;
 pub struct Item(f32);
 
 impl Item {
+    /// Creates a new unstackable item.
     pub fn unstackable() -> Self {
         Self(ITEM_STACK_MAX_WEIGHT)
     }
 
-    pub fn stackable(num: usize) -> Self {
-        Self(ITEM_STACK_MAX_WEIGHT / (num as f32))
+    /// Creates a stackable item with maximum stack size `stack_size`.
+    pub fn stackable(stack_size: usize) -> Self {
+        Self(ITEM_STACK_MAX_WEIGHT / (stack_size as f32))
     }
 }
 

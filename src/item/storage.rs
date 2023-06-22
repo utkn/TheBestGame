@@ -16,7 +16,7 @@ impl Storage {
     /// Creates a new storage with the capacity to hold `num_slots` many [`ItemStacks`].
     pub fn new(num_slots: usize) -> Self {
         let mut item_stacks = Vec::with_capacity(num_slots);
-        item_stacks.resize_with(num_slots, || ItemStack::default());
+        item_stacks.resize_with(num_slots, || ItemStack::weighted());
         Self {
             stacks: item_stacks,
         }
@@ -99,11 +99,14 @@ impl From<Storage> for ShadowStorage {
 impl ShadowStorage {
     /// Tries to store the given entity in the underlying storage and returns `true` iff it succeeds.
     fn try_store(&mut self, item_entity: EntityRef, state: &State) -> bool {
+        // Find available slot
         if let Some(idx) = self.0.get_available_slot(&item_entity, state) {
+            // Get the stack at the slot.
             if let Some(item_stack) = self.0.stacks.get_mut(idx) {
-                item_stack.force_store(item_entity)
+                item_stack.try_store(item_entity, state)
+            } else {
+                false
             }
-            true
         } else {
             false
         }

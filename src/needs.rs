@@ -7,6 +7,7 @@ use crate::prelude::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NeedType {
     Health,
+    Energy,
     Hunger,
     Thirst,
     Sanity,

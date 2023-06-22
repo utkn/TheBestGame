@@ -19,7 +19,7 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         TargetVelocity::default(),
         Acceleration(2000.),
         MaxSpeed(1000.),
-        Storage::new(100),
+        Storage::new(6),
         InteractTarget::<Storage>::default(),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
         InteractTarget::<Hitbox>::default(),
@@ -55,7 +55,7 @@ pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef
         MaxSpeed(300.),
         Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
         InteractTarget::<Hitbox>::default(),
-        Storage::new(100),
+        Storage::new(15),
         Equipment::new([
             EquipmentSlot::Head,
             EquipmentSlot::Torso,
@@ -67,6 +67,7 @@ pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef
         ]),
         Needs::new([
             (NeedType::Health, NeedStatus::with_max(100.)),
+            (NeedType::Energy, NeedStatus::with_max(100.)),
             (NeedType::Sanity, NeedStatus::with_max(100.)),
             (NeedType::Hunger, NeedStatus::with_zero(100.)),
             (NeedType::Thirst, NeedStatus::with_zero(100.)),
@@ -106,7 +107,7 @@ pub fn create_chest(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
         InteractTarget::<Hitbox>::default(),
         InteractTarget::<Storage>::default(),
-        Storage::new(100),
+        Storage::new(60),
         InteractTarget::<VisionField>::default(),
     ));
     let _chest_activator = cmds.create_from((
@@ -143,7 +144,7 @@ pub fn create_item(
 
 pub fn create_handgun(trans: Transform, name: Name, cmds: &mut StateCommands) -> EntityRef {
     let item = create_item(
-        Item::unstackable(),
+        Item::stackable(2),
         trans,
         name,
         SlotSelector::new([[EquipmentSlot::LeftHand, EquipmentSlot::RightHand]]),
