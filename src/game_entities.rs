@@ -7,7 +7,7 @@ use crate::{
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::*,
     prelude::*,
-    sprite::{Sprite, CHARACTER_STATE_TREE},
+    sprite::{Sprite, CHARACTER_STATE_GRAPH},
     vehicle::Vehicle,
 };
 
@@ -46,7 +46,11 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
     vehicle
 }
 
-pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
+pub fn create_character(
+    sprite_id: &'static str,
+    trans: Transform,
+    cmds: &mut StateCommands,
+) -> EntityRef {
     let character = cmds.create_from((
         trans,
         Character,
@@ -75,7 +79,7 @@ pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef
         ]),
         InteractTarget::<VisionField>::default(),
     ));
-    cmds.set_components(&character, (Sprite(CHARACTER_STATE_TREE),));
+    cmds.set_components(&character, (Sprite(sprite_id, CHARACTER_STATE_GRAPH),));
     let _character_vision_field = cmds.create_from((
         Transform::default(),
         AnchorTransform(character, (0., 0.)),
@@ -87,7 +91,7 @@ pub fn create_character(trans: Transform, cmds: &mut StateCommands) -> EntityRef
 }
 
 pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
-    let character = create_character(trans, cmds);
+    let character = create_character("player", trans, cmds);
     cmds.set_components(
         &character,
         (

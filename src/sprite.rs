@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use crate::prelude::*;
 
-pub use character_states::CHARACTER_STATE_TREE;
-pub use item_states::ITEM_STATE_TREE;
+pub use character_states::CHARACTER_STATE_GRAPH;
+pub use item_states::ITEM_STATE_GRAPH;
 use itertools::Itertools;
 
 mod character_states;
@@ -16,9 +16,9 @@ pub struct EntityState {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct EntityStateTree(pub &'static str, pub &'static [&'static [EntityState]]);
+pub struct EntityStateGraph(pub &'static str, pub &'static [&'static [EntityState]]);
 
-impl EntityStateTree {
+impl EntityStateGraph {
     pub fn tree_name(&self) -> &'static str {
         self.0
     }
@@ -29,23 +29,23 @@ impl EntityStateTree {
         state: &State,
         available_tags: &HashSet<std::ffi::OsString>,
     ) -> Option<EntityState> {
-        // Find the deepest branch whose leaf represents the current state of the entity.
-        let deepest_branch_id = self
+        // Find the deepest path from the root whose end point represents the current state of the entity.
+        let deepest_path_id = self
             .1
             .iter()
             .enumerate()
-            .filter(|(_, branch)| {
-                let leaf_is_good = branch
+            .filter(|(_, path)| {
+                let leaf_is_good = path
                     .last()
                     .map(|branch_leaf| (branch_leaf.is_in_state)(e, state))
                     .unwrap_or(false);
                 leaf_is_good
             })
-            .map(|(branch_id, branch)| (branch_id, branch.len()))
-            .max_by_key(|(_, branch_depth)| *branch_depth)
-            .map(|(branch_id, _)| branch_id)?;
+            .map(|(path_id, path)| (path_id, path.len()))
+            .max_by_key(|(_, path_depth)| *path_depth)
+            .map(|(path_id, _)| path_id)?;
         // Find the deepest state in the chosen branch that we can actually represent.
-        let last_representible_state = self.1[deepest_branch_id]
+        let last_representible_state = self.1[deepest_path_id]
             .iter()
             .filter(|node| available_tags.contains(&std::ffi::OsString::from(node.tag)))
             .last()?;
@@ -54,11 +54,11 @@ impl EntityStateTree {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Sprite(pub EntityStateTree);
+pub struct Sprite(pub &'static str, pub EntityStateGraph);
 
 impl Sprite {
     /// Returns a path to the drawable png file that represents the given entity.
-    /// e.g., {`assets_folder`}/character/idle.png
+    /// e.g., {`assets_folder`}/character/{sprite_id}/idle.png
     pub fn get_file_path(
         &self,
         assets_folder: std::path::PathBuf,
@@ -66,7 +66,8 @@ impl Sprite {
         state: &State,
     ) -> Option<std::path::PathBuf> {
         let mut asset_path = assets_folder;
-        asset_path.push(self.0.tree_name());
+        asset_path.push(self.1.tree_name());
+        asset_path.push(self.0);
         let available_tags: HashSet<std::ffi::OsString> = std::fs::read_dir(&asset_path)
             .map(|folder| {
                 let file_paths = folder.map_ok(|file| file.path()).flatten();
@@ -82,7 +83,7 @@ impl Sprite {
                     .collect()
             })
             .ok()?;
-        let deepest_state = self.0.get_deepest_state(e, state, &available_tags)?;
+        let deepest_state = self.1.get_deepest_state(e, state, &available_tags)?;
         asset_path.push(deepest_state.tag);
         asset_path.set_extension("png");
         Some(asset_path)

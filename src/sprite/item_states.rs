@@ -3,7 +3,7 @@ use crate::{
     prelude::EntityInsights,
 };
 
-use super::{EntityState, EntityStateTree};
+use super::{EntityState, EntityStateGraph};
 
 pub const ITEM_ON_GROUND: EntityState = EntityState {
     tag: "on_ground",
@@ -85,7 +85,7 @@ pub const ITEM_ON_FEET: EntityState = EntityState {
     },
 };
 
-pub const ITEM_STATE_TREE: EntityStateTree = EntityStateTree(
+pub const ITEM_STATE_GRAPH: EntityStateGraph = EntityStateGraph(
     "item",
     &[
         &[ITEM_ON_GROUND],
