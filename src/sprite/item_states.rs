@@ -3,14 +3,14 @@ use crate::{
     prelude::StateInsights,
 };
 
-use super::{EntityState, EntityStateGraph};
+use super::{EntityStateGraph, TagGenerator};
 
-pub const ITEM_ON_GROUND: EntityState = EntityState {
+pub const ITEM_ON_GROUND: TagGenerator = TagGenerator {
     tag: "on_ground",
     is_state_of: |e, state| StateInsights::of(state).location_of(e) == ItemLocation::Ground,
 };
 
-pub const ITEM_IN_STORAGE: EntityState = EntityState {
+pub const ITEM_IN_STORAGE: TagGenerator = TagGenerator {
     tag: "in_storage",
     is_state_of: |e, state| {
         matches!(
@@ -20,7 +20,7 @@ pub const ITEM_IN_STORAGE: EntityState = EntityState {
     },
 };
 
-pub const ITEM_IN_EQUIPMENT: EntityState = EntityState {
+pub const ITEM_IN_EQUIPMENT: TagGenerator = TagGenerator {
     tag: "in_equipment",
     is_state_of: |e, state| {
         matches!(
@@ -30,7 +30,7 @@ pub const ITEM_IN_EQUIPMENT: EntityState = EntityState {
     },
 };
 
-pub const ITEM_ON_HEAD: EntityState = EntityState {
+pub const ITEM_ON_HEAD: TagGenerator = TagGenerator {
     tag: "on_head",
     is_state_of: |e, state| {
         if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
@@ -41,7 +41,7 @@ pub const ITEM_ON_HEAD: EntityState = EntityState {
     },
 };
 
-pub const ITEM_ON_TORSO: EntityState = EntityState {
+pub const ITEM_ON_TORSO: TagGenerator = TagGenerator {
     tag: "on_torso",
     is_state_of: |e, state| {
         if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
@@ -52,7 +52,7 @@ pub const ITEM_ON_TORSO: EntityState = EntityState {
     },
 };
 
-pub const ITEM_ON_LEGS: EntityState = EntityState {
+pub const ITEM_ON_LEGS: TagGenerator = TagGenerator {
     tag: "on_legs",
     is_state_of: |e, state| {
         if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
@@ -63,7 +63,7 @@ pub const ITEM_ON_LEGS: EntityState = EntityState {
     },
 };
 
-pub const ITEM_ON_HAND: EntityState = EntityState {
+pub const ITEM_ON_HAND: TagGenerator = TagGenerator {
     tag: "on_hand",
     is_state_of: |e, state| {
         if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
@@ -74,7 +74,7 @@ pub const ITEM_ON_HAND: EntityState = EntityState {
     },
 };
 
-pub const ITEM_ON_FEET: EntityState = EntityState {
+pub const ITEM_ON_FEET: TagGenerator = TagGenerator {
     tag: "on_hand",
     is_state_of: |e, state| {
         if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {

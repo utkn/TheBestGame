@@ -12,8 +12,13 @@ mod vision_insights;
 #[derive(Clone, Copy, Debug)]
 pub struct AiDriver;
 
+#[derive(Clone, Default, Debug)]
+pub struct AiState {
+    curr_follow_target: Option<EntityRef>,
+}
+
 impl ControlDriver for AiDriver {
-    type State = ();
+    type State = AiState;
 
     fn get_commands(
         &self,

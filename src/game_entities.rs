@@ -7,7 +7,7 @@ use crate::{
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
     physics::*,
     prelude::*,
-    sprite::{Sprite, CHARACTER_STATE_GRAPH},
+    sprite::Sprite,
     vehicle::Vehicle,
 };
 
@@ -79,13 +79,7 @@ pub fn create_character(
         ]),
         InteractTarget::<VisionField>::default(),
     ));
-    cmds.set_components(
-        &character,
-        (
-            Sprite(sprite_id, CHARACTER_STATE_GRAPH),
-            TargetRotation::default(),
-        ),
-    );
+    cmds.set_components(&character, (TargetRotation::default(), Sprite(sprite_id)));
     let _character_vision_field = cmds.create_from((
         Transform::default(),
         AnchorTransform(character, (0., 0.)),

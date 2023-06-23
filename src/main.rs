@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use itertools::Itertools;
 use notan::{
     draw::{CreateDraw, DrawImages, DrawShapes, DrawTransform},
     egui::EguiPluginSugar,
-    prelude::Assets,
+    prelude::{Asset, Assets, Texture},
 };
 
 use ai::*;
@@ -34,13 +34,14 @@ mod sprite;
 mod ui;
 mod vehicle;
 
-type AssetMap = HashMap<String, notan::prelude::Asset<notan::prelude::Texture>>;
+type AssetMap = HashMap<PathBuf, Asset<Texture>>;
 
 #[derive(notan::AppState)]
 struct AppState {
     world: World,
     ui_state: ui::UiState,
     asset_map: AssetMap,
+    sprite_representor: SpriteRepresentor,
 }
 
 fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
@@ -51,19 +52,16 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         .unwrap()
         .into_iter()
         .flatten()
-        .flat_map(|path| path.into_os_string().into_string())
         .collect_vec();
     let asset_map: AssetMap = asset_paths
         .into_iter()
         .map(|asset_path| {
-            (
-                assets
-                    .load_asset::<notan::prelude::Texture>(&asset_path)
-                    .unwrap(),
-                asset_path,
-            )
+            let asset_path_str = asset_path.as_path().to_str().unwrap();
+            let tx = assets
+                .load_asset::<notan::prelude::Texture>(asset_path_str)
+                .unwrap();
+            (asset_path, tx)
         })
-        .map(|(asset, path)| (path, asset))
         .collect();
     // Create the world from an empty state.
     let mut world = prelude::World::from(prelude::State::default());
@@ -131,6 +129,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         world,
         asset_map,
         ui_state: Default::default(),
+        sprite_representor: Default::default(),
     }
 }
 
@@ -149,32 +148,26 @@ fn update(app: &mut notan::prelude::App, app_state: &mut AppState) {
         .update_with_systems(UpdateContext { dt, control_map });
 }
 
-fn draw_game(rnd: &mut notan::draw::Draw, state: &State, asset_map: &AssetMap) {
-    state
-        .select::<(Sprite, Transform)>()
-        .flat_map(|(e, (sprite, trans))| {
-            let assets_folder = std::path::PathBuf::from("assets");
-            if let Some(asset_id) = sprite.get_file_path(assets_folder, &e, state) {
-                Some((trans, asset_id.into_os_string().into_string().unwrap()))
-            } else {
-                None
-            }
+fn draw_game(rnd: &mut notan::draw::Draw, app_state: &mut AppState) {
+    let game_state = app_state.world.get_state();
+    game_state
+        .select::<(Transform, Sprite)>()
+        .flat_map(|(sprite_entity, (trans, _))| {
+            app_state
+                .sprite_representor
+                .represent(&sprite_entity, game_state)
+                .next()
+                .and_then(|path_buf| app_state.asset_map.get(&path_buf))
+                .map(|tx| (trans, tx))
         })
-        .flat_map(|(trans, asset_id)| {
-            if let Some(asset) = asset_map.get(&asset_id) {
-                Some((trans, asset))
-            } else {
-                None
-            }
-        })
-        .for_each(|(trans, asset)| {
-            asset.lock().map(|tx| {
+        .for_each(|(trans, tx)| {
+            if let Some(tx) = tx.lock() {
                 let (x, y) =
-                    map_to_screen_cords(trans.x, trans.y, rnd.width(), rnd.height(), state);
-                rnd.image(&tx)
+                    map_to_screen_cords(trans.x, trans.y, rnd.width(), rnd.height(), game_state);
+                rnd.image(tx.as_ref())
                     .position(x - tx.width() / 2., y - tx.height() / 2.)
                     .rotate_degrees_from((x, y), -trans.deg);
-            });
+            }
         });
 }
 
@@ -226,11 +219,7 @@ fn draw(
     // Draw the game
     let mut game_rnd = gfx.create_draw();
     game_rnd.clear(notan::prelude::Color::new(0., 0., 0., 1.));
-    draw_game(
-        &mut game_rnd,
-        app_state.world.get_state(),
-        &mut app_state.asset_map,
-    );
+    draw_game(&mut game_rnd, app_state);
     draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);
     // Draw the ui

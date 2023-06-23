@@ -4,14 +4,14 @@ use crate::{
     vehicle::Vehicle,
 };
 
-use super::{EntityState, EntityStateGraph};
+use super::{EntityStateGraph, TagGenerator};
 
-pub const DEFAULT: EntityState = EntityState {
+pub const DEFAULT: TagGenerator = TagGenerator {
     tag: "default",
     is_state_of: |_, _| true,
 };
 
-pub const STORAGE_ACTIVE: EntityState = EntityState {
+pub const STORAGE_ACTIVE: TagGenerator = TagGenerator {
     tag: "storage_active",
     is_state_of: |e, state| {
         state
@@ -21,7 +21,7 @@ pub const STORAGE_ACTIVE: EntityState = EntityState {
     },
 };
 
-pub const VEHICLE_ACTIVE: EntityState = EntityState {
+pub const VEHICLE_ACTIVE: TagGenerator = TagGenerator {
     tag: "vehicle_active",
     is_state_of: |e, state| {
         state
