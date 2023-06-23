@@ -19,9 +19,14 @@ impl Transform {
         Self { x, y, deg: 0. }
     }
 
-    /// Returns a transform with the given degree.
+    /// Returns the transform with the given degree.
     pub fn with_deg(self, deg: f32) -> Self {
         Self { deg, ..self }
+    }
+
+    /// Returns the transform with the given position.
+    pub fn with_pos(self, x: f32, y: f32) -> Self {
+        Self { x, y, ..self }
     }
 
     /// Returns a transform by applying the given translation.
@@ -67,10 +72,6 @@ pub struct MaxSpeed(pub f32);
 /// Represents the acceleration of an entity. Used to determine the rate in which [`Velocity`] will be brought closer to [`TargetVelocity`].
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Acceleration(pub f32);
-
-/// Entities with this component will always face the mouse.
-#[derive(Clone, Copy, Default, Debug)]
-pub struct FaceMouse;
 
 /// The [`Transform`] of the entities with this component will be fixed to the [`Transform`] of the given parent with an optional offset.
 #[derive(Clone, Copy, Debug)]

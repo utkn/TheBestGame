@@ -1,7 +1,7 @@
 use crate::{
     ai::*,
     camera::CameraFollow,
-    controller::{Controller, ProximityInteractable, UserInputDriver},
+    controller::{Controller, ProximityInteractable, UserInputCharacterDriver},
     effects::{Affected, Effect, Effector, EffectorTarget},
     item::*,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
@@ -22,21 +22,23 @@ pub fn create_vehicle(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         MaxSpeed(1000.),
         Storage::new(6),
         InteractTarget::<Storage>::default(),
-        Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
+        Hitbox(HitboxType::Dynamic, Shape::Rect(100., 40.)),
         InteractTarget::<Hitbox>::default(),
         InteractTarget::<VisionField>::default(),
     ));
     cmds.set_components(
         &vehicle,
         (
-            Name("vehicle"),
+            Name("basic car"),
+            Sprite("basic_car"),
+            TargetRotation::default(),
             Equipment::new([EquipmentSlot::VehicleGas, EquipmentSlot::VehicleModule]),
             InteractTarget::<Equipment>::default(),
         ),
     );
     let _vehicle_door = cmds.create_from((
         Transform::default(),
-        AnchorTransform(vehicle, (0., 0.)),
+        AnchorTransform(vehicle, (0., -20.)),
         ProximityInteractable,
         UntargetedInteractionDelegate(vehicle),
         Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
@@ -96,8 +98,7 @@ pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
         &character,
         (
             CameraFollow,
-            Controller(UserInputDriver { default_speed: 5. }),
-            FaceMouse,
+            Controller(UserInputCharacterDriver { default_speed: 5. }),
             Affected::<MaxSpeed>::default(),
             Affected::<Acceleration>::default(),
         ),

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use itertools::Itertools;
-use sepax2d::{sat_collision, sat_overlap};
+use sepax2d::{sat_collision, sat_overlap, Rotate};
 
 use crate::prelude::*;
 
@@ -59,28 +59,37 @@ pub struct CollisionEvt {
 }
 
 /// Represents a transformed shape that can be directly checked against other `TransformedShape`s for collisions.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum TransformedShape {
     Circle(sepax2d::circle::Circle),
-    AABB(sepax2d::aabb::AABB),
+    Poly(sepax2d::polygon::Polygon),
 }
 
 impl TransformedShape {
-    pub fn new(pos: &Transform, primitive_shape: &Shape) -> Self {
+    pub fn new(trans: &Transform, primitive_shape: &Shape) -> Self {
         match primitive_shape {
-            Shape::Circle(r) => Self::Circle(sepax2d::circle::Circle::new((pos.x, pos.y), *r)),
-            Shape::Rect(w, h) => Self::AABB(sepax2d::aabb::AABB::new(
-                (pos.x - w / 2., pos.y - h / 2.),
-                *w,
-                *h,
-            )),
+            Shape::Circle(r) => Self::Circle(sepax2d::circle::Circle::new((trans.x, trans.y), *r)),
+            Shape::Rect(w, h) => {
+                let mut poly = sepax2d::polygon::Polygon::from_vertices(
+                    (0., 0.),
+                    vec![
+                        (-w / 2., -h / 2.),
+                        (w / 2., -h / 2.),
+                        (w / 2., h / 2.),
+                        (-w / 2., h / 2.),
+                    ],
+                );
+                poly.rotate(-trans.deg.to_radians());
+                poly.position = (trans.x, trans.y);
+                Self::Poly(poly)
+            }
         }
     }
 
     pub fn shape_ref(&self) -> &dyn sepax2d::Shape {
         match self {
             Self::Circle(shape) => shape,
-            Self::AABB(shape) => shape,
+            Self::Poly(shape) => shape,
         }
     }
 }
@@ -198,7 +207,7 @@ impl System for SeparateCollisionsSystem {
                 !anchored
             })
             .for_each(|evt| {
-                if let Some((pos, hb)) = state.select_one::<(Transform, Hitbox)>(&evt.e1) {
+                if let Some((trans, hb)) = state.select_one::<(Transform, Hitbox)>(&evt.e1) {
                     let mut dpos = notan::math::vec2(-evt.overlap.0, -evt.overlap.1);
                     if dpos.length_squared() == 0. {
                         return;
@@ -211,8 +220,8 @@ impl System for SeparateCollisionsSystem {
                         if other_hb.0 == HitboxType::Dynamic {
                             dpos *= 0.5;
                         }
-                        let new_pos = notan::math::vec2(pos.x, pos.y) + dpos;
-                        cmds.set_component(&evt.e1, Transform::at(new_pos.x, new_pos.y));
+                        let new_pos = notan::math::vec2(trans.x, trans.y) + dpos;
+                        cmds.set_component(&evt.e1, trans.with_pos(new_pos.x, new_pos.y));
                         // Reset the velocity.
                         if other_hb.0 == HitboxType::Static {
                             cmds.set_component(&evt.e1, Velocity::default());

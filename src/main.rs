@@ -68,11 +68,11 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
     // Control & movement
     world.register_system(MovementSystem);
     world.register_system(AnchorSystem);
-    world.register_system(ControlSystem::<UserInputDriver>::default());
+    world.register_system(ControlSystem::<UserInputCharacterDriver>::default());
+    world.register_system(ControlSystem::<UserInputVehicleDriver>::default());
     world.register_system(LifetimeSystem);
     world.register_system(ApproachVelocitySystem);
     world.register_system(ApproachRotationSystem);
-    world.register_system(FaceMouseSystem);
     // Interactions
     world.register_system(InteractionAcceptorSystem(
         ConsensusStrategy::MaxPriority,
@@ -203,6 +203,7 @@ fn draw_debug(rnd: &mut notan::draw::Draw, state: &State) {
                 }
                 Shape::Rect(w, h) => {
                     rnd.rect((x - w / 2., y - h / 2.), (w, h))
+                        .rotate_degrees_from((x, y), -trans.deg)
                         .stroke(1.)
                         .stroke_color(color);
                 }

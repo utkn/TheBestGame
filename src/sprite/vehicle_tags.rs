@@ -6,7 +6,7 @@ use super::TagSource;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum VehicleTag {
-    Driving,
+    Moving,
     Idle,
     Damaged,
 }
@@ -14,7 +14,7 @@ pub enum VehicleTag {
 impl Into<&'static str> for VehicleTag {
     fn into(self) -> &'static str {
         match self {
-            VehicleTag::Driving => "driving",
+            VehicleTag::Moving => "moving",
             VehicleTag::Idle => "idle",
             VehicleTag::Damaged => "damaged",
         }
@@ -29,6 +29,16 @@ impl TagSource for Vehicle {
     }
 
     fn generate(e: &EntityRef, state: &State) -> HashSet<Self::TagType> {
-        Default::default()
+        let mut tags = HashSet::new();
+        let is_idle = state
+            .select_one::<(TargetVelocity,)>(e)
+            .map(|(target_vel,)| target_vel.x == 0. && target_vel.y == 0.)
+            .unwrap_or(true);
+        if is_idle {
+            tags.insert(VehicleTag::Idle);
+        } else {
+            tags.insert(VehicleTag::Moving);
+        }
+        tags
     }
 }

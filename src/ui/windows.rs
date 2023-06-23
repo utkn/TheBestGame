@@ -1,6 +1,8 @@
 use notan::egui;
 
 use crate::camera::map_to_screen_cords;
+use crate::controller::Controller;
+use crate::controller::UserInputCharacterDriver;
 use crate::item::ItemLocation;
 use crate::prelude::*;
 
@@ -61,8 +63,8 @@ impl Window for EquipmentWindow {
     ) {
         let screen_width = ctx.input().screen_rect().width();
         let screen_height = ctx.input().screen_rect().height();
-        let is_player_storage = game_state
-            .select_one::<(FaceMouse,)>(&self.equipment_entity)
+        let is_player_equipment = game_state
+            .select_one::<(Controller<UserInputCharacterDriver>,)>(&self.equipment_entity)
             .is_some();
         let mut win = egui::Window::new(self.title)
             .id(self.window_id())
@@ -70,7 +72,7 @@ impl Window for EquipmentWindow {
             .default_width(WINDOW_WIDTH)
             .resizable(false);
         // Handle alignment & positioning.
-        if is_player_storage {
+        if is_player_equipment {
             win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 120.));
         } else {
             let (x, y) = game_state
@@ -116,7 +118,7 @@ impl Window for StorageWindow {
         let screen_width = ctx.input().screen_rect().width();
         let screen_height = ctx.input().screen_rect().height();
         let is_player_storage = game_state
-            .select_one::<(FaceMouse,)>(&self.storage_entity)
+            .select_one::<(Controller<UserInputCharacterDriver>,)>(&self.storage_entity)
             .is_some();
         let mut win = egui::Window::new(self.title)
             .id(self.window_id())

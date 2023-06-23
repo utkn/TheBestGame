@@ -1,4 +1,6 @@
-use crate::controller::{CopyControllersReq, DeleteControllersReq};
+use crate::controller::{
+    Controller, CopyControllersReq, DeleteControllersReq, UserInputVehicleDriver,
+};
 use crate::item::Storage;
 use crate::prelude::*;
 
@@ -35,7 +37,8 @@ impl System for VehicleSystem {
                 let driver = &evt.actor;
                 let vehicle = &evt.target;
                 // Copy the driver's controllers to the vehicle.
-                cmds.emit_event(CopyControllersReq::new(*driver, *vehicle));
+                // cmds.emit_event(CopyControllersReq::new(*driver, *vehicle));
+                cmds.set_component(vehicle, Controller(UserInputVehicleDriver));
                 // Anchor the driver to the vehicle.
                 cmds.set_component(driver, AnchorTransform(*vehicle, (0., 0.)));
                 if let Some((vehicle_transform,)) = state.select_one::<(Transform,)>(vehicle) {

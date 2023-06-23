@@ -30,7 +30,6 @@ impl SpriteRepresentor {
             .entry(sprite_id)
             .or_insert_with(|| parse_all_representible_tags_for(sprite_id));
         let existing_tags = ExistingTags::<S>::of(sprite_id, sprite_entity, state);
-        println!("{:?}", existing_tags);
         repr_tags.try_represent_as::<S>(&existing_tags).cloned()
     }
 }

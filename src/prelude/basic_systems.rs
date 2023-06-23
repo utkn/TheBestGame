@@ -75,30 +75,6 @@ impl System for ApproachRotationSystem {
     }
 }
 
-/// A system that handles mouse facing.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct FaceMouseSystem;
-
-impl System for FaceMouseSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        let (mouse_x, mouse_y) = ctx.control_map.mouse_pos;
-        state
-            .select::<(FaceMouse, Transform)>()
-            .for_each(|(e, (_, trans))| {
-                let mouse_pos = notan::math::vec2(mouse_x, mouse_y);
-                let entity_pos = notan::math::vec2(trans.x, trans.y);
-                let diff = mouse_pos - entity_pos;
-                if diff.length_squared() == 0. {
-                    return;
-                }
-                let new_deg = diff.angle_between(notan::math::vec2(1., 0.)).to_degrees();
-                cmds.update_component(&e, move |target_rot: &mut TargetRotation| {
-                    target_rot.deg = new_deg;
-                });
-            });
-    }
-}
-
 /// A system that handles position and rotation anchoring.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct AnchorSystem;
