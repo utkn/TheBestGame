@@ -1,20 +1,20 @@
 use crate::{
     item::{EquipmentSlot, ItemInsights, ItemLocation},
-    prelude::EntityInsights,
+    prelude::StateInsights,
 };
 
 use super::{EntityState, EntityStateGraph};
 
 pub const ITEM_ON_GROUND: EntityState = EntityState {
     tag: "on_ground",
-    is_state_of: |e, state| EntityInsights::of(e, state).location() == ItemLocation::Ground,
+    is_state_of: |e, state| StateInsights::of(state).location_of(e) == ItemLocation::Ground,
 };
 
 pub const ITEM_IN_STORAGE: EntityState = EntityState {
     tag: "in_storage",
     is_state_of: |e, state| {
         matches!(
-            EntityInsights::of(e, state).location(),
+            StateInsights::of(state).location_of(e,),
             ItemLocation::Storage(_)
         )
     },
@@ -24,7 +24,7 @@ pub const ITEM_IN_EQUIPMENT: EntityState = EntityState {
     tag: "in_equipment",
     is_state_of: |e, state| {
         matches!(
-            EntityInsights::of(e, state).location(),
+            StateInsights::of(state).location_of(e,),
             ItemLocation::Equipment(_)
         )
     },
@@ -33,7 +33,7 @@ pub const ITEM_IN_EQUIPMENT: EntityState = EntityState {
 pub const ITEM_ON_HEAD: EntityState = EntityState {
     tag: "on_head",
     is_state_of: |e, state| {
-        if let Some(slots) = EntityInsights::of(e, state).equipped_slots() {
+        if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
             slots.contains(&EquipmentSlot::Head)
         } else {
             false
@@ -44,7 +44,7 @@ pub const ITEM_ON_HEAD: EntityState = EntityState {
 pub const ITEM_ON_TORSO: EntityState = EntityState {
     tag: "on_torso",
     is_state_of: |e, state| {
-        if let Some(slots) = EntityInsights::of(e, state).equipped_slots() {
+        if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
             slots.contains(&EquipmentSlot::Torso)
         } else {
             false
@@ -55,7 +55,7 @@ pub const ITEM_ON_TORSO: EntityState = EntityState {
 pub const ITEM_ON_LEGS: EntityState = EntityState {
     tag: "on_legs",
     is_state_of: |e, state| {
-        if let Some(slots) = EntityInsights::of(e, state).equipped_slots() {
+        if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
             slots.contains(&EquipmentSlot::Legs)
         } else {
             false
@@ -66,7 +66,7 @@ pub const ITEM_ON_LEGS: EntityState = EntityState {
 pub const ITEM_ON_HAND: EntityState = EntityState {
     tag: "on_hand",
     is_state_of: |e, state| {
-        if let Some(slots) = EntityInsights::of(e, state).equipped_slots() {
+        if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
             slots.contains(&EquipmentSlot::LeftHand) || slots.contains(&EquipmentSlot::RightHand)
         } else {
             false
@@ -77,7 +77,7 @@ pub const ITEM_ON_HAND: EntityState = EntityState {
 pub const ITEM_ON_FEET: EntityState = EntityState {
     tag: "on_hand",
     is_state_of: |e, state| {
-        if let Some(slots) = EntityInsights::of(e, state).equipped_slots() {
+        if let Some(slots) = StateInsights::of(state).equipped_slots_of(e) {
             slots.contains(&EquipmentSlot::Feet)
         } else {
             false

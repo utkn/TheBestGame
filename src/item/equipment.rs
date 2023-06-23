@@ -185,7 +185,7 @@ impl Interaction for Equipment {
 
     fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
         Self::can_start_targeted(actor, target, state)
-            && EntityInsights::of(target, state).location() == ItemLocation::Ground
+            && StateInsights::of(state).location_of(target) == ItemLocation::Ground
     }
 
     fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {

@@ -3,15 +3,11 @@ use std::{any::TypeId, collections::HashSet, marker::PhantomData};
 use itertools::Itertools;
 use rand::random;
 
-mod hand_interaction;
 mod interaction_acceptor;
 mod interaction_delegate;
-mod proximity_interaction;
 
-pub use hand_interaction::*;
 pub use interaction_acceptor::*;
 pub use interaction_delegate::*;
-pub use proximity_interaction::*;
 
 use crate::prelude::*;
 
@@ -250,7 +246,7 @@ impl<I: Interaction> System for InteractionSystem<I> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct ProposeInteractEvt {
+struct ProposeInteractEvt {
     proposer_id: std::any::TypeId,
     consensus_id: usize,
     priority: usize,
@@ -271,7 +267,7 @@ impl ProposeInteractEvt {
     }
 }
 #[derive(Clone, Copy, Debug)]
-pub struct ProposeUninteractEvt {
+struct ProposeUninteractEvt {
     proposer_id: std::any::TypeId,
     consensus_id: usize,
     priority: usize,

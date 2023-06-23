@@ -36,7 +36,7 @@ impl Interaction for ProjectileGenerator {
     }
 
     fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        EntityInsights::of(actor, state).is_equipping(target)
+        StateInsights::of(state).is_equipping(actor, target)
             && state.select_one::<(Character,)>(actor).is_some()
     }
 
@@ -109,7 +109,7 @@ impl System for ProjectileGenerationSystem {
                     new_trans.y = new_pos.y;
                     let vel = dir * p_gen.proj.speed;
                     let vel = Velocity { x: vel.x, y: vel.y };
-                    let anchor_parent = EntityInsights::of(&gen_entity, state).anchor_parent();
+                    let anchor_parent = StateInsights::of(state).anchor_parent_of(&gen_entity);
                     // Determine the friendly entities of the projectile, which are...
                     // ... the generator itself
                     let mut friendly_entities = vec![gen_entity];
@@ -187,8 +187,8 @@ impl System for HitSystem {
         state
             .select::<(Hitter,)>()
             .for_each(|(hitter_entity, (hitter,))| {
-                EntityInsights::of(&hitter_entity, state)
-                    .new_collision_starters()
+                StateInsights::of(state)
+                    .new_collision_starters_of(&hitter_entity)
                     .into_iter()
                     // Make sure that we do not consider friendly entities.
                     .filter(|coll_target| !hitter.friendly_entities.contains(coll_target))

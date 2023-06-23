@@ -3,11 +3,11 @@ mod basic_systems;
 mod component;
 mod component_tuple;
 mod entity;
-mod entity_insights;
 mod event;
 mod generic_bag;
 mod interaction;
 mod state;
+mod state_insights;
 mod system;
 mod timed;
 
@@ -15,11 +15,10 @@ pub use basic_components::*;
 pub use basic_systems::*;
 pub use component::Component;
 pub use entity::*;
-pub use entity_insights::*;
 pub use event::Event;
-pub use event::EventManager;
 pub use interaction::*;
-pub use state::*;
+pub use state::{State, StateCommands};
+pub use state_insights::*;
 pub use system::*;
 pub use timed::*;
 

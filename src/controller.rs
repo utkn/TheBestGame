@@ -1,6 +1,15 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-use crate::prelude::*;
+use crate::{item::EquipmentSlot, prelude::*};
+
+mod equipment_interaction;
+mod proximity_interaction;
+
+use equipment_interaction::*;
+use proximity_interaction::*;
+
+pub use equipment_interaction::HandInteractionSystem;
+pub use proximity_interaction::{ProximityInteractable, ProximityInteractionSystem};
 
 /// Entities with this component will be able to be moved by the given [`ControlDriver`].
 #[derive(Clone, Debug)]
@@ -12,8 +21,8 @@ pub enum ControlCommand {
     SetTargetVelocity(TargetVelocity),
     ProximityInteract,
     ProximityUninteract,
-    HandInteract(HandSide),
-    HandUninteract(HandSide),
+    EquipmentInteract(EquipmentSlot),
+    EquipmentUninteract(EquipmentSlot),
 }
 
 pub trait ControlDriver: 'static + Clone + std::fmt::Debug {
@@ -53,16 +62,18 @@ impl ControlDriver for UserInputDriver {
             return vec![ControlCommand::ProximityUninteract];
         }
         if ctx.control_map.mouse_left_was_pressed {
-            return vec![ControlCommand::HandInteract(HandSide::Left)];
+            return vec![ControlCommand::EquipmentInteract(EquipmentSlot::LeftHand)];
         }
         if ctx.control_map.mouse_right_was_pressed {
-            return vec![ControlCommand::HandInteract(HandSide::Right)];
+            return vec![ControlCommand::EquipmentInteract(EquipmentSlot::RightHand)];
         }
         if ctx.control_map.mouse_left_was_released {
-            return vec![ControlCommand::HandUninteract(HandSide::Left)];
+            return vec![ControlCommand::EquipmentUninteract(EquipmentSlot::LeftHand)];
         }
         if ctx.control_map.mouse_right_was_released {
-            return vec![ControlCommand::HandUninteract(HandSide::Left)];
+            return vec![ControlCommand::EquipmentUninteract(
+                EquipmentSlot::RightHand,
+            )];
         }
         let speed = game_state
             .select_one::<(MaxSpeed,)>(&actor)
@@ -156,11 +167,11 @@ impl<D: ControlDriver> System for ControlSystem<D> {
                         ControlCommand::ProximityUninteract => {
                             cmds.emit_event(EndProximityInteractReq(actor))
                         }
-                        ControlCommand::HandInteract(hand) => {
-                            cmds.emit_event(HandInteractReq(actor, hand))
+                        ControlCommand::EquipmentInteract(slot) => {
+                            cmds.emit_event(EquipmentInteractReq(actor, slot))
                         }
-                        ControlCommand::HandUninteract(hand) => {
-                            cmds.emit_event(HandUninteractReq(actor, hand))
+                        ControlCommand::EquipmentUninteract(slot) => {
+                            cmds.emit_event(EquipmentUninteractReq(actor, slot))
                         }
                     });
             });

@@ -1,7 +1,7 @@
 use crate::{
     ai::*,
     camera::CameraFollow,
-    controller::{Controller, UserInputDriver},
+    controller::{Controller, ProximityInteractable, UserInputDriver},
     effects::{Affected, Effect, Effector, EffectorTarget},
     item::*,
     needs::{NeedMutator, NeedMutatorEffect, NeedStatus, NeedType, Needs},
@@ -101,7 +101,6 @@ pub fn create_player(trans: Transform, cmds: &mut StateCommands) -> EntityRef {
     cmds.set_components(
         &character,
         (
-            HandInteractor,
             CameraFollow,
             Controller(UserInputDriver { default_speed: 5. }),
             FaceMouse,

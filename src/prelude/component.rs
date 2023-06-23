@@ -7,7 +7,7 @@ impl<T> Component for T where T: Clone + std::fmt::Debug + 'static {}
 
 /// A vector of components stored contigously in the memory.
 #[derive(Clone, Debug)]
-pub struct ComponentVec<T>(Vec<Option<T>>);
+pub(super) struct ComponentVec<T>(Vec<Option<T>>);
 
 impl<T: Component> Default for ComponentVec<T> {
     fn default() -> Self {
@@ -47,26 +47,26 @@ impl<T: Component> ConcreteBag for ComponentVec<T> {
 }
 
 impl<T: Component> ComponentVec<T> {
-    pub fn get(&self, id: usize) -> Option<&T> {
+    pub(super) fn get(&self, id: usize) -> Option<&T> {
         self.0.get(id).map(|opt_c| opt_c.as_ref()).flatten()
     }
 
-    pub fn get_mut(&mut self, id: usize) -> Option<&mut T> {
+    pub(super) fn get_mut(&mut self, id: usize) -> Option<&mut T> {
         self.0.get_mut(id).map(|opt_c| opt_c.as_mut()).flatten()
     }
 
-    pub fn has(&self, id: usize) -> bool {
+    pub(super) fn has(&self, id: usize) -> bool {
         self.get(id).is_some()
     }
 
-    pub fn set(&mut self, id: usize, c: T) {
+    pub(super) fn set(&mut self, id: usize, c: T) {
         if id >= self.0.len() {
             self.0.resize(id + 1, None);
         }
         self.0.get_mut(id).map(|opt_c| opt_c.insert(c));
     }
 
-    pub fn remove(&mut self, id: usize) -> Option<T> {
+    pub(super) fn remove(&mut self, id: usize) -> Option<T> {
         self.0.get_mut(id).map(|opt_c| opt_c.take()).flatten()
     }
 }
@@ -76,14 +76,14 @@ impl<T: Component> ComponentVec<T> {
 pub struct ComponentManager(GenericBagMap);
 
 impl ComponentManager {
-    pub fn get_components_mut<T>(&mut self) -> &mut ComponentVec<T>
+    pub(super) fn get_components_mut<T>(&mut self) -> &mut ComponentVec<T>
     where
         T: Component,
     {
         self.0.get_bag_mut::<ComponentVec<T>>()
     }
 
-    pub fn get_components<T>(&self) -> Option<&ComponentVec<T>>
+    pub(super) fn get_components<T>(&self) -> Option<&ComponentVec<T>>
     where
         T: Component,
     {
@@ -91,12 +91,12 @@ impl ComponentManager {
     }
 
     /// Removes all the components at the given id. Returns true iff the operation succeeds.
-    pub fn clear_components(&mut self, id: usize) -> bool {
+    pub(super) fn clear_components(&mut self, id: usize) -> bool {
         self.0.remove_at(id)
     }
 
     /// Fetches all the components as a tuple.
-    pub fn select<'a, S: ComponentTuple<'a>>(
+    pub(super) fn select<'a, S: ComponentTuple<'a>>(
         &'a self,
     ) -> impl Iterator<Item = (usize, <S as ComponentTuple<'a>>::RefOutput)> {
         (0..self.0.max_len())
@@ -105,7 +105,7 @@ impl ComponentManager {
     }
 
     /// Fetches the component tuple associated with the given entity.
-    pub fn select_one<'a, S: ComponentTuple<'a>>(
+    pub(super) fn select_one<'a, S: ComponentTuple<'a>>(
         &'a self,
         id: usize,
     ) -> Option<<S as ComponentTuple<'a>>::RefOutput> {

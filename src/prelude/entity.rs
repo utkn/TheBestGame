@@ -109,7 +109,7 @@ impl EntityValiditySet {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct EntityManager {
+pub(super) struct EntityManager {
     curr_versions: HashMap<usize, u8>,
     free_ids: VecDeque<usize>,
     next_id: usize,
@@ -117,25 +117,25 @@ pub struct EntityManager {
 
 impl EntityManager {
     /// Returns the current version associated with the given entity id.
-    pub fn get_curr_version(&self, id: usize) -> Option<u8> {
+    pub(super) fn get_curr_version(&self, id: usize) -> Option<u8> {
         self.curr_versions.get(&id).cloned()
     }
 
-    pub fn get_all<'a>(&'a self) -> impl Iterator<Item = EntityRef> + 'a {
+    pub(super) fn get_all<'a>(&'a self) -> impl Iterator<Item = EntityRef> + 'a {
         self.curr_versions
             .iter()
             .map(|(id, v)| EntityRef::new(*id, *v))
     }
 
     /// Returns true iff the given entity reference is valid.
-    pub fn is_valid(&self, e: &EntityRef) -> bool {
+    pub(super) fn is_valid(&self, e: &EntityRef) -> bool {
         self.curr_versions
             .get(&e.id)
             .map_or(false, |curr_v| curr_v == &e.version)
     }
 
     /// Creates a new entity and returns a valid reference to it.
-    pub fn create(&mut self) -> EntityRef {
+    pub(super) fn create(&mut self) -> EntityRef {
         let id = self.free_ids.pop_back().unwrap_or_else(|| {
             self.next_id += 1;
             self.next_id - 1
@@ -145,7 +145,7 @@ impl EntityManager {
     }
 
     /// Removes the entity with the given id, invalidating all the current references to it.
-    pub fn remove(&mut self, id: usize) {
+    pub(super) fn remove(&mut self, id: usize) {
         // Update the effective entity version.
         self.curr_versions
             .entry(id)
@@ -155,7 +155,7 @@ impl EntityManager {
     }
 
     /// Returns a set that contains the valid entities. Performs a clone of the current maintained entity versions, use carefully!
-    pub fn extract_validity_set(&self) -> EntityValiditySet {
+    pub(super) fn extract_validity_set(&self) -> EntityValiditySet {
         EntityValiditySet(self.curr_versions.clone())
     }
 }

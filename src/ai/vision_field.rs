@@ -35,8 +35,8 @@ pub struct VisionSystem;
 impl System for VisionSystem {
     fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state.select::<(VisionField,)>().for_each(|(e, _)| {
-            EntityInsights::of(&e, state)
-                .new_collision_enders()
+            StateInsights::of(state)
+                .new_collision_enders_of(&e)
                 .into_iter()
                 .for_each(|target| {
                     cmds.emit_event(UninteractReq::<VisionField>::new(e, target));
@@ -46,25 +46,24 @@ impl System for VisionSystem {
             |(vision_field_entity, (_, ref_trans))| {
                 let ref_pos = notan::math::vec2(ref_trans.x, ref_trans.y);
                 let vf_anchor_parent =
-                    EntityInsights::of(&vision_field_entity, state).anchor_parent();
-                let colliding_entities: HashSet<_> =
-                    EntityInsights::of(&vision_field_entity, state)
-                        .contacts()
-                        .iter()
-                        // Do not consider the anchor parent in the vision.
-                        .filter(|colliding_e| {
-                            let is_anchor_parent = vf_anchor_parent
-                                .map(|anchor_parent| anchor_parent == **colliding_e)
-                                .unwrap_or(false);
-                            !is_anchor_parent
-                        })
-                        .filter(|colliding_e| {
-                            state
-                                .select_one::<(InteractTarget<VisionField>,)>(colliding_e)
-                                .is_some()
-                        })
-                        .cloned()
-                        .collect();
+                    StateInsights::of(state).anchor_parent_of(&vision_field_entity);
+                let colliding_entities: HashSet<_> = StateInsights::of(state)
+                    .contacts_of(&vision_field_entity)
+                    .iter()
+                    // Do not consider the anchor parent in the vision.
+                    .filter(|colliding_e| {
+                        let is_anchor_parent = vf_anchor_parent
+                            .map(|anchor_parent| anchor_parent == **colliding_e)
+                            .unwrap_or(false);
+                        !is_anchor_parent
+                    })
+                    .filter(|colliding_e| {
+                        state
+                            .select_one::<(InteractTarget<VisionField>,)>(colliding_e)
+                            .is_some()
+                    })
+                    .cloned()
+                    .collect();
                 let colliding_hitboxes = colliding_entities
                     .iter()
                     .filter_map(|colliding_e| {

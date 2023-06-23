@@ -190,9 +190,9 @@ impl System for SeparateCollisionsSystem {
         state
             .read_events::<CollisionEvt>()
             .filter(|evt| {
-                let anchored = EntityInsights::of(&evt.e1, state).anchor_parent().is_some()
-                    || EntityInsights::of(&evt.e2, state)
-                        .anchor_parent()
+                let anchored = StateInsights::of(state).anchor_parent_of(&evt.e1).is_some()
+                    || StateInsights::of(state)
+                        .anchor_parent_of(&evt.e2)
                         .map(|parent| parent == evt.e1)
                         .unwrap_or(false);
                 !anchored

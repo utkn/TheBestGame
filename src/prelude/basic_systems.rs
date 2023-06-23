@@ -56,21 +56,17 @@ impl System for ApproachRotationSystem {
         state
             .select::<(Transform, TargetRotation, Acceleration)>()
             .for_each(|(e, (trans, target_rot, acc))| {
-                let mut curr_deg = trans.deg;
-                let mut target_deg = target_rot.deg;
-                if curr_deg < 0. {
-                    curr_deg += 360.;
-                }
-                if target_deg < 0. {
-                    target_deg += 360.;
-                }
+                let curr_deg = trans.deg;
+                let target_deg = target_rot.deg;
                 let mut diff = target_deg - curr_deg;
+                // Make sure we take the shortest path.
                 if diff > 270. {
                     diff -= 360.;
                 }
                 if diff < -270. {
                     diff += 360.;
                 }
+                // Approach to the target rotation with a cool harding effect.
                 let new_rot = curr_deg + diff.signum() * ctx.dt * diff.abs() * acc.0 / 400.;
                 cmds.update_component(&e, move |trans: &mut Transform| {
                     trans.deg = new_rot;

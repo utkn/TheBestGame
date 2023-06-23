@@ -17,13 +17,18 @@ pub struct State {
 }
 
 impl State {
+    /// Marks the given entity for removal.
+    fn mark_for_removal(&mut self, e: &EntityRef) {
+        self.to_remove.insert(*e);
+    }
+
     /// Clears all the events in the state. Should be called at the end of an update.
-    pub fn clear_events(&mut self) {
+    pub(super) fn clear_events(&mut self) {
         self.event_mgr.clear_all()
     }
 
     /// Updates the state through the given commands.
-    pub fn apply_cmds(&mut self, mut cmds: StateCommands) {
+    pub(super) fn apply_cmds(&mut self, mut cmds: StateCommands) {
         cmds.drain_modifications()
             .sorted_by_key(|m| m.0)
             .for_each(|m| m.1(self));
@@ -31,6 +36,16 @@ impl State {
         self.event_mgr.merge_events(cmds.tmp_event_mgr);
     }
 
+    /// Converts the entities marked as invalid to eager entity removals and copies them into the given `StateCommands`.
+    pub(super) fn transfer_removals(&mut self, cmds: &mut StateCommands) {
+        self.to_remove.iter().for_each(|to_remove| {
+            cmds.remove_entity_for_sure(to_remove);
+        });
+    }
+
+    pub(super) fn reset_removal_requests(&mut self) {
+        self.to_remove.clear()
+    }
     /// Returns true if the given entity reference is valid.
     pub fn is_valid(&self, e: &EntityRef) -> bool {
         self.entity_mgr.is_valid(e)
@@ -75,30 +90,14 @@ impl State {
         }
         self.component_mgr.select_one::<S>(e.id())
     }
-
-    /// Marks the given entity for removal.
-    pub fn mark_for_removal(&mut self, e: &EntityRef) {
-        self.to_remove.insert(*e);
-    }
-
-    /// Converts the entities marked as invalid to eager entity removals and copies them into the given `StateCommands`.
-    pub fn transfer_removals(&mut self, cmds: &mut StateCommands) {
-        self.to_remove.iter().for_each(|to_remove| {
-            cmds.remove_entity_for_sure(to_remove);
-        });
-    }
-
-    pub fn reset_removal_requests(&mut self) {
-        self.to_remove.clear()
-    }
 }
 
-pub struct StateMod(pub u8, pub Box<dyn FnOnce(&mut State)>);
+struct StateMod(pub u8, pub Box<dyn FnOnce(&mut State)>);
 
 pub struct StateCommands {
     tmp_entity_mgr: EntityManager,
     tmp_event_mgr: EventManager,
-    pub(super) modifications: Vec<StateMod>,
+    modifications: Vec<StateMod>,
 }
 
 impl From<&State> for StateCommands {
@@ -113,8 +112,21 @@ impl From<&State> for StateCommands {
 
 impl StateCommands {
     /// Returns a draining filter on the saved modifications.
-    pub(super) fn drain_modifications<'a>(&'a mut self) -> impl Iterator<Item = StateMod> + 'a {
+    fn drain_modifications<'a>(&'a mut self) -> impl Iterator<Item = StateMod> + 'a {
         self.modifications.drain(0..self.modifications.len())
+    }
+
+    /// Dispatches a request to remove the given entity from the system in the next update.
+    fn remove_entity_for_sure(&mut self, e: &EntityRef) {
+        let e = *e;
+        let f = Box::new(move |state: &mut State| {
+            if !state.is_valid(&e) {
+                return;
+            }
+            state.entity_mgr.remove(e.id());
+            state.component_mgr.clear_components(e.id());
+        });
+        self.modifications.push(StateMod(3, f));
     }
 
     /// Pushes a new event to be handled on the next update.
@@ -204,19 +216,6 @@ impl StateCommands {
                 return;
             }
             state.mark_for_removal(&e);
-        });
-        self.modifications.push(StateMod(3, f));
-    }
-
-    /// Dispatches a request to remove the given entity from the system in the next update.
-    fn remove_entity_for_sure(&mut self, e: &EntityRef) {
-        let e = *e;
-        let f = Box::new(move |state: &mut State| {
-            if !state.is_valid(&e) {
-                return;
-            }
-            state.entity_mgr.remove(e.id());
-            state.component_mgr.clear_components(e.id());
         });
         self.modifications.push(StateMod(3, f));
     }

@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::prelude::*;
 
-use super::ProposeInteractEvt;
+use super::{ProposeInteractEvt, ProposeUninteractEvt};
 
 #[derive(Clone, Copy, Debug)]
 pub enum ConsensusStrategy {
@@ -149,5 +149,4 @@ impl From<Proposal> for UninteractAcceptedEvt {
 #[derive(Clone, Debug)]
 pub struct ConsensusFailedEvt {
     pub consensus_id: usize,
-    pub proposals: Vec<ProposeInteractEvt>,
 }

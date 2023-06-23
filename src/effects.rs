@@ -141,21 +141,21 @@ impl<T: AffectibleComponent> System for EffectSystem<T> {
             .select::<(Effector<T>,)>()
             .for_each(|(e, (effector,))| {
                 // Collect insights about the effector.
-                let effector_insights = EntityInsights::of(&e, state);
+                let insights = StateInsights::of(state);
                 // Collect the application targets.
                 let mut apply_targets = HashSet::<EntityRef>::new();
                 let mut unapply_targets = HashSet::<EntityRef>::new();
                 if effector.targets.contains(&EffectorTarget::Collider) {
-                    apply_targets.extend(effector_insights.new_collision_starters());
-                    unapply_targets.extend(effector_insights.new_collision_enders());
+                    apply_targets.extend(insights.new_collision_starters_of(&e));
+                    unapply_targets.extend(insights.new_collision_enders_of(&e));
                 }
                 if effector.targets.contains(&EffectorTarget::Storer) {
-                    apply_targets.extend(effector_insights.new_storers());
-                    unapply_targets.extend(effector_insights.new_unstorers());
+                    apply_targets.extend(insights.new_storers_of(&e));
+                    unapply_targets.extend(insights.new_unstorers_of(&e));
                 }
                 if effector.targets.contains(&EffectorTarget::Equipper) {
-                    apply_targets.extend(effector_insights.new_equippers());
-                    unapply_targets.extend(effector_insights.new_unequippers());
+                    apply_targets.extend(insights.new_equippers_of(&e));
+                    unapply_targets.extend(insights.new_unequippers_of(&e));
                 }
                 // Emit an application/unapplication request for the targets.
                 unapply_targets.into_iter().for_each(|target| {

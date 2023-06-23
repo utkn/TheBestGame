@@ -1,4 +1,4 @@
-use crate::{physics::*, prelude::*};
+use crate::{controller::ProximityInteractable, prelude::*};
 
 pub use equipment::*;
 pub use item_description::*;
@@ -74,7 +74,7 @@ impl ItemTransferSystem {
     /// Returns true if the given item is indeed in the given location.
     fn from_loc_valid(&self, item_entity: &EntityRef, loc: &ItemLocation, state: &State) -> bool {
         let is_item_entity_valid = state.select_one::<(Item,)>(item_entity).is_some();
-        let curr_location = EntityInsights::of(item_entity, state).location();
+        let curr_location = StateInsights::of(state).location_of(item_entity);
         is_item_entity_valid && curr_location == *loc
     }
 
@@ -86,11 +86,11 @@ impl ItemTransferSystem {
                 ItemLocation::Ground => true,
                 // Check if the item is equippable by the target [`Equipment`].
                 ItemLocation::Equipment(equipment_entity) if equipment_entity != item_entity => {
-                    EntityInsights::of(equipment_entity, state).can_equip(item_entity)
+                    StateInsights::of(state).can_equip(equipment_entity, item_entity)
                 }
                 // Check if the item is storable by the target [`Storage`].
                 ItemLocation::Storage(storage_entity) if storage_entity != item_entity => {
-                    EntityInsights::of(storage_entity, state).can_store(item_entity)
+                    StateInsights::of(state).can_store(storage_entity, item_entity)
                 }
                 _ => false,
             }
@@ -155,7 +155,6 @@ impl System for ItemAnchorSystem {
             .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
             .for_each(|(item, _)| {
                 cmds.remove_component::<AnchorTransform>(&item);
-                cmds.set_component(&item, Hitbox(HitboxType::Ghost, Shape::Circle(10.)));
             });
         // Handle transfer to equipment/storage.
         state
@@ -167,7 +166,6 @@ impl System for ItemAnchorSystem {
             })
             .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
             .for_each(|(item, actor)| {
-                cmds.remove_component::<Hitbox>(&item);
                 cmds.set_components(
                     &item,
                     (Transform::default(), AnchorTransform(actor, (0., 0.))),
@@ -183,11 +181,11 @@ impl Interaction for Item {
     }
 
     fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        let target_insights = EntityInsights::of(target, state);
-        target_insights.is_item()
-            && target_insights.location() == ItemLocation::Ground
+        let insights = StateInsights::of(state);
+        insights.is_item(target)
+            && insights.location_of(target) == ItemLocation::Ground
             && state.select_one::<(Character,)>(actor).is_some()
-            && EntityInsights::of(actor, state).can_store(target)
+            && insights.can_store(actor, target)
     }
 
     fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
