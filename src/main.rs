@@ -202,8 +202,12 @@ fn draw_debug(rnd: &mut notan::draw::Draw, state: &State) {
                     rnd.circle(r).position(x, y).stroke(1.).stroke_color(color);
                 }
                 Shape::Rect(w, h) => {
+                    let (offset_x, offset_y) = state
+                        .select_one::<(AnchorTransform,)>(&e)
+                        .map(|(anchor_trans,)| anchor_trans.1)
+                        .unwrap_or_default();
                     rnd.rect((x - w / 2., y - h / 2.), (w, h))
-                        .rotate_degrees_from((x, y), -trans.deg)
+                        .rotate_degrees_from((x - offset_x, y - offset_y), -trans.deg)
                         .stroke(1.)
                         .stroke_color(color);
                 }

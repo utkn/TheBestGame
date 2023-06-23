@@ -45,6 +45,12 @@ impl Transform {
     }
 }
 
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Offset {
+    pub x: f32,
+    pub y: f32,
+}
+
 /// Represents the velocity of a component.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Velocity {

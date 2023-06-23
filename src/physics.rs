@@ -66,7 +66,7 @@ pub enum TransformedShape {
 }
 
 impl TransformedShape {
-    pub fn new(trans: &Transform, primitive_shape: &Shape) -> Self {
+    pub fn new(trans: &Transform, primitive_shape: &Shape, offset: (f32, f32)) -> Self {
         match primitive_shape {
             Shape::Circle(r) => Self::Circle(sepax2d::circle::Circle::new((trans.x, trans.y), *r)),
             Shape::Rect(w, h) => {
@@ -79,7 +79,15 @@ impl TransformedShape {
                         (-w / 2., h / 2.),
                     ],
                 );
+                poly.vertices.iter_mut().for_each(|v| {
+                    v.0 += offset.0;
+                    v.1 += offset.1;
+                });
                 poly.rotate(-trans.deg.to_radians());
+                poly.vertices.iter_mut().for_each(|v| {
+                    v.0 -= offset.0;
+                    v.1 -= offset.1;
+                });
                 poly.position = (trans.x, trans.y);
                 Self::Poly(poly)
             }
@@ -104,13 +112,18 @@ pub struct EffectiveHitbox {
 }
 
 impl EffectiveHitbox {
-    pub fn new(e: &EntityRef, trans: &Transform, hb: &Hitbox) -> Self {
-        Self {
+    pub fn new(e: &EntityRef, state: &State) -> Option<Self> {
+        let (hb, trans) = state.select_one::<(Hitbox, Transform)>(e)?;
+        let offset = state
+            .select_one::<(AnchorTransform,)>(e)
+            .map(|(anchor_trans,)| anchor_trans.1)
+            .unwrap_or_default();
+        Some(Self {
             entity: *e,
             hb: *hb,
             trans: *trans,
-            shape: TransformedShape::new(trans, &hb.1),
-        }
+            shape: TransformedShape::new(trans, &hb.1, offset),
+        })
     }
 }
 
@@ -148,7 +161,7 @@ impl System for CollisionDetectionSystem {
     fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         let effective_hbs = state
             .select::<(Transform, Hitbox)>()
-            .map(|(e, (pos, hitbox))| EffectiveHitbox::new(&e, pos, hitbox))
+            .flat_map(|(e, _)| EffectiveHitbox::new(&e, state))
             .collect_vec();
         let resps = effective_hbs
             .into_iter()

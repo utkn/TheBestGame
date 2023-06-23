@@ -129,7 +129,7 @@ impl ControlDriver for UserInputVehicleDriver {
         actor: &EntityRef,
         ctx: &UpdateContext,
         game_state: &State,
-        driver_state: &mut Self::State,
+        _driver_state: &mut Self::State,
     ) -> Vec<ControlCommand> {
         let curr_trans = game_state
             .select_one::<(Transform,)>(actor)
@@ -153,8 +153,8 @@ impl ControlDriver for UserInputVehicleDriver {
         } else {
             0.
         } * speed;
-        let new_target_vel =
-            notan::math::Vec2::from_angle(-curr_trans.deg.to_radians()) * directional_speed;
+        let (dir_vec_x, dir_vec_y) = curr_trans.dir_vec();
+        let new_target_vel = notan::math::vec2(dir_vec_x, dir_vec_y) * directional_speed;
         let new_target_vel = TargetVelocity {
             x: new_target_vel.x,
             y: new_target_vel.y,

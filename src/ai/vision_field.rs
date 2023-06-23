@@ -69,11 +69,11 @@ impl System for VisionSystem {
                     .filter_map(|colliding_e| {
                         state
                             .select_one::<(Hitbox, Transform)>(colliding_e)
-                            .map(|(hb, trans)| {
+                            .map(|(_, trans)| {
                                 (
                                     *colliding_e,
                                     trans,
-                                    EffectiveHitbox::new(colliding_e, trans, hb),
+                                    EffectiveHitbox::new(colliding_e, state).unwrap(),
                                 )
                             })
                     })
