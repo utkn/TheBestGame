@@ -126,7 +126,7 @@ impl System for ProjectileGenerationSystem {
                         Hitter::new(friendly_entities),
                         SuicideOnHit,
                         ApplyOnHit::new(Some(0.), p_gen.proj.on_hit.clone()),
-                        Sprite("bullet"),
+                        Sprite::new("bullet", 2),
                     ));
                     // Apply knockback optionally
                     if let Some(knockback_factor) = p_gen.knockback {

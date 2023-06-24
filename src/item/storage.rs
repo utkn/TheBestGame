@@ -8,10 +8,12 @@ use crate::{
 };
 
 mod storage_activation;
+mod storage_bundle;
 mod storage_insights;
 mod storage_system;
 
 pub use storage_activation::*;
+pub use storage_bundle::*;
 pub use storage_insights::*;
 pub use storage_system::*;
 

@@ -1,6 +1,6 @@
 use crate::{
-    ai::VisionField, camera::CameraFollow, character::create_character, controller::*, effects::*,
-    item::*, needs::*, physics::*, prelude::*, vehicle::create_vehicle,
+    camera::CameraFollow, character::CharacterBundle, controller::*, effects::*, item::*, needs::*,
+    physics::*, prelude::*, sprite::Sprite, vehicle::VehicleBundle,
 };
 
 pub struct EntityTemplate {
@@ -20,46 +20,31 @@ impl EntityTemplate {
 
 pub const PLAYER_TEMPLATE: EntityTemplate = EntityTemplate {
     generator: |trans, _state, cmds| {
-        let character = create_character("player", trans, cmds);
+        let character = CharacterBundle::create(trans, cmds);
         cmds.set_components(
-            &character,
+            character.primary_entity(),
             (
+                Sprite::new("player", 3),
                 CameraFollow,
                 Controller(UserInputDriver),
                 Affected::<MaxSpeed>::default(),
                 Affected::<Acceleration>::default(),
             ),
         );
-        Some(character)
+        Some(*character.primary_entity())
     },
 };
 
 pub const CHEST_TEMPLATE: EntityTemplate = EntityTemplate {
     generator: |trans, _state, cmds| {
-        let chest = cmds.create_from((
-            trans,
-            Name("Some random chest"),
-            Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
-            InteractTarget::<Hitbox>::default(),
-            InteractTarget::<Storage>::default(),
-            Storage::new(60),
-            InteractTarget::<VisionField>::default(),
-        ));
-        let _chest_activator = cmds.create_from((
-            Transform::default(),
-            AnchorTransform(chest, (0., 0.)),
-            ProximityInteractable,
-            UntargetedInteractionDelegate(chest),
-            Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
-            InteractTarget::<Hitbox>::default(),
-            ExistenceDependency(chest),
-        ));
-        Some(chest)
+        let storage_bundle = StorageBundle::create(trans, cmds);
+        cmds.set_component(storage_bundle.primary_entity(), Name("some random chest"));
+        Some(*storage_bundle.primary_entity())
     },
 };
 
 pub const BASIC_CAR_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, _state, cmds| Some(create_vehicle(trans, cmds)),
+    generator: |trans, _state, cmds| Some(*VehicleBundle::create(trans, cmds).primary_entity()),
 };
 
 pub const HAND_GUN_TEMPLATE: EntityTemplate = EntityTemplate {

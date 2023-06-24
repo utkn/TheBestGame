@@ -20,8 +20,8 @@ pub fn create_empty_world() -> World {
     world.register_system(ApproachRotationSystem);
     // Interactions
     world.register_system(InteractionAcceptorSystem(
-        ConsensusStrategy::MaxPriority,
-        ConsensusStrategy::MinPriority,
+        ConsensusStrategy::MaxPriority, // start order
+        ConsensusStrategy::MinPriority, // end order
     ));
     world.register_system(ProximityInteractionSystem);
     world.register_system(HandInteractionSystem);

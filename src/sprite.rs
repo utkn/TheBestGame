@@ -7,7 +7,16 @@ mod default_sprite;
 use default_sprite::*;
 
 #[derive(Clone, Copy, Debug)]
-pub struct Sprite(pub &'static str);
+pub struct Sprite {
+    sprite_id: &'static str,
+    z_index: usize,
+}
+
+impl Sprite {
+    pub fn new(sprite_id: &'static str, z_index: usize) -> Self {
+        Self { sprite_id, z_index }
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct SpriteRepresentor {
@@ -20,7 +29,7 @@ impl SpriteRepresentor {
         sprite_entity: &EntityRef,
         state: &State,
     ) -> Option<std::path::PathBuf> {
-        let sprite_id = state.select_one::<(Sprite,)>(sprite_entity)?.0 .0;
+        let sprite_id = state.select_one::<(Sprite,)>(sprite_entity)?.0.sprite_id;
         let repr_tags = self
             .repr_tags
             .entry(sprite_id)

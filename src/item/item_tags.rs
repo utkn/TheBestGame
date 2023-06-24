@@ -2,12 +2,12 @@ use std::collections::HashSet;
 
 use crate::prelude::*;
 
-use super::{EquipmentSlot, Item};
+use super::{Item, ItemInsights, ItemLocation};
 
-#[derive(Clone, Copy, Debug, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ItemTag {
     Ground,
-    Equipped(EquipmentSlot),
+    Equipped,
     Stored,
 }
 
@@ -15,7 +15,7 @@ impl Into<&'static str> for ItemTag {
     fn into(self) -> &'static str {
         match self {
             ItemTag::Ground => "ground",
-            ItemTag::Equipped(_) => "equipped",
+            ItemTag::Equipped => "equipped",
             ItemTag::Stored => "stored",
         }
     }
@@ -28,7 +28,15 @@ impl TagSource for Item {
         "item"
     }
 
-    fn try_generate(_e: &EntityRef, _state: &State) -> Option<HashSet<Self::TagType>> {
-        None
+    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>> {
+        let insights = StateInsights::of(state);
+        if !insights.is_item(e) {
+            return None;
+        }
+        Some(HashSet::from_iter([match insights.location_of(e) {
+            ItemLocation::Ground => ItemTag::Ground,
+            ItemLocation::Equipment(_) => ItemTag::Equipped,
+            ItemLocation::Storage(_) => ItemTag::Stored,
+        }]))
     }
 }
