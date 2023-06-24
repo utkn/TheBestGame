@@ -60,6 +60,24 @@ impl ItemTransferReq {
             to_loc: ItemLocation::Storage(target_storage),
         }
     }
+
+    /// Constructs an equip from ground request.
+    pub fn equip_from_ground(item_entity: EntityRef, target_equipment: EntityRef) -> Self {
+        Self {
+            item_entity,
+            from_loc: ItemLocation::Ground,
+            to_loc: ItemLocation::Equipment(target_equipment),
+        }
+    }
+
+    /// Constructs an equip from ground request for the `target`.
+    pub fn equip_from_storage(item_entity: EntityRef, target: EntityRef) -> Self {
+        Self {
+            item_entity,
+            from_loc: ItemLocation::Storage(target),
+            to_loc: ItemLocation::Equipment(target),
+        }
+    }
 }
 
 /// Emitted by [`ItemTransferSystem`] when an item transfer occurs.

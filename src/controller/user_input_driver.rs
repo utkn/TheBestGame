@@ -2,6 +2,25 @@ use crate::vehicle::VehicleInsights;
 
 use super::*;
 
+/// Uses key presses to control the entities.
+#[derive(Clone, Copy, Debug)]
+pub struct UserInputDriver;
+
+impl ControlDriver for UserInputDriver {
+    fn get_commands(
+        &mut self,
+        actor: &EntityRef,
+        ctx: &UpdateContext,
+        game_state: &State,
+    ) -> Vec<ControlCommand> {
+        if StateInsights::of(game_state).is_vehicle(actor) {
+            get_vehicle_commands(actor, ctx, game_state, 200.)
+        } else {
+            get_character_commands(actor, ctx, game_state, 200.)
+        }
+    }
+}
+
 fn get_character_commands(
     actor: &EntityRef,
     ctx: &UpdateContext,
@@ -51,10 +70,10 @@ fn get_character_commands(
             0.
         } * speed;
         // Set the target velocity.
-        vec![ControlCommand::SetTargetVelocity(TargetVelocity {
-            x: new_target_vel_x,
-            y: new_target_vel_y,
-        })]
+        vec![ControlCommand::SetTargetVelocity(
+            new_target_vel_x,
+            new_target_vel_y,
+        )]
     };
     let trans = game_state
         .select_one::<(Transform,)>(actor)
@@ -94,10 +113,6 @@ fn get_vehicle_commands(
     let (dir_vec_x, dir_vec_y) = curr_trans.dir_vec();
     let dir_vec = notan::math::vec2(dir_vec_x, dir_vec_y);
     let new_target_vel = dir_vec * directional_speed;
-    let new_target_vel = TargetVelocity {
-        x: new_target_vel.x,
-        y: new_target_vel.y,
-    };
     let mut delta_deg = if ctx.control_map.left_is_down {
         1.
     } else if ctx.control_map.right_is_down {
@@ -113,25 +128,7 @@ fn get_vehicle_commands(
         delta_deg *= 0.;
     }
     vec![
-        ControlCommand::SetTargetVelocity(new_target_vel),
+        ControlCommand::SetTargetVelocity(new_target_vel.x, new_target_vel.y),
         ControlCommand::SetTargetRotation(curr_trans.deg + delta_deg),
     ]
-}
-/// Uses key presses to control the entities.
-#[derive(Clone, Copy, Debug)]
-pub struct UserInputDriver;
-
-impl ControlDriver for UserInputDriver {
-    fn get_commands(
-        &mut self,
-        actor: &EntityRef,
-        ctx: &UpdateContext,
-        game_state: &State,
-    ) -> Vec<ControlCommand> {
-        if StateInsights::of(game_state).is_vehicle(actor) {
-            get_vehicle_commands(actor, ctx, game_state, 200.)
-        } else {
-            get_character_commands(actor, ctx, game_state, 200.)
-        }
-    }
 }

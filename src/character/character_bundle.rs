@@ -41,9 +41,9 @@ impl EntityBundle for CharacterBundle {
         let vision_field = cmds.create_from((
             Transform::default(),
             AnchorTransform(character, (0., 0.)),
-            Hitbox(HitboxType::Ghost, Shape::Circle(50.)),
+            Hitbox(HitboxType::Ghost, Shape::Circle(200.)),
             InteractTarget::<Hitbox>::default(),
-            VisionField(50.),
+            VisionField(200.),
         ));
         Self {
             character,

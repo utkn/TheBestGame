@@ -1,6 +1,6 @@
 use crate::{
-    camera::CameraFollow, character::CharacterBundle, controller::*, effects::*, item::*, needs::*,
-    physics::*, prelude::*, sprite::Sprite, vehicle::VehicleBundle,
+    ai::AiDriver, camera::CameraFollow, character::CharacterBundle, controller::*, effects::*,
+    item::*, needs::*, physics::*, prelude::*, sprite::Sprite, vehicle::VehicleBundle,
 };
 
 pub struct EntityTemplate {
@@ -31,6 +31,27 @@ pub const PLAYER_TEMPLATE: EntityTemplate = EntityTemplate {
                 Affected::<Acceleration>::default(),
             ),
         );
+        Some(*character.primary_entity())
+    },
+};
+
+pub const BANDIT_TEMPLATE: EntityTemplate = EntityTemplate {
+    generator: |trans, state, cmds| {
+        let character = CharacterBundle::create(trans, cmds);
+        cmds.set_components(
+            character.primary_entity(),
+            (
+                Sprite::new("bandit", 3),
+                Controller(AiDriver::default()),
+                Affected::<MaxSpeed>::default(),
+                Affected::<Acceleration>::default(),
+            ),
+        );
+        let bandit_weapon = MACHINE_GUN_TEMPLATE.generate(trans, state, cmds)?;
+        cmds.emit_event(ItemTransferReq::equip_from_ground(
+            bandit_weapon,
+            *character.primary_entity(),
+        ));
         Some(*character.primary_entity())
     },
 };

@@ -20,7 +20,7 @@ pub struct Controller<D: ControlDriver>(pub D);
 /// A command that can be emitted by a [`ControlDriver`].
 pub enum ControlCommand {
     SetTargetRotation(f32),
-    SetTargetVelocity(TargetVelocity),
+    SetTargetVelocity(f32, f32),
     ProximityInteract,
     ProximityUninteract,
     EquipmentInteract(EquipmentSlot),
@@ -80,9 +80,8 @@ impl<D: ControlDriver> System for ControlSystem<D> {
                 let controller_cmds = updated_driver.get_commands(&actor, ctx, state);
                 cmds.set_component(&actor, Controller(updated_driver));
                 controller_cmds.into_iter().for_each(|cmd| match cmd {
-                    ControlCommand::SetTargetVelocity(vel) => {
-                        cmds.set_component::<TargetVelocity>(&actor, vel)
-                    }
+                    ControlCommand::SetTargetVelocity(vx, vy) => cmds
+                        .set_component::<TargetVelocity>(&actor, TargetVelocity { x: vx, y: vy }),
                     ControlCommand::SetTargetRotation(deg) => {
                         cmds.update_component(&actor, move |target_rot: &mut TargetRotation| {
                             target_rot.deg = deg

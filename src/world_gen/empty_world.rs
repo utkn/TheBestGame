@@ -55,6 +55,7 @@ pub fn create_empty_world() -> World {
     // AI stuff
     world.register_system(VisionSystem);
     world.register_system(InteractionSystem::<VisionField>::default());
+    world.register_system(ControlSystem::<AiDriver>::default());
     // Misc
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());

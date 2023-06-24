@@ -20,10 +20,10 @@ impl<'a> VisionInsights for StateInsights<'a> {
             .unwrap_or_default()
     }
 
-    fn visibles_of(&self, vision_field_enttiy: &EntityRef) -> HashSet<EntityRef> {
+    fn visibles_of(&self, vision_field_entity: &EntityRef) -> HashSet<EntityRef> {
         self.0
             .select::<(InteractTarget<VisionField>,)>()
-            .filter(|(_, (intr,))| intr.actors.contains(vision_field_enttiy))
+            .filter(|(_, (intr,))| intr.actors.contains(vision_field_entity))
             .map(|(e, _)| e)
             .collect()
     }
