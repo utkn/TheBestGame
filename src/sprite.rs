@@ -8,8 +8,8 @@ use default_sprite::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Sprite {
-    sprite_id: &'static str,
-    z_index: usize,
+    pub sprite_id: &'static str,
+    pub z_index: usize,
 }
 
 impl Sprite {

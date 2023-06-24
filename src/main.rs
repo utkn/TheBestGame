@@ -96,15 +96,16 @@ fn draw_game(rnd: &mut notan::draw::Draw, app_state: &mut AppState) {
     let game_state = app_state.world.get_state();
     game_state
         .select::<(Transform, Sprite)>()
-        .flat_map(|(sprite_entity, (trans, _))| {
+        .flat_map(|(sprite_entity, (trans, sprite))| {
             app_state
                 .sprite_representor
                 .represent(&sprite_entity, game_state)
                 .next()
                 .and_then(|path_buf| app_state.asset_map.get(&path_buf))
-                .map(|tx| (trans, tx))
+                .map(|tx| (trans, sprite.z_index, tx))
         })
-        .for_each(|(trans, tx)| {
+        .sorted_by_key(|(_, z_index, _)| *z_index)
+        .for_each(|(trans, _, tx)| {
             if let Some(tx) = tx.lock() {
                 let (x, y) =
                     map_to_screen_cords(trans.x, trans.y, rnd.width(), rnd.height(), game_state);

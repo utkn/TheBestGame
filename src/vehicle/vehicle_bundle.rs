@@ -30,7 +30,7 @@ impl EntityBundle for VehicleBundle {
             &vehicle,
             (
                 Name("basic car"),
-                Sprite::new("basic_car", 1),
+                Sprite::new("basic_car", 3),
                 TargetRotation::default(),
                 Equipment::new([EquipmentSlot::VehicleGas, EquipmentSlot::VehicleModule]),
                 InteractTarget::<Equipment>::default(),
