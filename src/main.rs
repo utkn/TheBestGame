@@ -11,15 +11,10 @@ use notan::{
 
 use ai::*;
 use camera::*;
-use controller::*;
-use effects::*;
-use game_entities::*;
 use item::*;
-use needs::*;
 use physics::*;
 use prelude::*;
 use sprite::*;
-use vehicle::*;
 use world_gen::*;
 
 mod ai;
@@ -27,7 +22,6 @@ mod camera;
 mod character;
 mod controller;
 mod effects;
-mod game_entities;
 mod item;
 mod needs;
 mod physics;
@@ -66,67 +60,14 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
             (asset_path, tx)
         })
         .collect();
-    // Create the world from an empty state.
-    let mut world = prelude::World::from(prelude::State::default());
-    // Control & movement
-    world.register_system(MovementSystem);
-    world.register_system(AnchorSystem);
-    world.register_system(ControlSystem::<UserInputDriver>::default());
-    world.register_system(LifetimeSystem);
-    world.register_system(ApproachVelocitySystem);
-    world.register_system(ApproachRotationSystem);
-    // Interactions
-    world.register_system(InteractionAcceptorSystem(
-        ConsensusStrategy::MaxPriority,
-        ConsensusStrategy::MinPriority,
-    ));
-    world.register_system(ProximityInteractionSystem);
-    world.register_system(HandInteractionSystem);
-    world.register_system(UntargetedInteractionDelegateSystem);
-    // Basic physics
-    world.register_system(CollisionDetectionSystem);
-    world.register_system(SeparateCollisionsSystem);
-    world.register_system(InteractionSystem::<Hitbox>::default());
-    // Item stuff
-    world.register_system(StorageSystem);
-    world.register_system(EquipmentSystem);
-    world.register_system(ItemTransferSystem);
-    world.register_system(ItemAnchorSystem);
-    world.register_system(ItemPickupSystem);
-    world.register_system(InteractionSystem::<Item>::default());
-    world.register_system(InteractionSystem::<Storage>::default());
-    world.register_system(InteractionSystem::<Equipment>::default());
-    // Needs
-    world.register_system(NeedStateSystem::default());
-    world.register_system(NeedMutatorSystem);
-    // Projectiles
-    world.register_system(InteractionSystem::<ProjectileGenerator>::default());
-    world.register_system(ProjectileGenerationSystem);
-    world.register_system(HitSystem);
-    world.register_system(SuicideOnHitSystem);
-    world.register_system(TimedEmitSystem::<GenerateProjectileReq>::default());
-    world.register_system(ApplyOnHitSystem::<NeedMutator>::default());
-    // Vehicle stuff
-    world.register_system(VehicleSystem);
-    world.register_system(InteractionSystem::<Vehicle>::default());
-    // AI stuff
-    world.register_system(VisionSystem);
-    world.register_system(InteractionSystem::<VisionField>::default());
-    // Misc
-    world.register_system(TimedRemoveSystem::<NeedMutator>::default());
-    world.register_system(EffectSystem::<MaxSpeed>::default());
-    world.register_system(EffectSystem::<Acceleration>::default());
-    world.register_system(ExistenceDependencySystem);
-    // Initialize the scene for debugging.
-    world.update_with(|_, cmds| {
-        create_player(Transform::at(0., 0.), cmds);
-        create_chest(Transform::at(50., 50.), cmds);
-        create_handgun(Transform::at(150., 150.), Name("gun"), cmds);
-        create_handgun(Transform::at(150., 150.), Name("gun"), cmds);
-        create_machinegun(Transform::at(200., 200.), Name("machine gun"), cmds);
-        create_shoes(Transform::at(180., 180.), Name("shoes"), cmds);
-        create_vehicle(Transform::at(500., 500.), cmds);
-    });
+    let world = WorldGenerator::generate(WorldTemplate::new([
+        (Transform::at(0., 0.), PLAYER_TEMPLATE),
+        (Transform::at(50., 50.), CHEST_TEMPLATE),
+        (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
+        (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
+        (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
+        (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
+    ]));
     AppState {
         world,
         asset_map,
