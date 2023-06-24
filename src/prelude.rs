@@ -25,6 +25,7 @@ pub use tags::*;
 pub use timed::*;
 
 /// Represents the game world.
+#[derive(Debug)]
 pub struct World {
     /// The state of the world.
     state: State,

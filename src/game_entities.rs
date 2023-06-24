@@ -93,10 +93,10 @@ pub fn create_machinegun(trans: Transform, name: Name, cmds: &mut StateCommands)
             InteractTarget::<ProjectileGenerator>::default(),
             ProjectileGenerator {
                 knockback: Some(100.),
-                cooldown: Some(0.1),
+                cooldown: Some(0.05),
                 proj: ProjectileDefn {
                     lifetime: 1.5,
-                    speed: 600.,
+                    speed: 2000.,
                     spread: 15.,
                     on_hit: NeedMutator::new(NeedType::Health, NeedMutatorEffect::Delta(-5.)),
                 },

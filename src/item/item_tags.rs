@@ -28,7 +28,7 @@ impl TagSource for Item {
         "item"
     }
 
-    fn generate(_e: &EntityRef, _state: &State) -> HashSet<Self::TagType> {
-        Default::default()
+    fn try_generate(_e: &EntityRef, _state: &State) -> Option<HashSet<Self::TagType>> {
+        None
     }
 }

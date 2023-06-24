@@ -10,8 +10,10 @@ use crate::prelude::*;
 
 pub trait TagSource: 'static + Clone + std::fmt::Debug {
     type TagType: 'static + Clone + std::fmt::Debug + std::hash::Hash + Into<&'static str>;
+    /// Returns the name of this tag source.
     fn source_name() -> &'static str;
-    fn generate(e: &EntityRef, state: &State) -> HashSet<Self::TagType>;
+    /// Generates the tags for the given entity.
+    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>>;
 }
 
 #[derive(Clone, Debug)]
@@ -22,16 +24,18 @@ pub struct EntityTags<S: TagSource> {
 }
 
 impl<S: TagSource> EntityTags<S> {
-    pub fn of(sprite_id: &'static str, entity: &EntityRef, state: &State) -> Self {
-        let tag_names = S::generate(entity, state)
+    pub fn of(sprite_id: &'static str, entity: &EntityRef, state: &State) -> Option<Self> {
+        let tag_names = S::try_generate(entity, state)?
             .into_iter()
             .map(|tag| Into::<&'static str>::into(tag).to_string())
+            // must at least contain the empty string to be able to match against files with no tags, e.g. default@, vehicle@
+            .chain(std::iter::once(String::new()))
             .collect();
-        Self {
+        Some(Self {
             sprite_id,
             tag_names,
             pd: PhantomData::default(),
-        }
+        })
     }
 }
 

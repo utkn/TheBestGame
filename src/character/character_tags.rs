@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{physics::ProjectileGenerator, prelude::*, vehicle::Vehicle};
 
-use super::Character;
+use super::{Character, CharacterInsights};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum CharacterTag {
@@ -30,7 +30,10 @@ impl TagSource for Character {
         "character"
     }
 
-    fn generate(e: &EntityRef, state: &State) -> HashSet<Self::TagType> {
+    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>> {
+        if !StateInsights::of(state).is_character(e) {
+            return None;
+        }
         let mut tags = HashSet::new();
         let is_idle = state
             .select_one::<(TargetVelocity,)>(e)
@@ -52,6 +55,6 @@ impl TagSource for Character {
         if is_shooting {
             tags.insert(CharacterTag::Shooting);
         }
-        tags
+        Some(tags)
     }
 }

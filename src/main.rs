@@ -20,6 +20,7 @@ use physics::*;
 use prelude::*;
 use sprite::*;
 use vehicle::*;
+use world_gen::*;
 
 mod ai;
 mod camera;
@@ -34,6 +35,7 @@ mod prelude;
 mod sprite;
 mod ui;
 mod vehicle;
+mod world_gen;
 
 type AssetMap = HashMap<PathBuf, Asset<Texture>>;
 
@@ -224,7 +226,7 @@ fn draw(
 ) {
     // Draw the game
     let mut game_rnd = gfx.create_draw();
-    game_rnd.clear(notan::prelude::Color::new(0., 0., 0., 1.));
+    game_rnd.clear(notan::prelude::Color::OLIVE);
     draw_game(&mut game_rnd, app_state);
     draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);

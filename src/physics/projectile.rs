@@ -1,6 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::{character::CharacterInsights, item::*, needs::NeedMutator, physics::*};
+use crate::{
+    character::CharacterInsights, item::*, needs::NeedMutator, physics::*, sprite::Sprite,
+};
 
 use rand::Rng;
 
@@ -124,6 +126,7 @@ impl System for ProjectileGenerationSystem {
                         Hitter::new(friendly_entities),
                         SuicideOnHit,
                         ApplyOnHit::new(Some(0.), p_gen.proj.on_hit.clone()),
+                        Sprite("bullet"),
                     ));
                     // Apply knockback optionally
                     if let Some(knockback_factor) = p_gen.knockback {

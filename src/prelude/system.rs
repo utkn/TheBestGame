@@ -45,7 +45,7 @@ pub struct UpdateContext {
     pub control_map: ControlMap,
 }
 
-pub trait System: 'static {
+pub trait System: 'static + std::fmt::Debug {
     /// The update function for the system. This is called at every update iteration on the registered systems.
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands);
 }

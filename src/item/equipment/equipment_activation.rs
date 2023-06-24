@@ -14,7 +14,7 @@ impl Interaction for Equipment {
 
     fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
         let insights = StateInsights::of(state);
-        insights.is_equipment(target) && insights.is_character(actor)
+        insights.has_equipment(target) && insights.is_character(actor)
     }
 
     fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {

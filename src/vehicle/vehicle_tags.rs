@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use crate::{prelude::*, vehicle::Vehicle};
 
+use super::VehicleInsights;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum VehicleTag {
     Moving,
@@ -26,7 +28,10 @@ impl TagSource for Vehicle {
         "vehicle"
     }
 
-    fn generate(e: &EntityRef, state: &State) -> HashSet<Self::TagType> {
+    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>> {
+        if !StateInsights::of(state).is_vehicle(e) {
+            return None;
+        }
         let mut tags = HashSet::new();
         let is_idle = state
             .select_one::<(TargetVelocity,)>(e)
@@ -37,6 +42,6 @@ impl TagSource for Vehicle {
         } else {
             tags.insert(VehicleTag::Moving);
         }
-        tags
+        Some(tags)
     }
 }

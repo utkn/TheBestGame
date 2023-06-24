@@ -29,7 +29,7 @@ pub enum ControlCommand {
 
 pub trait ControlDriver: 'static + Clone + std::fmt::Debug {
     /// The type of the mutable state of the driver.
-    type State: Default;
+    type State: Default + std::fmt::Debug;
     /// Returns [`ControlCommand`]s from the given state of itself and the game.
     fn get_commands(
         &self,
