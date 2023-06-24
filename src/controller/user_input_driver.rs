@@ -122,14 +122,11 @@ fn get_vehicle_commands(
 pub struct UserInputDriver;
 
 impl ControlDriver for UserInputDriver {
-    type State = ();
-
     fn get_commands(
-        &self,
+        &mut self,
         actor: &EntityRef,
         ctx: &UpdateContext,
         game_state: &State,
-        _driver_state: &mut Self::State,
     ) -> Vec<ControlCommand> {
         if StateInsights::of(game_state).is_vehicle(actor) {
             get_vehicle_commands(actor, ctx, game_state, 200.)

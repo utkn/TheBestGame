@@ -3,8 +3,12 @@ use std::collections::HashMap;
 use crate::{character::Character, item::Item, prelude::*, vehicle::Vehicle};
 
 mod default_sprite;
+mod entity_tags;
+mod representible_tags;
 
 use default_sprite::*;
+use entity_tags::*;
+use representible_tags::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Sprite {
@@ -18,12 +22,23 @@ impl Sprite {
     }
 }
 
+fn parse_all_representible_tags_for(sprite_id: &'static str) -> RepresentibleTags {
+    RepresentibleTags::new(sprite_id)
+        .with::<DefaultSprite>()
+        .with::<Character>()
+        .with::<Vehicle>()
+        .with::<Item>()
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct SpriteRepresentor {
+    /// Maps a sprite id to the representible tags parsed from the relevant assets folder.
     repr_tags: HashMap<&'static str, RepresentibleTags>,
 }
 
 impl SpriteRepresentor {
+    /// Tries to find the asset path that represents the given entity best with respect to the
+    /// given tag source `S`.
     fn try_represent_as<'a, S: TagSource>(
         &'a mut self,
         sprite_entity: &EntityRef,
@@ -34,21 +49,13 @@ impl SpriteRepresentor {
             .repr_tags
             .entry(sprite_id)
             .or_insert_with(|| parse_all_representible_tags_for(sprite_id));
-        let entity_tags = EntityTags::<S>::of(sprite_id, sprite_entity, state)?;
-        repr_tags.try_represent_as::<S>(&entity_tags).cloned()
+        let entity_tags = SpriteTags::<S>::of(sprite_entity, state)?;
+        repr_tags.try_represent_as::<S>(entity_tags).cloned()
     }
-}
 
-fn parse_all_representible_tags_for(sprite_id: &'static str) -> RepresentibleTags {
-    RepresentibleTags::new(sprite_id)
-        .with::<DefaultSprite>()
-        .with::<Character>()
-        .with::<Vehicle>()
-        .with::<Item>()
-}
-
-impl SpriteRepresentor {
-    pub fn represent(
+    /// Tries to find the asset paths that represents the state of the given sprite entity the best.
+    /// The returned representations are ordered with their priority.
+    pub fn get_representations(
         &mut self,
         sprite_entity: &EntityRef,
         state: &State,

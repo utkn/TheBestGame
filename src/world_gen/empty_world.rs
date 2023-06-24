@@ -40,7 +40,7 @@ pub fn create_empty_world() -> World {
     world.register_system(InteractionSystem::<Storage>::default());
     world.register_system(InteractionSystem::<Equipment>::default());
     // Needs
-    world.register_system(NeedStateSystem::default());
+    world.register_system(NeedStateSystem);
     world.register_system(NeedMutatorSystem);
     // Projectiles
     world.register_system(InteractionSystem::<ProjectileGenerator>::default());

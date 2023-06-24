@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::marker::PhantomData;
 
 use crate::{item::EquipmentSlot, prelude::*};
 
@@ -28,31 +28,22 @@ pub enum ControlCommand {
 }
 
 pub trait ControlDriver: 'static + Clone + std::fmt::Debug {
-    /// The type of the mutable state of the driver.
-    type State: Default + std::fmt::Debug;
-    /// Returns [`ControlCommand`]s from the given state of itself and the game.
+    /// Returns [`ControlCommand`]s from the given state of the game.
     fn get_commands(
-        &self,
+        &mut self,
         actor: &EntityRef,
         ctx: &UpdateContext,
         game_state: &State,
-        driver_state: &mut Self::State,
     ) -> Vec<ControlCommand>;
 }
 
 /// A system that handles user control.
 #[derive(Clone, Debug)]
-pub struct ControlSystem<A: ControlDriver> {
-    states: HashMap<EntityRef, A::State>,
-    pd: PhantomData<A>,
-}
+pub struct ControlSystem<A: ControlDriver>(PhantomData<A>);
 
 impl<D: ControlDriver> Default for ControlSystem<D> {
     fn default() -> Self {
-        Self {
-            states: Default::default(),
-            pd: Default::default(),
-        }
+        Self(Default::default())
     }
 }
 
@@ -85,34 +76,31 @@ impl<D: ControlDriver> System for ControlSystem<D> {
         state
             .select::<(Controller<D>,)>()
             .for_each(|(actor, (controller,))| {
-                let driver_state = self.states.entry(actor).or_default();
-                controller
-                    .0
-                    .get_commands(&actor, ctx, state, driver_state)
-                    .into_iter()
-                    .for_each(|cmd| match cmd {
-                        ControlCommand::SetTargetVelocity(vel) => {
-                            cmds.set_component::<TargetVelocity>(&actor, vel)
-                        }
-                        ControlCommand::SetTargetRotation(deg) => {
-                            cmds.update_component(
-                                &actor,
-                                move |target_rot: &mut TargetRotation| target_rot.deg = deg,
-                            );
-                        }
-                        ControlCommand::ProximityInteract => {
-                            cmds.emit_event(StartProximityInteractReq(actor))
-                        }
-                        ControlCommand::ProximityUninteract => {
-                            cmds.emit_event(EndProximityInteractReq(actor))
-                        }
-                        ControlCommand::EquipmentInteract(slot) => {
-                            cmds.emit_event(EquipmentInteractReq(actor, slot))
-                        }
-                        ControlCommand::EquipmentUninteract(slot) => {
-                            cmds.emit_event(EquipmentUninteractReq(actor, slot))
-                        }
-                    });
+                let mut updated_driver = controller.0.clone();
+                let controller_cmds = updated_driver.get_commands(&actor, ctx, state);
+                cmds.set_component(&actor, Controller(updated_driver));
+                controller_cmds.into_iter().for_each(|cmd| match cmd {
+                    ControlCommand::SetTargetVelocity(vel) => {
+                        cmds.set_component::<TargetVelocity>(&actor, vel)
+                    }
+                    ControlCommand::SetTargetRotation(deg) => {
+                        cmds.update_component(&actor, move |target_rot: &mut TargetRotation| {
+                            target_rot.deg = deg
+                        });
+                    }
+                    ControlCommand::ProximityInteract => {
+                        cmds.emit_event(StartProximityInteractReq(actor))
+                    }
+                    ControlCommand::ProximityUninteract => {
+                        cmds.emit_event(EndProximityInteractReq(actor))
+                    }
+                    ControlCommand::EquipmentInteract(slot) => {
+                        cmds.emit_event(EquipmentInteractReq(actor, slot))
+                    }
+                    ControlCommand::EquipmentUninteract(slot) => {
+                        cmds.emit_event(EquipmentUninteractReq(actor, slot))
+                    }
+                });
             });
     }
 }

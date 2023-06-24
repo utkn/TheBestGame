@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-
-use itertools::Itertools;
-
 use crate::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -16,7 +12,11 @@ pub enum NeedType {
 /// Contains the status of a need.
 #[derive(Clone, Copy, Debug)]
 pub struct NeedStatus {
+    /// Previous value.
+    pub prev: Option<f32>,
+    /// Current value.
     pub curr: f32,
+    /// The maximum value.
     pub max: f32,
 }
 
@@ -24,13 +24,21 @@ impl NeedStatus {
     /// Creates a new `NeedStatus` that starts at the maximum value.
     pub fn with_max(max: f32) -> Self {
         assert!(max > 0.);
-        Self { curr: max, max }
+        Self {
+            prev: None,
+            curr: max,
+            max,
+        }
     }
 
     /// Creates a new `NeedStatus` that ends at the maximum value.
     pub fn with_zero(max: f32) -> Self {
         assert!(max > 0.);
-        Self { curr: 0., max }
+        Self {
+            prev: None,
+            curr: 0.,
+            max,
+        }
     }
 
     /// Sets the current status to the maximum value.
@@ -45,9 +53,16 @@ impl NeedStatus {
 
     /// Applies the given change to the status.
     pub fn change(&mut self, delta: &f32) {
+        self.prev = Some(self.curr);
         self.curr += delta;
     }
 
+    /// Returns the previous fraction.
+    pub fn get_prev_frac(&self) -> Option<f32> {
+        Some(self.prev? / self.max)
+    }
+
+    /// Returns the fraction, i.e., current value divided by the maximum value.
     pub fn get_fraction(&self) -> f32 {
         if self.max == 0. {
             return 0.;
@@ -93,32 +108,19 @@ impl Needs {
 #[derive(Clone, Copy, Debug)]
 pub struct NeedChangeEvt(EntityRef, NeedType, NeedChange);
 
-#[derive(Clone, Debug, Default)]
-pub struct NeedStateSystem {
-    old_state: HashMap<EntityRef, Needs>,
-}
+/// A system that monitors the state of the needs and outputs the appropriate events when they change.
+#[derive(Clone, Debug)]
+pub struct NeedStateSystem;
 
 impl System for NeedStateSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        // Remove the invalidated entities from the entities for which we maintain needs.
-        let invalids = self
-            .old_state
-            .keys()
-            .filter(|e| state.select_one::<(Needs,)>(e).is_none())
-            .cloned()
-            .collect_vec();
-        invalids.into_iter().for_each(|invalid| {
-            self.old_state.remove(&invalid);
-        });
         // Handle need status changes...
         state.select::<(Needs,)>().for_each(|(e, (curr_needs,))| {
-            let old_needs = self.old_state.entry(e).or_insert(curr_needs.clone());
             curr_needs.0.iter().for_each(|(need_type, curr_status)| {
-                // Get the old fraction.
-                let old_frac = old_needs.get(need_type).map(|s| s.get_fraction());
-                let old_frac = old_frac.unwrap_or_default();
                 // Get the new fraction.
                 let new_frac = curr_status.get_fraction();
+                // Get the old fraction.
+                let old_frac = curr_status.get_prev_frac().unwrap_or(new_frac);
                 // Emit the appropriate increased/decreased event.
                 let need_change = if new_frac > old_frac {
                     NeedChange::Increased(old_frac, new_frac)
@@ -170,6 +172,7 @@ impl NeedMutator {
     }
 }
 
+/// A system that changes the `Needs` of the entities through `NeedMutator`s applied to the entities.
 #[derive(Clone, Copy, Debug)]
 pub struct NeedMutatorSystem;
 

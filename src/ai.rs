@@ -10,22 +10,23 @@ mod vision_field;
 mod vision_insights;
 
 #[derive(Clone, Copy, Debug)]
-pub struct AiDriver;
+pub enum AiTask {
+    FollowPersistent,
+    Follow,
+    Routine,
+}
 
-#[derive(Clone, Default, Debug)]
-pub struct AiState {
+#[derive(Clone, Default, Copy, Debug)]
+pub struct AiDriver {
     curr_follow_target: Option<EntityRef>,
 }
 
 impl ControlDriver for AiDriver {
-    type State = AiState;
-
     fn get_commands(
-        &self,
+        &mut self,
         _actor: &EntityRef,
         _ctx: &UpdateContext,
         _game_state: &State,
-        _driver_state: &mut Self::State,
     ) -> Vec<ControlCommand> {
         todo!()
     }

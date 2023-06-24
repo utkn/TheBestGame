@@ -31,6 +31,7 @@ mod ui;
 mod vehicle;
 mod world_gen;
 
+/// Maps an asset path to the loaded texture.
 type AssetMap = HashMap<PathBuf, Asset<Texture>>;
 
 #[derive(notan::AppState)]
@@ -44,7 +45,7 @@ struct AppState {
 fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
     app.backend.window().set_title("TheBestGame v0");
     app.backend.window().set_size(960, 720);
-    // Load the assets into memory.
+    // Load the assets into the memory.
     let asset_paths = glob::glob("./assets/**/*.png")
         .unwrap()
         .into_iter()
@@ -53,6 +54,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
     let asset_map: AssetMap = asset_paths
         .into_iter()
         .map(|asset_path| {
+            // Load the texture from the asset path.
             let asset_path_str = asset_path.as_path().to_str().unwrap();
             let tx = assets
                 .load_asset::<notan::prelude::Texture>(asset_path_str)
@@ -60,6 +62,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
             (asset_path, tx)
         })
         .collect();
+    // Generate a debugging world.
     let world = WorldGenerator::generate(WorldTemplate::new([
         (Transform::at(0., 0.), PLAYER_TEMPLATE),
         (Transform::at(50., 50.), CHEST_TEMPLATE),
@@ -87,9 +90,9 @@ fn update(app: &mut notan::prelude::App, app_state: &mut AppState) {
         app.window().height() as f32,
         app_state.world.get_state(),
     );
-    app_state
-        .world
-        .update_with_systems(UpdateContext { dt, control_map });
+    // Update the world with the registered systems.
+    let world = &mut app_state.world;
+    world.update_with_systems(UpdateContext { dt, control_map });
 }
 
 fn draw_game(rnd: &mut notan::draw::Draw, app_state: &mut AppState) {
@@ -99,7 +102,7 @@ fn draw_game(rnd: &mut notan::draw::Draw, app_state: &mut AppState) {
         .flat_map(|(sprite_entity, (trans, sprite))| {
             app_state
                 .sprite_representor
-                .represent(&sprite_entity, game_state)
+                .get_representations(&sprite_entity, game_state)
                 .next()
                 .and_then(|path_buf| app_state.asset_map.get(&path_buf))
                 .map(|tx| (trans, sprite.z_index, tx))
