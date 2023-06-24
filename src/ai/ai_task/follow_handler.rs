@@ -25,12 +25,6 @@ impl AiTaskHandler for AiFollowHandler {
         if !ai_visibles.contains(&self.target) {
             return vec![];
         }
-        if insights.concrete_contacts_of(actor).len() > 0 {
-            return vec![
-                AiTask::ScaleObstacle(AiScaleObstacleHandler),
-                AiTask::Follow(self),
-            ];
-        }
         if let Some(dist_sq) = StateInsights::of(state).dist_sq_between(actor, &self.target) {
             // println!("{:?} {:?}", min_dist * min_dist, dist_sq);
             if self.min_dist * self.min_dist < dist_sq {
