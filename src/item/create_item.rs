@@ -1,6 +1,4 @@
-use crate::{
-    ai::VisionField, controller::ProximityInteractable, physics::*, prelude::*, sprite::Sprite,
-};
+use crate::{controller::ProximityInteractable, physics::*, prelude::*, sprite::Sprite};
 
 use super::{Equippable, Item, SlotSelector};
 
@@ -17,7 +15,7 @@ pub fn create_item(
         item,
         ProximityInteractable,
         InteractTarget::<Item>::default(),
-        Hitbox(HitboxType::Ghost, Shape::Circle(10.)),
+        Hitbox(HitboxType::Ghost, Shape::Circle { r: 10. }),
         InteractTarget::<Hitbox>::default(),
         Equippable(slots),
         InteractTarget::<VisionField>::default(),

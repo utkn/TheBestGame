@@ -7,14 +7,18 @@ use crate::prelude::*;
 
 pub use collider_insights::*;
 pub use projectile::*;
+pub use vision_field::*;
+pub use vision_insights::*;
 
 mod collider_insights;
 mod projectile;
+mod vision_field;
+mod vision_insights;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Shape {
-    Circle(f32),
-    Rect(f32, f32),
+    Circle { r: f32 },
+    Rect { w: f32, h: f32 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -68,8 +72,18 @@ pub enum TransformedShape {
 impl TransformedShape {
     pub fn new(trans: &Transform, primitive_shape: &Shape, offset: (f32, f32)) -> Self {
         match primitive_shape {
-            Shape::Circle(r) => Self::Circle(sepax2d::circle::Circle::new((trans.x, trans.y), *r)),
-            Shape::Rect(w, h) => {
+            Shape::Circle { r } => {
+                let rotated_offset = notan::math::Vec2::from_angle(-trans.deg.to_radians())
+                    .rotate(notan::math::vec2(offset.0, offset.1));
+                Self::Circle(sepax2d::circle::Circle::new(
+                    (
+                        trans.x - offset.0 + rotated_offset.x,
+                        trans.y - offset.1 + rotated_offset.y,
+                    ),
+                    *r,
+                ))
+            }
+            Shape::Rect { w, h } => {
                 let mut poly = sepax2d::polygon::Polygon::from_vertices(
                     (0., 0.),
                     vec![

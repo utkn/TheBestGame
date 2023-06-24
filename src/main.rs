@@ -9,7 +9,6 @@ use notan::{
     prelude::{Asset, Assets, Texture},
 };
 
-use ai::*;
 use camera::*;
 use item::*;
 use physics::*;
@@ -140,21 +139,27 @@ fn draw_debug(rnd: &mut notan::draw::Draw, state: &State) {
                 notan::prelude::Color::RED
             };
             let (x, y) = map_to_screen_cords(trans.x, trans.y, rnd.width(), rnd.height(), state);
-            let (dir_x, dir_y) = trans.dir_vec();
-            rnd.circle(1.)
+            let (offset_x, offset_y) = state
+                .select_one::<(AnchorTransform,)>(&e)
+                .map(|(anchor_trans,)| anchor_trans.1)
+                .unwrap_or_default();
+            rnd.circle(2.)
                 .position(x, y)
+                .rotate_degrees_from((x - offset_x, y - offset_y), -trans.deg)
                 .fill_color(notan::prelude::Color::BLUE);
-            rnd.line((x, y), (x + dir_x * 5., y + dir_y * 5.))
-                .color(notan::prelude::Color::BLUE);
+            // let (dir_x, dir_y) = trans.dir_vec();
+            // rnd.line((x, y), (x + dir_x * 5., y + dir_y * 5.))
+            // .rotate_degrees_from((x - offset_x, y - offset_y), -trans.deg)
+            //     .color(notan::prelude::Color::BLUE);
             match hitbox.1 {
-                Shape::Circle(r) => {
-                    rnd.circle(r).position(x, y).stroke(1.).stroke_color(color);
+                Shape::Circle { r } => {
+                    rnd.circle(r)
+                        .position(x, y)
+                        .stroke(1.)
+                        .rotate_degrees_from((x - offset_x, y - offset_y), -trans.deg)
+                        .stroke_color(color);
                 }
-                Shape::Rect(w, h) => {
-                    let (offset_x, offset_y) = state
-                        .select_one::<(AnchorTransform,)>(&e)
-                        .map(|(anchor_trans,)| anchor_trans.1)
-                        .unwrap_or_default();
+                Shape::Rect { w, h } => {
                     rnd.rect((x - w / 2., y - h / 2.), (w, h))
                         .rotate_degrees_from((x - offset_x, y - offset_y), -trans.deg)
                         .stroke(1.)
@@ -172,7 +177,7 @@ fn draw(
 ) {
     // Draw the game
     let mut game_rnd = gfx.create_draw();
-    game_rnd.clear(notan::prelude::Color::OLIVE);
+    game_rnd.clear(notan::prelude::Color::BLACK);
     draw_game(&mut game_rnd, app_state);
     draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);

@@ -120,7 +120,7 @@ impl System for ProjectileGenerationSystem {
                         Lifetime {
                             remaining_time: p_gen.proj.lifetime,
                         },
-                        Hitbox(HitboxType::Ghost, Shape::Circle(5.)),
+                        Hitbox(HitboxType::Ghost, Shape::Circle { r: 5. }),
                         InteractTarget::<Hitbox>::default(),
                         // Do not hit the anchor parent.
                         Hitter::new(friendly_entities),

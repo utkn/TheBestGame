@@ -1,7 +1,4 @@
-use crate::{
-    ai::VisionField, controller::ProximityInteractable, item::*, physics::*, prelude::*,
-    sprite::Sprite,
-};
+use crate::{controller::ProximityInteractable, item::*, physics::*, prelude::*, sprite::Sprite};
 
 use super::Vehicle;
 
@@ -22,7 +19,7 @@ impl EntityBundle for VehicleBundle {
             MaxSpeed(1000.),
             Storage::new(6),
             InteractTarget::<Storage>::default(),
-            Hitbox(HitboxType::Dynamic, Shape::Rect(100., 40.)),
+            Hitbox(HitboxType::Dynamic, Shape::Rect { w: 100., h: 40. }),
             InteractTarget::<Hitbox>::default(),
             InteractTarget::<VisionField>::default(),
         ));
@@ -41,7 +38,7 @@ impl EntityBundle for VehicleBundle {
             AnchorTransform(vehicle, (0., -20.)),
             ProximityInteractable,
             UntargetedInteractionDelegate(vehicle),
-            Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
+            Hitbox(HitboxType::Ghost, Shape::Rect { w: 40., h: 40. }),
             InteractTarget::<Hitbox>::default(),
             ExistenceDependency(vehicle),
         ));

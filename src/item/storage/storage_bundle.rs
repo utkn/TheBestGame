@@ -1,4 +1,4 @@
-use crate::{ai::VisionField, controller::ProximityInteractable, physics::*, prelude::*};
+use crate::{controller::ProximityInteractable, physics::*, prelude::*};
 
 use super::Storage;
 
@@ -11,7 +11,7 @@ impl EntityBundle for StorageBundle {
     fn create(trans: Transform, cmds: &mut StateCommands) -> Self {
         let storage = cmds.create_from((
             trans,
-            Hitbox(HitboxType::Static, Shape::Rect(20., 20.)),
+            Hitbox(HitboxType::Static, Shape::Rect { w: 20., h: 20. }),
             InteractTarget::<Hitbox>::default(),
             InteractTarget::<Storage>::default(),
             Storage::new(60),
@@ -22,7 +22,7 @@ impl EntityBundle for StorageBundle {
             AnchorTransform(storage, (0., 0.)),
             ProximityInteractable,
             UntargetedInteractionDelegate(storage),
-            Hitbox(HitboxType::Ghost, Shape::Rect(40., 40.)),
+            Hitbox(HitboxType::Ghost, Shape::Rect { w: 40., h: 40. }),
             InteractTarget::<Hitbox>::default(),
             ExistenceDependency(storage),
         ));

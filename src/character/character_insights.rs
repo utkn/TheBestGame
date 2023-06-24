@@ -1,12 +1,21 @@
-use crate::prelude::*;
+use std::collections::HashSet;
 
-use super::{Character, CharacterBundle};
+use crate::{
+    physics::{VisionField, VisionInsights},
+    prelude::*,
+};
+
+use super::Character;
 
 pub trait CharacterInsights {
     /// Returns true iff the given entity is a character.
     fn is_character(&self, e: &EntityRef) -> bool;
     /// Returns the vision field of the character entity if it exists.
-    fn get_vision_field(&self, character_entity: &EntityRef) -> Option<EntityRef>;
+    fn vision_field_of(&self, character_entity: &EntityRef) -> Option<EntityRef>;
+    /// Returns the entities that are visible by the given character.
+    fn character_visibles_of(&self, character_entity: &EntityRef) -> Option<HashSet<EntityRef>>;
+    /// Returns true iff `character_entity` can see the given `target`.
+    fn can_character_see(&self, character_entity: &EntityRef, target: &EntityRef) -> bool;
 }
 
 impl<'a> CharacterInsights for StateInsights<'a> {
@@ -14,7 +23,21 @@ impl<'a> CharacterInsights for StateInsights<'a> {
         self.0.select_one::<(Character,)>(e).is_some()
     }
 
-    fn get_vision_field(&self, character_entity: &EntityRef) -> Option<EntityRef> {
-        CharacterBundle::try_reconstruct(character_entity, self.0).map(|cb| cb.vision_field)
+    fn vision_field_of(&self, character_entity: &EntityRef) -> Option<EntityRef> {
+        self.0
+            .select::<(AnchorTransform, VisionField)>()
+            .find(|(_, (anchor, _))| &anchor.0 == character_entity)
+            .map(|(e, _)| e)
+    }
+
+    fn character_visibles_of(&self, character_entity: &EntityRef) -> Option<HashSet<EntityRef>> {
+        let vision_field = self.vision_field_of(character_entity)?;
+        Some(self.visibles_of(&vision_field))
+    }
+
+    fn can_character_see(&self, character_entity: &EntityRef, target: &EntityRef) -> bool {
+        self.character_visibles_of(character_entity)
+            .map(|visibles| visibles.contains(target))
+            .unwrap_or(false)
     }
 }

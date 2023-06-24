@@ -2,7 +2,9 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
-use crate::{physics::*, prelude::*};
+use crate::prelude::*;
+
+use super::{ColliderInsights, EffectiveHitbox, Hitbox};
 
 /// Entities tagged with this component will initiate interactions with the entities that collide and are visible from the position of this entity.
 #[derive(Clone, Copy, Debug)]
@@ -42,13 +44,17 @@ impl System for VisionSystem {
                     cmds.emit_event(UninteractReq::<VisionField>::new(e, target));
                 });
         });
-        state.select::<(VisionField, Transform)>().for_each(
-            |(vision_field_entity, (_, ref_trans))| {
-                let ref_pos = notan::math::vec2(ref_trans.x, ref_trans.y);
-                let vf_anchor_parent =
-                    StateInsights::of(state).anchor_parent_of(&vision_field_entity);
+        state
+            .select::<(VisionField, Transform)>()
+            .for_each(|(vf_entity, (_, vf_trans))| {
+                let insights = StateInsights::of(state);
+                let ref_trans = insights
+                    .anchor_parent_of(&vf_entity)
+                    .and_then(|anchor| insights.transform_of(&anchor))
+                    .unwrap_or(vf_trans);
+                let vf_anchor_parent = StateInsights::of(state).anchor_parent_of(&vf_entity);
                 let colliding_entities: HashSet<_> = StateInsights::of(state)
-                    .contacts_of(&vision_field_entity)
+                    .contacts_of(&vf_entity)
                     .iter()
                     // Do not consider the anchor parent in the vision.
                     .filter(|colliding_e| {
@@ -99,7 +105,7 @@ impl System for VisionSystem {
                             .all(|(_, _, ehb)| {
                                 !sepax2d::line::intersects_segment(
                                     ehb.shape.shape_ref(),
-                                    (ref_pos.x, ref_pos.y),
+                                    (ref_trans.x, ref_trans.y),
                                     (target_pos.x, target_pos.y),
                                 )
                             })
@@ -111,18 +117,11 @@ impl System for VisionSystem {
                     .cloned()
                     .collect();
                 unobstructed_entities.into_iter().for_each(|vision_target| {
-                    cmds.emit_event(InteractReq::<VisionField>::new(
-                        vision_field_entity,
-                        vision_target,
-                    ))
+                    cmds.emit_event(InteractReq::<VisionField>::new(vf_entity, vision_target))
                 });
                 obstructed_entities.into_iter().for_each(|vision_target| {
-                    cmds.emit_event(UninteractReq::<VisionField>::new(
-                        vision_field_entity,
-                        vision_target,
-                    ))
+                    cmds.emit_event(UninteractReq::<VisionField>::new(vf_entity, vision_target))
                 })
-            },
-        );
+            });
     }
 }

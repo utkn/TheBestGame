@@ -1,6 +1,6 @@
-use crate::{ai::VisionField, item::*, needs::*, physics::*, prelude::*};
+use crate::{item::*, needs::*, physics::*, prelude::*};
 
-use super::Character;
+use super::{Character, CharacterInsights};
 
 pub struct CharacterBundle {
     pub character: EntityRef,
@@ -16,7 +16,7 @@ impl EntityBundle for CharacterBundle {
             Acceleration(2000.),
             TargetVelocity::default(),
             MaxSpeed(300.),
-            Hitbox(HitboxType::Dynamic, Shape::Rect(20., 20.)),
+            Hitbox(HitboxType::Dynamic, Shape::Rect { w: 20., h: 20. }),
             InteractTarget::<Hitbox>::default(),
             Storage::new(15),
             Equipment::new([
@@ -40,8 +40,8 @@ impl EntityBundle for CharacterBundle {
         cmds.set_components(&character, (TargetRotation::default(),));
         let vision_field = cmds.create_from((
             Transform::default(),
-            AnchorTransform(character, (0., 0.)),
-            Hitbox(HitboxType::Ghost, Shape::Circle(200.)),
+            AnchorTransform(character, (200., 0.)),
+            Hitbox(HitboxType::Ghost, Shape::Circle { r: 200. }),
             InteractTarget::<Hitbox>::default(),
             VisionField(200.),
         ));
@@ -56,10 +56,7 @@ impl EntityBundle for CharacterBundle {
     }
 
     fn try_reconstruct(character: &EntityRef, state: &State) -> Option<Self> {
-        let vision_field = state
-            .select::<(AnchorTransform, VisionField)>()
-            .find(|(_, (anchor, _))| &anchor.0 == character)
-            .map(|(e, _)| e)?;
+        let vision_field = StateInsights::of(state).vision_field_of(character)?;
         Some(Self {
             character: *character,
             vision_field,
