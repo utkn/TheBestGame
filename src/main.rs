@@ -23,6 +23,7 @@ use vehicle::*;
 
 mod ai;
 mod camera;
+mod character;
 mod controller;
 mod effects;
 mod game_entities;
@@ -68,8 +69,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
     // Control & movement
     world.register_system(MovementSystem);
     world.register_system(AnchorSystem);
-    world.register_system(ControlSystem::<UserInputCharacterDriver>::default());
-    world.register_system(ControlSystem::<UserInputVehicleDriver>::default());
+    world.register_system(ControlSystem::<UserInputDriver>::default());
     world.register_system(LifetimeSystem);
     world.register_system(ApproachVelocitySystem);
     world.register_system(ApproachRotationSystem);
@@ -136,6 +136,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
 fn update(app: &mut notan::prelude::App, app_state: &mut AppState) {
     let dt = app.timer.delta_f32();
     let mut control_map = ControlMap::from_app_state(&app);
+    // Move the mouse into the world coordinates.
     control_map.mouse_pos = map_to_world_cords(
         control_map.mouse_pos.0,
         control_map.mouse_pos.1,

@@ -1,9 +1,5 @@
 use super::EntityRef;
 
-/// Represents a character in the game.
-#[derive(Clone, Copy, Debug)]
-pub struct Character;
-
 /// Represent the transformation of an entity.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Transform {

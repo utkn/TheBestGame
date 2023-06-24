@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 use crate::{prelude::*, vehicle::Vehicle};
 
-use super::TagSource;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum VehicleTag {
     Moving,

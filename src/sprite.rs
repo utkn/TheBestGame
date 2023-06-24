@@ -1,14 +1,8 @@
-mod character_tags;
-mod tags;
-mod vehicle_tags;
-
 use std::collections::HashMap;
 
-pub use tags::TagSource;
+use crate::{character::Character, item::Item, prelude::*, vehicle::Vehicle};
 
-use crate::{prelude::*, vehicle::Vehicle};
-
-use self::tags::{ExistingTags, RepresentibleTags};
+mod tags;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Sprite(pub &'static str);
@@ -29,7 +23,7 @@ impl SpriteRepresentor {
             .repr_tags
             .entry(sprite_id)
             .or_insert_with(|| parse_all_representible_tags_for(sprite_id));
-        let existing_tags = ExistingTags::<S>::of(sprite_id, sprite_entity, state);
+        let existing_tags = EntityTags::<S>::of(sprite_id, sprite_entity, state);
         repr_tags.try_represent_as::<S>(&existing_tags).cloned()
     }
 }
@@ -38,6 +32,7 @@ fn parse_all_representible_tags_for(sprite_id: &'static str) -> RepresentibleTag
     RepresentibleTags::new(sprite_id)
         .with::<Character>()
         .with::<Vehicle>()
+        .with::<Item>()
 }
 
 impl SpriteRepresentor {
@@ -49,6 +44,7 @@ impl SpriteRepresentor {
         let representations = [
             self.try_represent_as::<Character>(sprite_entity, state),
             self.try_represent_as::<Vehicle>(sprite_entity, state),
+            self.try_represent_as::<Item>(sprite_entity, state),
         ];
         representations.into_iter().flatten()
     }

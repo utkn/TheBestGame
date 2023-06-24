@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{physics::ProjectileGenerator, prelude::*, vehicle::Vehicle};
 
-use super::TagSource;
+use super::Character;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum CharacterTag {

@@ -9,6 +9,7 @@ mod interaction;
 mod state;
 mod state_insights;
 mod system;
+mod tags;
 mod timed;
 
 pub use basic_components::*;
@@ -20,6 +21,7 @@ pub use interaction::*;
 pub use state::{State, StateCommands};
 pub use state_insights::*;
 pub use system::*;
+pub use tags::*;
 pub use timed::*;
 
 /// Represents the game world.

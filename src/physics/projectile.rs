@@ -1,10 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{
-    item::{EquipmentInsights, ItemUnequippedEvt, Storage},
-    needs::NeedMutator,
-    physics::*,
-};
+use crate::{character::CharacterInsights, item::*, needs::NeedMutator, physics::*};
 
 use rand::Rng;
 
@@ -36,8 +32,8 @@ impl Interaction for ProjectileGenerator {
     }
 
     fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
-        StateInsights::of(state).is_equipping(actor, target)
-            && state.select_one::<(Character,)>(actor).is_some()
+        let insights = StateInsights::of(state);
+        insights.is_equipping(actor, target) && insights.is_character(actor)
     }
 
     fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {

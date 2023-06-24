@@ -1,15 +1,19 @@
-use crate::{controller::ProximityInteractable, prelude::*};
+use crate::{character::CharacterInsights, controller::ProximityInteractable, prelude::*};
 
+pub use create_item::*;
 pub use equipment::*;
 pub use item_description::*;
 pub use item_insights::*;
 pub use item_stack::*;
+pub use item_tags::*;
 pub use storage::*;
 
+mod create_item;
 mod equipment;
 mod item_description;
 mod item_insights;
 mod item_stack;
+mod item_tags;
 mod storage;
 
 /// Represents an entity that can be equipped, stored, and dropped on the ground.
@@ -184,7 +188,7 @@ impl Interaction for Item {
         let insights = StateInsights::of(state);
         insights.is_item(target)
             && insights.location_of(target) == ItemLocation::Ground
-            && state.select_one::<(Character,)>(actor).is_some()
+            && insights.is_character(actor)
             && insights.can_store(actor, target)
     }
 
