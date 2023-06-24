@@ -20,7 +20,7 @@ pub struct ProjectileDefn {
 pub struct ProjectileGenerator {
     pub proj: ProjectileDefn,
     pub cooldown: Option<f32>,
-    pub knockback: Option<f32>,
+    pub auto_knockback: Option<f32>,
 }
 
 /// [`ProjectileGenerator`]s denote an interaction, which lets them shoot a projectile.
@@ -129,7 +129,7 @@ impl System for ProjectileGenerationSystem {
                         Sprite::new("bullet", 2),
                     ));
                     // Apply knockback optionally
-                    if let Some(knockback_factor) = p_gen.knockback {
+                    if let Some(knockback_factor) = p_gen.auto_knockback {
                         let knockback_vel = dir * -1. * knockback_factor;
                         cmds.update_component(&actor_entity, move |actor_vel: &mut Velocity| {
                             actor_vel.x += knockback_vel.x;
@@ -174,6 +174,7 @@ impl Hitter {
 pub struct HitEvt {
     pub hitter: EntityRef,
     pub target: EntityRef,
+    pub hit_velocity: (f32, f32),
 }
 
 /// A system that listens to [`Hitter`] collision and emits appropriate [`HitEvt`]s.
@@ -184,8 +185,8 @@ impl System for HitSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Emit the projectile hit events.
         state
-            .select::<(Hitter,)>()
-            .for_each(|(hitter_entity, (hitter,))| {
+            .select::<(Hitter, Velocity)>()
+            .for_each(|(hitter_entity, (hitter, hitter_vel))| {
                 StateInsights::of(state)
                     .new_collision_starters_of(&hitter_entity)
                     .into_iter()
@@ -202,6 +203,7 @@ impl System for HitSystem {
                         cmds.emit_event(HitEvt {
                             hitter: hitter_entity,
                             target: coll_target,
+                            hit_velocity: (hitter_vel.x, hitter_vel.y),
                         })
                     });
             });

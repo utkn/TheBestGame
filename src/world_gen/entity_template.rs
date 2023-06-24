@@ -31,6 +31,7 @@ pub const PLAYER_TEMPLATE: EntityTemplate = EntityTemplate {
                 Affected::<Acceleration>::default(),
             ),
         );
+        cmds.mark_for_removal(&character.vision_field);
         Some(*character.primary_entity())
     },
 };
@@ -84,7 +85,7 @@ pub const HAND_GUN_TEMPLATE: EntityTemplate = EntityTemplate {
                 InteractTarget::<Storage>::default(),
                 InteractTarget::<ProjectileGenerator>::default(),
                 ProjectileGenerator {
-                    knockback: None,
+                    auto_knockback: None,
                     cooldown: None,
                     proj: ProjectileDefn {
                         lifetime: 0.5,
@@ -118,7 +119,7 @@ pub const MACHINE_GUN_TEMPLATE: EntityTemplate = EntityTemplate {
                 InteractTarget::<Storage>::default(),
                 InteractTarget::<ProjectileGenerator>::default(),
                 ProjectileGenerator {
-                    knockback: Some(100.),
+                    auto_knockback: Some(100.),
                     cooldown: Some(0.05),
                     proj: ProjectileDefn {
                         lifetime: 1.5,

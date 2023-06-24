@@ -13,7 +13,7 @@ pub trait CharacterInsights {
     /// Returns the vision field of the character entity if it exists.
     fn vision_field_of(&self, character_entity: &EntityRef) -> Option<EntityRef>;
     /// Returns the entities that are visible by the given character.
-    fn character_visibles_of(&self, character_entity: &EntityRef) -> Option<HashSet<EntityRef>>;
+    fn visibles_of_character(&self, character_entity: &EntityRef) -> Option<HashSet<EntityRef>>;
     /// Returns true iff `character_entity` can see the given `target`.
     fn can_character_see(&self, character_entity: &EntityRef, target: &EntityRef) -> bool;
 }
@@ -30,13 +30,13 @@ impl<'a> CharacterInsights for StateInsights<'a> {
             .map(|(e, _)| e)
     }
 
-    fn character_visibles_of(&self, character_entity: &EntityRef) -> Option<HashSet<EntityRef>> {
+    fn visibles_of_character(&self, character_entity: &EntityRef) -> Option<HashSet<EntityRef>> {
         let vision_field = self.vision_field_of(character_entity)?;
         Some(self.visibles_of(&vision_field))
     }
 
     fn can_character_see(&self, character_entity: &EntityRef, target: &EntityRef) -> bool {
-        self.character_visibles_of(character_entity)
+        self.visibles_of_character(character_entity)
             .map(|visibles| visibles.contains(target))
             .unwrap_or(false)
     }

@@ -134,7 +134,7 @@ fn draw_debug(rnd: &mut notan::draw::Draw, state: &State) {
             let color = if is_being_interacted {
                 notan::prelude::Color::GREEN
             } else if is_being_viewed {
-                notan::prelude::Color::MAGENTA
+                notan::prelude::Color::YELLOW
             } else {
                 notan::prelude::Color::RED
             };

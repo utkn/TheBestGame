@@ -1,9 +1,12 @@
 use crate::{
-    character::CharacterBundle, controller::ControlCommand, item::EquipmentSlot,
-    physics::VisionInsights, prelude::*,
+    character::CharacterBundle,
+    controller::ControlCommand,
+    item::EquipmentSlot,
+    physics::{ColliderInsights, VisionInsights},
+    prelude::*,
 };
 
-use super::{AiTask, AiTaskHandler};
+use super::{AiScaleObstacleHandler, AiTask, AiTaskHandler};
 
 #[derive(Clone, Copy, Debug)]
 pub struct AiFollowHandler {
@@ -21,6 +24,12 @@ impl AiTaskHandler for AiFollowHandler {
         let ai_visibles = insights.visibles_of(&ai_char.vision_field);
         if !ai_visibles.contains(&self.target) {
             return vec![];
+        }
+        if insights.concrete_contacts_of(actor).len() > 0 {
+            return vec![
+                AiTask::ScaleObstacle(AiScaleObstacleHandler),
+                AiTask::Follow(self),
+            ];
         }
         if let Some(dist_sq) = StateInsights::of(state).dist_sq_between(actor, &self.target) {
             // println!("{:?} {:?}", min_dist * min_dist, dist_sq);

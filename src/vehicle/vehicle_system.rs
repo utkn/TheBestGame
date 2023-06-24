@@ -1,5 +1,6 @@
 use crate::{
     controller::{CopyControllersReq, DeleteControllersReq},
+    physics::{Hitbox, HitboxType},
     prelude::*,
 };
 
@@ -22,6 +23,10 @@ impl System for VehicleSystem {
                 if let Some((vehicle_transform,)) = state.select_one::<(Transform,)>(vehicle) {
                     cmds.set_component(driver, vehicle_transform.clone());
                 }
+                // Update driver's hitbox to ghost.
+                cmds.update_component(driver, |hb: &mut Hitbox| {
+                    hb.0 = HitboxType::Ghost;
+                });
             });
         state
             .read_events::<InteractionEndedEvt<Vehicle>>()
@@ -35,6 +40,10 @@ impl System for VehicleSystem {
                 cmds.set_component(vehicle, TargetVelocity { x: 0., y: 0. });
                 // Remove the driver's anchor.
                 cmds.remove_component::<AnchorTransform>(driver);
+                // Update driver's hitbox to dynamic.
+                cmds.update_component(driver, |hb: &mut Hitbox| {
+                    hb.0 = HitboxType::Dynamic;
+                });
                 // Position the driver a bit right for collision detection to resolve it.
                 cmds.update_component(driver, |trans: &mut Transform| {
                     trans.x += 40.;

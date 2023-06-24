@@ -7,11 +7,13 @@ use crate::prelude::*;
 
 pub use collider_insights::*;
 pub use projectile::*;
+pub use projectile_insights::*;
 pub use vision_field::*;
 pub use vision_insights::*;
 
 mod collider_insights;
 mod projectile;
+mod projectile_insights;
 mod vision_field;
 mod vision_insights;
 
