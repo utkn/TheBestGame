@@ -8,7 +8,7 @@ use super::{CollisionEvt, Hitbox};
 pub trait ColliderInsights<'a> {
     /// Returns the entities that collide with this entity.
     fn contacts_of(&self, e: &EntityRef) -> EntityRefSet;
-    /// Returns the entities that collide with this entity.
+    /// Returns the concrete entities that collide with this entity.
     fn concrete_contacts_of(&self, e: &EntityRef) -> HashSet<&'a EntityRef>;
     /// Returns the set of entities that just started colliding with this entity in the last update.
     fn new_collision_starters_of(&self, e: &EntityRef) -> HashSet<EntityRef>;

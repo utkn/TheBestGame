@@ -18,6 +18,7 @@ pub use user_input_driver::*;
 pub struct Controller<D: ControlDriver>(pub D);
 
 /// A command that can be emitted by a [`ControlDriver`].
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ControlCommand {
     SetTargetRotation(f32),
     SetTargetVelocity(f32, f32),
