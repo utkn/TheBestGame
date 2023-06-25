@@ -52,28 +52,28 @@ impl ShadowEquipment {
 /// Request to equip an entity.
 #[derive(Clone, Copy, Debug)]
 pub struct EquipItemReq {
-    pub entity: EntityRef,
+    pub item_entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
 /// Request to unequip an entity.
 #[derive(Clone, Copy, Debug)]
 pub struct UnequipItemReq {
-    pub entity: EntityRef,
+    pub item_entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
 /// Emitted when an item is equipped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ItemEquippedEvt {
-    pub entity: EntityRef,
+    pub item_entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
 /// Emitted when an item is unequipped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ItemUnequippedEvt {
-    pub entity: EntityRef,
+    pub item_entity: EntityRef,
     pub equipment_entity: EntityRef,
 }
 
@@ -91,10 +91,10 @@ impl System for EquipmentSystem {
                 let shadow_eq = shadow_equipment_map
                     .entry(evt.equipment_entity)
                     .or_insert(ShadowEquipment::from(equipment.clone()));
-                if shadow_eq.try_unequip(&evt.entity) {
+                if shadow_eq.try_unequip(&evt.item_entity) {
                     cmds.emit_event(ItemUnequippedEvt {
                         equipment_entity: evt.equipment_entity,
-                        entity: evt.entity,
+                        item_entity: evt.item_entity,
                     })
                 }
             }
@@ -105,10 +105,10 @@ impl System for EquipmentSystem {
                 let shadow_eq = shadow_equipment_map
                     .entry(evt.equipment_entity)
                     .or_insert(ShadowEquipment::from(equipment.clone()));
-                if shadow_eq.try_equip(evt.entity, state) {
+                if shadow_eq.try_equip(evt.item_entity, state) {
                     cmds.emit_event(ItemEquippedEvt {
                         equipment_entity: evt.equipment_entity,
-                        entity: evt.entity,
+                        item_entity: evt.item_entity,
                     })
                 }
             }

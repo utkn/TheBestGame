@@ -49,25 +49,25 @@ impl ShadowStorage {
 #[derive(Clone, Copy, Debug)]
 pub struct StoreItemReq {
     pub storage_entity: EntityRef,
-    pub entity: EntityRef,
+    pub item_entity: EntityRef,
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct UnstoreItemReq {
     pub storage_entity: EntityRef,
-    pub entity: EntityRef,
+    pub item_entity: EntityRef,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ItemStoredEvt {
     pub storage_entity: EntityRef,
-    pub entity: EntityRef,
+    pub item_entity: EntityRef,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ItemUnstoredEvt {
     pub storage_entity: EntityRef,
-    pub entity: EntityRef,
+    pub item_entity: EntityRef,
 }
 
 /// A system that handles entity storing/unstoring to/from `Storage` entities.
@@ -84,10 +84,10 @@ impl System for StorageSystem {
                 let shadow_storage = shadow_storage_map
                     .entry(evt.storage_entity)
                     .or_insert(ShadowStorage::from(storage.clone()));
-                if shadow_storage.try_unstore(&evt.entity) {
+                if shadow_storage.try_unstore(&evt.item_entity) {
                     cmds.emit_event(ItemUnstoredEvt {
                         storage_entity: evt.storage_entity,
-                        entity: evt.entity,
+                        item_entity: evt.item_entity,
                     })
                 }
             }
@@ -98,10 +98,10 @@ impl System for StorageSystem {
                 let shadow_storage = shadow_storage_map
                     .entry(evt.storage_entity)
                     .or_insert(ShadowStorage::from(storage.clone()));
-                if shadow_storage.try_store(evt.entity, state) {
+                if shadow_storage.try_store(evt.item_entity, state) {
                     cmds.emit_event(ItemStoredEvt {
                         storage_entity: evt.storage_entity,
-                        entity: evt.entity,
+                        item_entity: evt.item_entity,
                     })
                 }
             }

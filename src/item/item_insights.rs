@@ -55,7 +55,7 @@ impl<'a> ItemInsights for StateInsights<'a> {
     fn new_storers_of(&self, item_entity: &EntityRef) -> HashSet<EntityRef> {
         self.0
             .read_events::<ItemStoredEvt>()
-            .filter(|evt| &evt.entity == item_entity)
+            .filter(|evt| &evt.item_entity == item_entity)
             .map(|evt| evt.storage_entity)
             .collect()
     }
@@ -63,7 +63,7 @@ impl<'a> ItemInsights for StateInsights<'a> {
     fn new_unstorers_of(&self, item_entity: &EntityRef) -> HashSet<EntityRef> {
         self.0
             .read_events::<ItemUnstoredEvt>()
-            .filter(|evt| &evt.entity == item_entity)
+            .filter(|evt| &evt.item_entity == item_entity)
             .map(|evt| evt.storage_entity)
             .collect()
     }
@@ -71,7 +71,7 @@ impl<'a> ItemInsights for StateInsights<'a> {
     fn new_equippers_of(&self, item_entity: &EntityRef) -> HashSet<EntityRef> {
         self.0
             .read_events::<ItemEquippedEvt>()
-            .filter(|evt| &evt.entity == item_entity)
+            .filter(|evt| &evt.item_entity == item_entity)
             .map(|evt| evt.equipment_entity)
             .collect()
     }
@@ -79,7 +79,7 @@ impl<'a> ItemInsights for StateInsights<'a> {
     fn new_unequippers_of(&self, item_entity: &EntityRef) -> HashSet<EntityRef> {
         self.0
             .read_events::<ItemUnequippedEvt>()
-            .filter(|evt| &evt.entity == item_entity)
+            .filter(|evt| &evt.item_entity == item_entity)
             .map(|evt| evt.equipment_entity)
             .collect()
     }

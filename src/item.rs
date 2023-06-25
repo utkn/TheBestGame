@@ -84,14 +84,6 @@ impl ItemTransferReq {
     }
 }
 
-/// Emitted by [`ItemTransferSystem`] when an item transfer occurs.
-#[derive(Clone, Copy, Debug)]
-pub struct ItemTransferredEvt {
-    pub item_entity: EntityRef,
-    pub from_loc: ItemLocation,
-    pub to_loc: ItemLocation,
-}
-
 /// A system that handles item transfers by listening to [`ItemTransferReq`]s and emitting [`ItemTransferEvt`]s.
 #[derive(Clone, Copy, Debug)]
 pub struct ItemTransferSystem;
@@ -135,11 +127,11 @@ impl System for ItemTransferSystem {
             match evt.from_loc {
                 ItemLocation::Ground => {}
                 ItemLocation::Equipment(equipment_entity) => cmds.emit_event(UnequipItemReq {
-                    entity: evt.item_entity,
+                    item_entity: evt.item_entity,
                     equipment_entity,
                 }),
                 ItemLocation::Storage(storage_entity) => cmds.emit_event(UnstoreItemReq {
-                    entity: evt.item_entity,
+                    item_entity: evt.item_entity,
                     storage_entity,
                 }),
             };
@@ -147,56 +139,15 @@ impl System for ItemTransferSystem {
             match evt.to_loc {
                 ItemLocation::Ground => {}
                 ItemLocation::Equipment(equipment_entity) => cmds.emit_event(EquipItemReq {
-                    entity: evt.item_entity,
+                    item_entity: evt.item_entity,
                     equipment_entity,
                 }),
                 ItemLocation::Storage(storage_entity) => cmds.emit_event(StoreItemReq {
-                    entity: evt.item_entity,
+                    item_entity: evt.item_entity,
                     storage_entity,
                 }),
             }
-            cmds.emit_event(ItemTransferredEvt {
-                from_loc: evt.from_loc,
-                to_loc: evt.to_loc,
-                item_entity: evt.item_entity,
-            });
         });
-    }
-}
-
-/// A system that anchors the item's transformation to the [`Storage`] or [`Equipment`] that it is in.
-#[derive(Clone, Copy, Debug)]
-pub struct ItemAnchorSystem;
-
-impl System for ItemAnchorSystem {
-    fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        // Handle transfer from equipment/storage.
-        state
-            .read_events::<ItemTransferredEvt>()
-            .filter(|evt| evt.to_loc == ItemLocation::Ground)
-            .filter_map(|evt| match evt.from_loc {
-                ItemLocation::Ground => None,
-                ItemLocation::Equipment(e) | ItemLocation::Storage(e) => Some((evt.item_entity, e)),
-            })
-            .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
-            .for_each(|(item, _)| {
-                cmds.remove_component::<AnchorTransform>(&item);
-            });
-        // Handle transfer to equipment/storage.
-        state
-            .read_events::<ItemTransferredEvt>()
-            .filter(|evt| evt.from_loc == ItemLocation::Ground)
-            .filter_map(|evt| match evt.to_loc {
-                ItemLocation::Ground => None,
-                ItemLocation::Equipment(e) | ItemLocation::Storage(e) => Some((evt.item_entity, e)),
-            })
-            .filter(|(item, _)| state.select_one::<(Item,)>(item).is_some())
-            .for_each(|(item, actor)| {
-                cmds.set_components(
-                    &item,
-                    (Transform::default(), AnchorTransform(actor, (0., 0.))),
-                );
-            });
     }
 }
 
@@ -228,37 +179,39 @@ pub struct ItemPickupSystem;
 
 impl System for ItemPickupSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        // Handle transfer from equipment/storage.
         state
-            .read_events::<ItemTransferredEvt>()
-            // Going to ground
-            .filter(|evt| evt.to_loc == ItemLocation::Ground)
-            // From either equipment or storage
-            .filter(|evt| {
-                matches!(
-                    evt.from_loc,
-                    ItemLocation::Equipment(_) | ItemLocation::Storage(_)
-                )
-            })
+            .read_events::<ItemUnequippedEvt>()
             .map(|evt| evt.item_entity)
-            .filter(|item| state.select_one::<(Item,)>(item).is_some())
+            .chain(
+                state
+                    .read_events::<ItemUnstoredEvt>()
+                    .map(|evt| evt.item_entity),
+            )
+            .filter(|item| StateInsights::of(state).location_of(item) == ItemLocation::Ground)
             .for_each(|item| {
-                cmds.set_component(&item, ProximityInteractable);
-            });
-        state
-            .read_events::<ItemTransferredEvt>()
-            // From the ground
-            .filter(|evt| evt.from_loc == ItemLocation::Ground)
-            // Going either to equipment or storage
-            .filter(|evt| {
-                matches!(
-                    evt.to_loc,
-                    ItemLocation::Equipment(_) | ItemLocation::Storage(_)
-                )
-            })
-            .map(|evt| evt.item_entity)
-            .filter(|item| state.select_one::<(Item,)>(item).is_some())
-            .for_each(|item| {
+                cmds.remove_component::<AnchorTransform>(&item);
                 cmds.remove_component::<ProximityInteractable>(&item);
+            });
+        // Handle transfer to equipment/storage.
+        state
+            .read_events::<ItemEquippedEvt>()
+            .map(|evt| (evt.equipment_entity, evt.item_entity))
+            .chain(
+                state
+                    .read_events::<ItemStoredEvt>()
+                    .map(|evt| (evt.storage_entity, evt.item_entity)),
+            )
+            .filter(|(_, item)| StateInsights::of(state).location_of(item) != ItemLocation::Ground)
+            .for_each(|(actor, item)| {
+                cmds.set_components(
+                    &item,
+                    (
+                        Transform::default(),
+                        AnchorTransform(actor, (0., 0.)),
+                        ProximityInteractable,
+                    ),
+                );
             });
         state
             .read_events::<InteractionStartedEvt<Item>>()

@@ -34,7 +34,6 @@ pub fn create_empty_world() -> World {
     world.register_system(StorageSystem);
     world.register_system(EquipmentSystem);
     world.register_system(ItemTransferSystem);
-    world.register_system(ItemAnchorSystem);
     world.register_system(ItemPickupSystem);
     world.register_system(InteractionSystem::<Item>::default());
     world.register_system(InteractionSystem::<Storage>::default());

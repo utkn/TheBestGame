@@ -58,10 +58,10 @@ impl System for ProjectileGenerationSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Try to automatically uninteract from the activated [`ProjectileGenerator`]s upon unequipping them.
         state.read_events::<ItemUnequippedEvt>().for_each(|evt| {
-            if Storage::interaction_exists(&evt.equipment_entity, &evt.entity, state) {
+            if Storage::interaction_exists(&evt.equipment_entity, &evt.item_entity, state) {
                 cmds.emit_event(UninteractReq::<ProjectileGenerator>::new(
                     evt.equipment_entity,
-                    evt.entity,
+                    evt.item_entity,
                 ));
             }
         });
