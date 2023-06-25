@@ -1,4 +1,8 @@
-use crate::{character::CharacterInsights, controller::ProximityInteractable, prelude::*};
+use crate::{
+    character::{CharacterBundle, CharacterInsights},
+    controller::ProximityInteractable,
+    prelude::*,
+};
 
 pub use create_item::*;
 pub use equipment::*;
@@ -82,7 +86,7 @@ impl ItemTransferReq {
 
 /// Emitted by [`ItemTransferSystem`] when an item transfer occurs.
 #[derive(Clone, Copy, Debug)]
-pub struct ItemTransferEvt {
+pub struct ItemTransferredEvt {
     pub item_entity: EntityRef,
     pub from_loc: ItemLocation,
     pub to_loc: ItemLocation,
@@ -151,7 +155,7 @@ impl System for ItemTransferSystem {
                     storage_entity,
                 }),
             }
-            cmds.emit_event(ItemTransferEvt {
+            cmds.emit_event(ItemTransferredEvt {
                 from_loc: evt.from_loc,
                 to_loc: evt.to_loc,
                 item_entity: evt.item_entity,
@@ -168,7 +172,7 @@ impl System for ItemAnchorSystem {
     fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         // Handle transfer from equipment/storage.
         state
-            .read_events::<ItemTransferEvt>()
+            .read_events::<ItemTransferredEvt>()
             .filter(|evt| evt.to_loc == ItemLocation::Ground)
             .filter_map(|evt| match evt.from_loc {
                 ItemLocation::Ground => None,
@@ -180,7 +184,7 @@ impl System for ItemAnchorSystem {
             });
         // Handle transfer to equipment/storage.
         state
-            .read_events::<ItemTransferEvt>()
+            .read_events::<ItemTransferredEvt>()
             .filter(|evt| evt.from_loc == ItemLocation::Ground)
             .filter_map(|evt| match evt.to_loc {
                 ItemLocation::Ground => None,
@@ -207,7 +211,6 @@ impl Interaction for Item {
         insights.is_item(target)
             && insights.location_of(target) == ItemLocation::Ground
             && insights.is_character(actor)
-            && insights.can_store(actor, target)
     }
 
     fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
@@ -226,7 +229,7 @@ pub struct ItemPickupSystem;
 impl System for ItemPickupSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
-            .read_events::<ItemTransferEvt>()
+            .read_events::<ItemTransferredEvt>()
             // Going to ground
             .filter(|evt| evt.to_loc == ItemLocation::Ground)
             // From either equipment or storage
@@ -242,12 +245,34 @@ impl System for ItemPickupSystem {
                 cmds.set_component(&item, ProximityInteractable);
             });
         state
+            .read_events::<ItemTransferredEvt>()
+            // From the ground
+            .filter(|evt| evt.from_loc == ItemLocation::Ground)
+            // Going either to equipment or storage
+            .filter(|evt| {
+                matches!(
+                    evt.to_loc,
+                    ItemLocation::Equipment(_) | ItemLocation::Storage(_)
+                )
+            })
+            .map(|evt| evt.item_entity)
+            .filter(|item| state.select_one::<(Item,)>(item).is_some())
+            .for_each(|item| {
+                cmds.remove_component::<ProximityInteractable>(&item);
+            });
+        state
             .read_events::<InteractionStartedEvt<Item>>()
             .for_each(|evt| {
-                cmds.emit_event(ItemTransferReq::pick_up(evt.target, evt.actor));
-                cmds.remove_component::<ProximityInteractable>(&evt.target);
-                // Stop the interaction immediately.
-                cmds.emit_event(UninteractReq::<Item>::new(evt.actor, evt.target));
+                if let Some(actor_char) = state.read_bundle::<CharacterBundle>(&evt.actor) {
+                    // Either move to the backpack or directly into the equipment.
+                    if let Some(actor_packpack) = actor_char.get_backpack(state) {
+                        cmds.emit_event(ItemTransferReq::pick_up(evt.target, *actor_packpack));
+                    } else {
+                        cmds.emit_event(ItemTransferReq::equip_from_ground(evt.target, evt.actor))
+                    }
+                    // Stop the interaction immediately.
+                    cmds.emit_event(UninteractReq::<Item>::new(evt.actor, evt.target));
+                }
             });
     }
 }

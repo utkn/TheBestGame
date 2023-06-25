@@ -70,6 +70,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
         (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
         (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
+        (Transform::at(10., 10.), SIMPLE_BACKPACK_TEMPLATE),
         (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
         // (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));

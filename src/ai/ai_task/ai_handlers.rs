@@ -1,8 +1,8 @@
 use rand::Rng;
 
+use crate::character::CharacterBundle;
 use crate::{
-    character::CharacterInsights, controller::ControlCommand, item::EquipmentSlot,
-    physics::ColliderInsights, prelude::*,
+    controller::ControlCommand, item::EquipmentSlot, physics::ColliderInsights, prelude::*,
 };
 
 use super::ai_helpers::*;
@@ -20,13 +20,12 @@ pub(super) fn attack_handler(
             AiTaskOutput::IssueCmd(ControlCommand::EquipmentUninteract(EquipmentSlot::LeftHand)),
         ];
     }
+    let ai_character = state
+        .read_bundle::<CharacterBundle>(actor)
+        .expect("ai actor is not a character!");
     let insights = StateInsights::of(state);
     // Handle the case that we cannot see the target anymore.
-    let can_see = insights
-        .visibles_of_character(actor)
-        .map(|visibles| visibles.contains(&target))
-        .unwrap_or(false);
-    if !can_see {
+    if !ai_character.can_see(&target, state) {
         // Get the last seen position of the target.
         let last_seen_pos = insights
             .transform_of(&target)
@@ -158,20 +157,21 @@ pub(super) fn try_move_to_pos_handler(
 pub(super) fn try_scale_obstacle_handler(actor: &EntityRef, state: &State) -> Vec<AiTaskOutput> {
     let insights = StateInsights::of(state);
     if let Some(overlap) = insights.concrete_contact_overlaps_of(actor).first() {
-        let actor_trans = insights.transform_of(actor).unwrap();
-        let mut dev = rand::thread_rng().gen_range(60_f32..80_f32);
-        if rand::random() {
-            dev *= -1.
+        if let Some(actor_trans) = insights.transform_of(actor) {
+            let mut dev = rand::thread_rng().gen_range(60_f32..80_f32);
+            if rand::random() {
+                dev *= -1.
+            }
+            let escape_dir = notan::math::Vec2::from_angle(dev.to_radians())
+                .rotate(notan::math::vec2(-overlap.0, -overlap.1));
+            let new_pos = notan::math::vec2(actor_trans.x, actor_trans.y) + escape_dir * 40.;
+            // Replace itself with a nonpersistent movement from the obstacle.
+            return vec![AiTaskOutput::QueueFront(AiTask::TryMoveToPos {
+                x: new_pos.x,
+                y: new_pos.y,
+                scale_obstacles: false,
+            })];
         }
-        let side_dir = notan::math::Vec2::from_angle(dev.to_radians())
-            .rotate(notan::math::vec2(-overlap.0, -overlap.1));
-        let new_pos = notan::math::vec2(actor_trans.x, actor_trans.y) + side_dir * 40.;
-        // Replace itself with a nonpersistent movement from the obstacle.
-        return vec![AiTaskOutput::QueueFront(AiTask::TryMoveToPos {
-            x: new_pos.x,
-            y: new_pos.y,
-            scale_obstacles: false,
-        })];
     }
     return vec![];
 }

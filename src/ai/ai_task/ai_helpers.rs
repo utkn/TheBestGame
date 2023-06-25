@@ -1,12 +1,17 @@
 use crate::{
-    character::CharacterInsights, physics::ProjectileInsights, prelude::*, vehicle::VehicleInsights,
+    character::{CharacterBundle, CharacterInsights},
+    physics::ProjectileInsights,
+    prelude::*,
+    vehicle::VehicleInsights,
 };
 
 use super::{AiTask, AiTaskOutput};
 
+/// Returns the enemy on sight.
 pub(super) fn try_get_enemy_on_sight<'a>(actor: &EntityRef, state: &'a State) -> Option<EntityRef> {
+    let ai_char = state.read_bundle::<CharacterBundle>(actor)?;
     let insights = StateInsights::of(state);
-    let visibles = insights.visibles_of_character(actor).unwrap_or_default();
+    let visibles = ai_char.visibles(state);
     let target = visibles.into_iter().find(|e| {
         insights.is_character(e)
             || (insights.is_vehicle(e)
@@ -18,6 +23,7 @@ pub(super) fn try_get_enemy_on_sight<'a>(actor: &EntityRef, state: &'a State) ->
     target
 }
 
+/// Returns the position to move to if the `actor` is hit by a projectile.
 pub(super) fn try_move_towards_projectile(actor: &EntityRef, state: &State) -> Option<(f32, f32)> {
     let insights = StateInsights::of(state);
     let (vx, vy) = insights
@@ -25,12 +31,13 @@ pub(super) fn try_move_towards_projectile(actor: &EntityRef, state: &State) -> O
         .into_iter()
         .next()
         .map(|(_, hit_vel)| hit_vel)?;
-    let actor_trans = insights.transform_of(actor).unwrap();
+    let ai_trans = insights.transform_of(actor)?;
     let rev_dir = notan::math::vec2(-*vx, -*vy).normalize();
-    let target_pos = notan::math::vec2(actor_trans.x, actor_trans.y) + rev_dir * 150.;
+    let target_pos = notan::math::vec2(ai_trans.x, ai_trans.y) + rev_dir * 150.;
     Some((target_pos.x, target_pos.y))
 }
 
+/// Returns the actions that have the priority.
 pub(super) fn get_priority_actions(actor: &EntityRef, state: &State) -> Vec<AiTaskOutput> {
     // Move towards the projectile.
     if let Some((target_x, target_y)) = try_move_towards_projectile(actor, state) {
@@ -53,9 +60,8 @@ pub(super) fn get_dpos(
     actor: &EntityRef,
     state: &State,
 ) -> Option<(f32, f32)> {
-    let insights = StateInsights::of(state);
-    let actor_pos = insights.transform_of(actor)?;
-    Some((target_x - actor_pos.x, target_y - actor_pos.y))
+    let actor_trans = StateInsights::of(state).transform_of(actor)?;
+    Some((target_x - actor_trans.x, target_y - actor_trans.y))
 }
 
 pub(super) fn reached_destination(

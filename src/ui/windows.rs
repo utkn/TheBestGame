@@ -1,8 +1,6 @@
 use notan::egui;
 
 use crate::camera::map_to_screen_cords;
-use crate::controller::Controller;
-use crate::controller::UserInputDriver;
 use crate::item::ItemLocation;
 use crate::prelude::*;
 
@@ -43,6 +41,7 @@ pub trait Window {
 pub(super) struct EquipmentWindow {
     pub(super) title: &'static str,
     pub(super) equipment_entity: EntityRef,
+    pub(super) is_player_equipment: bool,
 }
 
 impl Window for EquipmentWindow {
@@ -63,16 +62,13 @@ impl Window for EquipmentWindow {
     ) {
         let screen_width = ctx.input().screen_rect().width();
         let screen_height = ctx.input().screen_rect().height();
-        let is_player_equipment = game_state
-            .select_one::<(Controller<UserInputDriver>,)>(&self.equipment_entity)
-            .is_some();
         let mut win = egui::Window::new(self.title)
             .id(self.window_id())
             .collapsible(false)
             .default_width(WINDOW_WIDTH)
             .resizable(false);
         // Handle alignment & positioning.
-        if is_player_equipment {
+        if self.is_player_equipment {
             win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 120.));
         } else {
             let (x, y) = game_state
@@ -97,6 +93,7 @@ impl Window for EquipmentWindow {
 pub(super) struct StorageWindow {
     pub(super) title: &'static str,
     pub(super) storage_entity: EntityRef,
+    pub(super) is_player_storage: bool,
 }
 
 impl Window for StorageWindow {
@@ -117,9 +114,6 @@ impl Window for StorageWindow {
     ) {
         let screen_width = ctx.input().screen_rect().width();
         let screen_height = ctx.input().screen_rect().height();
-        let is_player_storage = game_state
-            .select_one::<(Controller<UserInputDriver>,)>(&self.storage_entity)
-            .is_some();
         let mut win = egui::Window::new(self.title)
             .id(self.window_id())
             .collapsible(false)
@@ -128,7 +122,7 @@ impl Window for StorageWindow {
             .vscroll(true)
             .resizable(false);
         // Handle alignment & positioning.
-        if is_player_storage {
+        if self.is_player_storage {
             win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 400.));
         } else {
             let (x, y) = game_state

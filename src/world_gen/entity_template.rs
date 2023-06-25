@@ -18,6 +18,20 @@ impl EntityTemplate {
     }
 }
 
+pub const SIMPLE_BACKPACK_TEMPLATE: EntityTemplate = EntityTemplate {
+    generator: |trans, _state, cmds| {
+        let item = create_item(
+            Item::unstackable(),
+            trans,
+            Name("SimpleBackpack"),
+            SlotSelector::new([[EquipmentSlot::Backpack]]),
+            cmds,
+        );
+        cmds.set_components(&item, (Storage::new(16),));
+        Some(item)
+    },
+};
+
 pub const PLAYER_TEMPLATE: EntityTemplate = EntityTemplate {
     generator: |trans, _state, cmds| {
         let character = CharacterBundle::create(trans, cmds);

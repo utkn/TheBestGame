@@ -55,22 +55,25 @@ impl System for VisionSystem {
                 let vf_anchor_parent = StateInsights::of(state).anchor_parent_of(&vf_entity);
                 let colliding_entities: HashSet<_> = StateInsights::of(state)
                     .contacts_of(&vf_entity)
-                    .unwrap()
-                    .iter()
-                    // Do not consider the anchor parent in the vision.
-                    .filter(|colliding_e| {
-                        let is_anchor_parent = vf_anchor_parent
-                            .map(|anchor_parent| anchor_parent == *colliding_e)
-                            .unwrap_or(false);
-                        !is_anchor_parent
+                    .map(|contacts| {
+                        contacts
+                            .iter()
+                            // Do not consider the anchor parent in the vision.
+                            .filter(|colliding_e| {
+                                let is_anchor_parent = vf_anchor_parent
+                                    .map(|anchor_parent| anchor_parent == *colliding_e)
+                                    .unwrap_or(false);
+                                !is_anchor_parent
+                            })
+                            .filter(|colliding_e| {
+                                state
+                                    .select_one::<(InteractTarget<VisionField>,)>(colliding_e)
+                                    .is_some()
+                            })
+                            .cloned()
+                            .collect()
                     })
-                    .filter(|colliding_e| {
-                        state
-                            .select_one::<(InteractTarget<VisionField>,)>(colliding_e)
-                            .is_some()
-                    })
-                    .cloned()
-                    .collect();
+                    .unwrap_or_default();
                 let colliding_hitboxes = colliding_entities
                     .iter()
                     .filter_map(|colliding_e| {

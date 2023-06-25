@@ -4,6 +4,7 @@ use itertools::Itertools;
 use notan::egui;
 
 use crate::{
+    character::CharacterBundle,
     item::{Equipment, ItemTransferReq, Storage},
     prelude::*,
 };
@@ -27,15 +28,22 @@ impl<'a> UiBuilder<'a> {
 
     fn build(&mut self, game_state: &'a State) -> HashMap<egui::Id, WindowType> {
         let player_entity = EntityRef::new(0, 0);
+        let player_char = game_state
+            .read_bundle::<CharacterBundle>(&player_entity)
+            .unwrap();
         self.add_window(NeedsWindow(player_entity));
         self.add_window(EquipmentWindow {
             title: "Equipment",
             equipment_entity: player_entity,
+            is_player_equipment: true,
         });
-        self.add_window(StorageWindow {
-            title: "Backpack",
-            storage_entity: player_entity,
-        });
+        if let Some(character_backpack) = player_char.get_backpack(game_state) {
+            self.add_window(StorageWindow {
+                title: "Backpack",
+                storage_entity: *character_backpack,
+                is_player_storage: true,
+            });
+        }
         let active_storages = game_state
             .select::<(Storage, InteractTarget<Storage>)>()
             .filter(|(_, (_, intr))| intr.actors.contains(&player_entity))
@@ -52,6 +60,7 @@ impl<'a> UiBuilder<'a> {
             self.add_window(StorageWindow {
                 title: storage_name,
                 storage_entity,
+                is_player_storage: false,
             });
         }
         for (equipment_entity, _) in active_equipments {
@@ -62,6 +71,7 @@ impl<'a> UiBuilder<'a> {
             self.add_window(EquipmentWindow {
                 title: storage_name,
                 equipment_entity,
+                is_player_equipment: false,
             });
         }
         self.windows

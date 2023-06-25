@@ -3,6 +3,7 @@ use crate::{
     prelude::*,
 };
 
+#[derive(Clone, Copy, Debug)]
 pub struct BuildingBundle {
     wall_lft: EntityRef,
     wall_rgt: EntityRef,
@@ -73,13 +74,50 @@ impl BuildingBundle {
                 },
             ),
         ));
-        Self {
+        cmds.push_bundle(Self {
             wall_lft,
             wall_rgt,
             wall_top,
             wall_btm_lft,
             wall_btm_rgt,
             activator,
+        })
+    }
+}
+
+impl<'a> EntityBundle<'a> for BuildingBundle {
+    type TupleRepr = (
+        EntityRef,
+        EntityRef,
+        EntityRef,
+        EntityRef,
+        EntityRef,
+        EntityRef,
+    );
+
+    fn primary_entity(&self) -> &EntityRef {
+        &self.activator
+    }
+
+    fn deconstruct(self) -> Self::TupleRepr {
+        (
+            self.activator,
+            self.wall_lft,
+            self.wall_top,
+            self.wall_rgt,
+            self.wall_btm_rgt,
+            self.wall_btm_lft,
+        )
+    }
+
+    fn reconstruct(args: <Self::TupleRepr as EntityTuple<'a>>::AsRefTuple) -> Self {
+        Self {
+            activator: *args.0,
+            wall_lft: *args.1,
+            wall_top: *args.2,
+            wall_rgt: *args.3,
+            wall_btm_rgt: *args.4,
+            wall_btm_lft: *args.5,
         }
     }
 }

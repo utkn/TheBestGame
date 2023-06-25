@@ -34,7 +34,7 @@ impl RepresentibleTags {
         let source_name = S::source_name();
         let file_pattern = format!("./assets/{}/{}@*.png", self.sprite_id, source_name);
         let tag_subsets = glob::glob(&file_pattern)
-            .unwrap()
+            .expect("assets folder do not exist")
             .flatten()
             .flat_map(|tx_file| {
                 let stem = tx_file
