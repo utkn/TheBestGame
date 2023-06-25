@@ -36,6 +36,20 @@ pub struct InteractTarget<I: Interaction> {
     pd: PhantomData<I>,
 }
 
+impl<I: Interaction> EntityRefBag for InteractTarget<I> {
+    fn remove_invalids(&mut self, entity_mgr: &EntityManager) {
+        self.actors
+            .iter()
+            .filter(|actor| !entity_mgr.is_valid(actor))
+            .cloned()
+            .collect_vec()
+            .into_iter()
+            .for_each(|invalid_actor| {
+                self.actors.remove(&invalid_actor);
+            });
+    }
+}
+
 impl<I: Interaction> Default for InteractTarget<I> {
     fn default() -> Self {
         Self {
@@ -241,6 +255,9 @@ impl<I: Interaction> System for InteractionSystem<I> {
                 // Otherwise, propose normally.
                 cmds.emit_event(ProposeUninteractEvt::from_req::<I>(evt));
             };
+        });
+        state.select::<(InteractTarget<I>,)>().for_each(|(e, _)| {
+            cmds.remove_invalids::<InteractTarget<I>>(&e);
         });
     }
 }

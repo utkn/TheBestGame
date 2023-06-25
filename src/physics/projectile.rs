@@ -161,6 +161,20 @@ pub struct Hitter {
     friendly_entities: HashSet<EntityRef>,
 }
 
+impl EntityRefBag for Hitter {
+    fn remove_invalids(&mut self, entity_mgr: &EntityManager) {
+        self.friendly_entities
+            .iter()
+            .filter(|e| !entity_mgr.is_valid(e))
+            .cloned()
+            .collect_vec()
+            .into_iter()
+            .for_each(|invalid| {
+                self.friendly_entities.remove(&invalid);
+            });
+    }
+}
+
 impl Hitter {
     pub fn new(exceptions: impl IntoIterator<Item = EntityRef>) -> Self {
         Self {
@@ -207,6 +221,9 @@ impl System for HitSystem {
                         })
                     });
             });
+        state.select::<(Hitter,)>().for_each(|(e, _)| {
+            cmds.remove_invalids::<Hitter>(&e);
+        })
     }
 }
 
