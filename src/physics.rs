@@ -231,7 +231,7 @@ impl System for SeparateCollisionsSystem {
                 let anchored = StateInsights::of(state).anchor_parent_of(&evt.e1).is_some()
                     || StateInsights::of(state)
                         .anchor_parent_of(&evt.e2)
-                        .map(|parent| parent == evt.e1)
+                        .map(|parent| parent == &evt.e1)
                         .unwrap_or(false);
                 !anchored
             })

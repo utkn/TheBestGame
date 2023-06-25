@@ -31,8 +31,8 @@ impl ShadowStorage {
     /// Tries to unstore the given entity in the underlying storage and returns `true` iff it succeeds.
     fn try_unstore(&mut self, item_entity: &EntityRef) -> bool {
         if let Some(idx) = self.0.get_containing_slot(item_entity) {
-            if let Some(item_slot) = self.0.stacks.get_mut(idx) {
-                item_slot.try_remove(item_entity)
+            if let Some(item_stack) = self.0.stacks.get_mut(idx) {
+                item_stack.items_mut().remove(item_entity)
             } else {
                 false
             }
@@ -114,10 +114,7 @@ impl System for StorageSystem {
             });
         // Now, remove the invalids from all the storages.
         state.select::<(Storage,)>().for_each(|(e, _)| {
-            let validity_set = state.extract_validity_set();
-            cmds.update_component(&e, move |storage: &mut Storage| {
-                storage.remove_invalids(&validity_set);
-            });
+            cmds.remove_invalids::<Storage>(&e);
         })
     }
 }

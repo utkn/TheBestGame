@@ -30,7 +30,7 @@ impl<'a> egui::Widget for ItemStackWidget<'a> {
             format!(
                 "{} ({})",
                 head_item_name.chars().take(3).join(""),
-                self.0.len()
+                self.0.items().len()
             )
         } else {
             String::new()

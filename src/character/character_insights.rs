@@ -5,9 +5,9 @@ use crate::{
     prelude::*,
 };
 
-use super::Character;
+use super::{Character, CharacterBundle};
 
-pub trait CharacterInsights {
+pub trait CharacterInsights<'a> {
     /// Returns true iff the given entity is a character.
     fn is_character(&self, e: &EntityRef) -> bool;
     /// Returns the vision field of the character entity if it exists.
@@ -18,7 +18,7 @@ pub trait CharacterInsights {
     fn can_character_see(&self, character_entity: &EntityRef, target: &EntityRef) -> bool;
 }
 
-impl<'a> CharacterInsights for StateInsights<'a> {
+impl<'a> CharacterInsights<'a> for StateInsights<'a> {
     fn is_character(&self, e: &EntityRef) -> bool {
         self.0.select_one::<(Character,)>(e).is_some()
     }
@@ -31,8 +31,11 @@ impl<'a> CharacterInsights for StateInsights<'a> {
     }
 
     fn visibles_of_character(&self, character_entity: &EntityRef) -> Option<HashSet<EntityRef>> {
-        let vision_field = self.vision_field_of(character_entity)?;
-        Some(self.visibles_of(&vision_field))
+        let vf = self
+            .0
+            .read_bundle::<CharacterBundle>(character_entity)?
+            .vision_field;
+        Some(self.visibles_of(&vf))
     }
 
     fn can_character_see(&self, character_entity: &EntityRef, target: &EntityRef) -> bool {

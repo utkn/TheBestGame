@@ -202,7 +202,7 @@ impl System for HitSystem {
                     .for_each(|coll_target| {
                         cmds.emit_event(HitEvt {
                             hitter: hitter_entity,
-                            target: coll_target,
+                            target: *coll_target,
                             hit_velocity: (hitter_vel.x, hitter_vel.y),
                         })
                     });

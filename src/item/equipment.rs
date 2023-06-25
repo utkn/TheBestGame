@@ -1,7 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use itertools::Itertools;
-
 use crate::prelude::*;
 
 use super::{ItemDescription, ItemStack};
@@ -73,7 +71,7 @@ impl Equipment {
         let occupied_slots: HashSet<_> = self
             .slots
             .iter()
-            .filter(|(_, item_stack)| item_stack.contains(item_entity))
+            .filter(|(_, item_stack)| item_stack.items().contains(item_entity))
             .map(|(equipment_slot, _)| *equipment_slot)
             .collect();
         if occupied_slots.len() == 0 {
@@ -87,40 +85,18 @@ impl Equipment {
     pub fn get_item_stack(&self, equipment_slot: &EquipmentSlot) -> Option<&ItemStack> {
         self.slots.get(equipment_slot)
     }
+
+    pub fn contains(&self, e: &EntityRef) -> bool {
+        self.slots
+            .values()
+            .any(|item_stack| item_stack.items().contains(e))
+    }
 }
 
 impl EntityRefBag for Equipment {
-    fn len(&self) -> usize {
-        self.slots
-            .values()
-            .flat_map(|item_stack| item_stack.iter())
-            .unique()
-            .count()
-    }
-
-    fn get_invalids(&self, valids: &EntityValiditySet) -> HashSet<EntityRef> {
-        self.slots
-            .iter()
-            .flat_map(|(_, item_stack)| item_stack.get_invalids(valids))
-            .collect()
-    }
-
-    fn try_remove_all(&mut self, entities: &HashSet<EntityRef>) -> HashSet<EntityRef> {
-        self.slots
-            .values_mut()
-            .flat_map(|item_stack| item_stack.try_remove_all(entities))
-            .collect()
-    }
-
-    fn contains(&self, e: &EntityRef) -> bool {
-        self.slots.values().any(|item_stack| item_stack.contains(e))
-    }
-
-    fn try_remove(&mut self, e: &EntityRef) -> bool {
-        let old_size = self.len();
+    fn remove_invalids(&mut self, entity_mgr: &EntityManager) {
         self.slots.values_mut().for_each(|item_stack| {
-            item_stack.try_remove(e);
+            item_stack.remove_invalids(entity_mgr);
         });
-        old_size != self.len()
     }
 }

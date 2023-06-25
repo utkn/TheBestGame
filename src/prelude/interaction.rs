@@ -32,7 +32,7 @@ pub trait Interaction: 'static + std::fmt::Debug + Clone {
 /// Denotes an interactable entity as the target of the interaction `I`.
 #[derive(Clone, Debug)]
 pub struct InteractTarget<I: Interaction> {
-    pub actors: EntityRefSet,
+    pub actors: HashSet<EntityRef>,
     pd: PhantomData<I>,
 }
 
@@ -204,7 +204,7 @@ impl<I: Interaction> System for InteractionSystem<I> {
                 // println!("ending {:?} -> {:?}: {:?}", actor, target, self.pd);
                 cmds.emit_event(InteractionEndedEvt::<I>::new(actor, target));
                 cmds.update_component(&target, move |interactable: &mut InteractTarget<I>| {
-                    interactable.actors.try_remove(&actor);
+                    interactable.actors.remove(&actor);
                 });
             }
         });

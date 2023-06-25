@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::prelude::{EntityRef, EntityRefBag, StateInsights};
+use crate::prelude::{EntityRef, StateInsights};
 
 use super::{
     Equipment, EquipmentSlot, Item, ItemEquippedEvt, ItemLocation, ItemStoredEvt,

@@ -37,7 +37,8 @@ impl ShadowEquipment {
                     .slots
                     .entry(eq_slot)
                     .or_insert(ItemStack::one())
-                    .try_remove(item_entity)
+                    .items_mut()
+                    .remove(item_entity)
             })
         } else {
             false
@@ -120,10 +121,7 @@ impl System for EquipmentSystem {
             });
         // Now, remove the invalids from all the equipments.
         state.select::<(Equipment,)>().for_each(|(e, _)| {
-            let validity_set = state.extract_validity_set();
-            cmds.update_component(&e, move |equipment: &mut Equipment| {
-                equipment.remove_invalids(&validity_set);
-            });
+            cmds.remove_invalids::<Equipment>(&e);
         })
     }
 }

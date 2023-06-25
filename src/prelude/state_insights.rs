@@ -12,16 +12,16 @@ impl<'a> StateInsights<'a> {
 }
 
 /// Provides insights about entities that can possibly be anchored.
-pub trait AnchoredInsights {
-    fn anchor_parent_of(&self, e: &EntityRef) -> Option<EntityRef>;
+pub trait AnchoredInsights<'a> {
+    fn anchor_parent_of(&self, e: &EntityRef) -> Option<&'a EntityRef>;
 }
 
-impl<'a> AnchoredInsights for StateInsights<'a> {
+impl<'a> AnchoredInsights<'a> for StateInsights<'a> {
     /// Returns the anchor parent if it exists.
-    fn anchor_parent_of(&self, e: &EntityRef) -> Option<EntityRef> {
+    fn anchor_parent_of(&self, e: &EntityRef) -> Option<&'a EntityRef> {
         self.0
             .select_one::<(AnchorTransform,)>(e)
-            .map(|(anchor,)| anchor.0)
+            .map(|(anchor,)| &anchor.0)
     }
 }
 

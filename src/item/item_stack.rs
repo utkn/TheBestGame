@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use itertools::Itertools;
+
 use crate::prelude::*;
 
 use super::ItemDescription;
@@ -10,14 +12,14 @@ pub const ITEM_STACK_MAX_WEIGHT: f32 = 100.;
 #[derive(Clone, Debug)]
 pub enum ItemStack {
     /// Maximum weight this stack can hold.
-    Weighted(f32, EntityRefSet),
-    One(EntityRefSet),
+    Weighted(f32, HashSet<EntityRef>),
+    One(HashSet<EntityRef>),
 }
 
 impl IntoIterator for ItemStack {
     type Item = EntityRef;
 
-    type IntoIter = <EntityRefSet as IntoIterator>::IntoIter;
+    type IntoIter = <HashSet<EntityRef> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
@@ -27,24 +29,16 @@ impl IntoIterator for ItemStack {
 }
 
 impl EntityRefBag for ItemStack {
-    fn len(&self) -> usize {
-        self.items().len()
-    }
-
-    fn get_invalids(&self, valids: &EntityValiditySet) -> HashSet<EntityRef> {
-        self.items().get_invalids(valids)
-    }
-
-    fn contains(&self, e: &EntityRef) -> bool {
-        self.items().contains(e)
-    }
-
-    fn try_remove_all(&mut self, entities: &HashSet<EntityRef>) -> HashSet<EntityRef> {
-        self.items_mut().try_remove_all(entities)
-    }
-
-    fn try_remove(&mut self, e: &EntityRef) -> bool {
-        self.items_mut().try_remove(e)
+    fn remove_invalids(&mut self, entity_mgr: &EntityManager) {
+        self.items()
+            .iter()
+            .filter(|e| !entity_mgr.is_valid(e))
+            .cloned()
+            .collect_vec()
+            .into_iter()
+            .for_each(|e| {
+                self.items_mut().remove(&e);
+            });
     }
 }
 
@@ -59,13 +53,13 @@ impl ItemStack {
         Self::One(Default::default())
     }
 
-    fn items(&self) -> &EntityRefSet {
+    pub fn items(&self) -> &HashSet<EntityRef> {
         match self {
             ItemStack::Weighted(_, items) | ItemStack::One(items) => items,
         }
     }
 
-    fn items_mut(&mut self) -> &mut EntityRefSet {
+    pub fn items_mut(&mut self) -> &mut HashSet<EntityRef> {
         match self {
             ItemStack::Weighted(_, items) | ItemStack::One(items) => items,
         }

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use itertools::Itertools;
 
 use crate::{
@@ -51,7 +49,7 @@ impl Storage {
     pub fn get_containing_slot(&self, item_entity: &EntityRef) -> Option<usize> {
         self.stacks
             .iter()
-            .find_position(|item_stack| item_stack.contains(item_entity))
+            .find_position(|item_stack| item_stack.items().contains(item_entity))
             .map(|(idx, _)| idx)
     }
 
@@ -67,34 +65,18 @@ impl Storage {
             })
             .collect()
     }
+
+    pub fn contains(&self, e: &EntityRef) -> bool {
+        self.stacks
+            .iter()
+            .any(|item_stack| item_stack.items().contains(e))
+    }
 }
 
 impl EntityRefBag for Storage {
-    fn len(&self) -> usize {
-        self.stacks.iter().map(|item_stack| item_stack.len()).sum()
-    }
-
-    fn get_invalids(&self, valids: &EntityValiditySet) -> HashSet<EntityRef> {
-        self.stacks
-            .iter()
-            .flat_map(|item_stack| item_stack.get_invalids(valids))
-            .collect()
-    }
-
-    fn contains(&self, e: &EntityRef) -> bool {
-        self.stacks.iter().any(|item_stack| item_stack.contains(e))
-    }
-
-    fn try_remove_all(&mut self, entities: &HashSet<EntityRef>) -> HashSet<EntityRef> {
-        self.stacks
-            .iter_mut()
-            .flat_map(|item_stack| item_stack.try_remove_all(entities))
-            .collect()
-    }
-
-    fn try_remove(&mut self, e: &EntityRef) -> bool {
-        self.stacks
-            .iter_mut()
-            .any(|item_stack| item_stack.try_remove(e))
+    fn remove_invalids(&mut self, entity_mgr: &EntityManager) {
+        self.stacks.iter_mut().for_each(|item_stack| {
+            item_stack.remove_invalids(entity_mgr);
+        });
     }
 }

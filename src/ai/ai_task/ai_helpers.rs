@@ -4,7 +4,7 @@ use crate::{
 
 use super::{AiTask, AiTaskOutput};
 
-pub(super) fn try_get_enemy_on_sight(actor: &EntityRef, state: &State) -> Option<EntityRef> {
+pub(super) fn try_get_enemy_on_sight<'a>(actor: &EntityRef, state: &'a State) -> Option<EntityRef> {
     let insights = StateInsights::of(state);
     let visibles = insights.visibles_of_character(actor).unwrap_or_default();
     let target = visibles.into_iter().find(|e| {

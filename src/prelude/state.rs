@@ -6,7 +6,7 @@ use notan::egui::epaint::ahash::HashMap;
 use super::{
     component::{Component, ComponentManager, ComponentTuple},
     event::{Event, EventManager},
-    EntityBundle, EntityManager, EntityRef, EntityTuple, EntityValiditySet,
+    EntityBundle, EntityManager, EntityRef, EntityRefBag, EntityTuple,
 };
 
 #[derive(Default, Debug)]
@@ -82,11 +82,6 @@ impl State {
         self.event_mgr.get_events_iter()
     }
 
-    /// Returns the set of valid entities.
-    pub fn extract_validity_set(&self) -> EntityValiditySet {
-        self.entity_mgr.extract_validity_set()
-    }
-
     /// Returns an iterator over the components identified by the given component selector.
     pub fn select<'a, S: ComponentTuple<'a>>(
         &'a self,
@@ -113,10 +108,7 @@ impl State {
     }
 
     /// Reads a bundle of entities.
-    pub fn read_bundle<'a, B: EntityBundle<'a>>(
-        &'a mut self,
-        primary_entity: &EntityRef,
-    ) -> Option<B> {
+    pub fn read_bundle<'a, B: EntityBundle<'a>>(&'a self, primary_entity: &EntityRef) -> Option<B> {
         let bundle_vec = self.bundles.get(primary_entity)?;
         let bundle_tuple = B::TupleRepr::from_slice(&bundle_vec);
         let bundle = B::reconstruct(bundle_tuple);
@@ -207,6 +199,21 @@ impl StateCommands {
             let components = state.component_mgr.get_components_mut::<T>();
             if let Some(c) = components.get_mut(e.id()) {
                 updater(c);
+            }
+        });
+        self.modifications.push(StateMod(1, f));
+    }
+
+    /// Dispatches a request to remove the invalid references from a component.
+    pub fn remove_invalids<T: EntityRefBag + Component>(&mut self, e: &EntityRef) {
+        let e = *e;
+        let f = Box::new(move |state: &mut State| {
+            if !state.is_valid(&e) {
+                return;
+            }
+            let components = state.component_mgr.get_components_mut::<T>();
+            if let Some(c) = components.get_mut(e.id()) {
+                c.remove_invalids(&state.entity_mgr);
             }
         });
         self.modifications.push(StateMod(1, f));

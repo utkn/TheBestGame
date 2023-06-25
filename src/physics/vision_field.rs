@@ -41,7 +41,7 @@ impl System for VisionSystem {
                 .new_collision_enders_of(&e)
                 .into_iter()
                 .for_each(|target| {
-                    cmds.emit_event(UninteractReq::<VisionField>::new(e, target));
+                    cmds.emit_event(UninteractReq::<VisionField>::new(e, *target));
                 });
         });
         state
@@ -55,11 +55,12 @@ impl System for VisionSystem {
                 let vf_anchor_parent = StateInsights::of(state).anchor_parent_of(&vf_entity);
                 let colliding_entities: HashSet<_> = StateInsights::of(state)
                     .contacts_of(&vf_entity)
+                    .unwrap()
                     .iter()
                     // Do not consider the anchor parent in the vision.
                     .filter(|colliding_e| {
                         let is_anchor_parent = vf_anchor_parent
-                            .map(|anchor_parent| anchor_parent == **colliding_e)
+                            .map(|anchor_parent| anchor_parent == *colliding_e)
                             .unwrap_or(false);
                         !is_anchor_parent
                     })
