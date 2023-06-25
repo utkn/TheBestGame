@@ -27,6 +27,9 @@ impl ControlDriver for AiDriver {
         _ctx: &UpdateContext,
         game_state: &State,
     ) -> Vec<ControlCommand> {
+        if self.tasks.len() > 1 {
+            println!("{:?}", self.tasks);
+        }
         let front_task_output = self
             .tasks
             .pop_front()
