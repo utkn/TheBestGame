@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, path::PathBuf};
 
+use building::BuildingBundle;
 use itertools::Itertools;
 use notan::{
     draw::{CreateDraw, DrawImages, DrawShapes, DrawTransform},
@@ -17,6 +18,7 @@ use sprite::*;
 use world_gen::*;
 
 mod ai;
+mod building;
 mod camera;
 mod character;
 mod controller;
@@ -62,15 +64,18 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         })
         .collect();
     // Generate a debugging world.
-    let world = WorldGenerator::generate(WorldTemplate::new([
+    let mut world = WorldGenerator::generate(WorldTemplate::new([
         (Transform::at(0., 0.), PLAYER_TEMPLATE),
         (Transform::at(50., 50.), CHEST_TEMPLATE),
         (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
         (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
         (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
         (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
-        (Transform::at(250., 250.), BANDIT_TEMPLATE),
+        // (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));
+    world.update_with(|_, cmds| {
+        BuildingBundle::create(Transform::at(-100., -100.), 200., 200., cmds);
+    });
     AppState {
         world,
         asset_map,

@@ -23,8 +23,8 @@ pub enum AiTask {
     TryMoveToPos {
         x: f32,
         y: f32,
-        /// Denotes whether the actor should try to scale obstacles while performing the movement.
-        /// If set to false, the movement is simply cancelled.
+        /// Denotes whether the actor should try to scale obstacles while performing the movement. Otherwise,
+        /// the actor will keep trying to reach the position while being stuck.
         scale_obstacles: bool,
     },
     /// Ai tries to move to the given position. The movement must be completed.

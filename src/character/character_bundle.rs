@@ -1,14 +1,15 @@
 use crate::{item::*, needs::*, physics::*, prelude::*};
 
-use super::{Character, CharacterInsights};
+use super::Character;
 
+#[derive(Clone, Copy, Debug)]
 pub struct CharacterBundle {
     pub character: EntityRef,
     pub vision_field: EntityRef,
 }
 
-impl EntityBundle for CharacterBundle {
-    fn create(trans: Transform, cmds: &mut StateCommands) -> Self {
+impl CharacterBundle {
+    pub fn create(trans: Transform, cmds: &mut StateCommands) -> Self {
         let character = cmds.create_from((
             trans,
             Character,
@@ -45,21 +46,28 @@ impl EntityBundle for CharacterBundle {
             InteractTarget::<Hitbox>::default(),
             VisionField(200.),
         ));
-        Self {
+        cmds.push_bundle(Self {
             character,
             vision_field,
-        }
+        })
     }
+}
+
+impl<'a> EntityBundle<'a> for CharacterBundle {
+    type TupleRepr = (EntityRef, EntityRef);
 
     fn primary_entity(&self) -> &EntityRef {
         &self.character
     }
 
-    fn try_reconstruct(character: &EntityRef, state: &State) -> Option<Self> {
-        let vision_field = StateInsights::of(state).vision_field_of(character)?;
-        Some(Self {
-            character: *character,
-            vision_field,
-        })
+    fn deconstruct(self) -> Self::TupleRepr {
+        (self.character, self.vision_field)
+    }
+
+    fn reconstruct(args: <Self::TupleRepr as EntityTuple<'a>>::AsRefTuple) -> Self {
+        Self {
+            character: *args.0,
+            vision_field: *args.1,
+        }
     }
 }

@@ -2,13 +2,14 @@ use crate::{controller::ProximityInteractable, item::*, physics::*, prelude::*, 
 
 use super::Vehicle;
 
+#[derive(Clone, Copy, Debug)]
 pub struct VehicleBundle {
     vehicle: EntityRef,
     door: EntityRef,
 }
 
-impl EntityBundle for VehicleBundle {
-    fn create(trans: Transform, cmds: &mut StateCommands) -> Self {
+impl VehicleBundle {
+    pub fn create(trans: Transform, cmds: &mut StateCommands) -> Self {
         let vehicle = cmds.create_from((
             trans,
             Vehicle,
@@ -42,27 +43,25 @@ impl EntityBundle for VehicleBundle {
             InteractTarget::<Hitbox>::default(),
             ExistenceDependency(vehicle),
         ));
-        Self { vehicle, door }
+        cmds.push_bundle(Self { vehicle, door })
     }
+}
+
+impl<'a> EntityBundle<'a> for VehicleBundle {
+    type TupleRepr = (EntityRef, EntityRef);
 
     fn primary_entity(&self) -> &EntityRef {
         &self.vehicle
     }
 
-    fn try_reconstruct(vehicle: &EntityRef, state: &State) -> Option<Self> {
-        let door = state
-            .select::<(
-                ProximityInteractable,
-                AnchorTransform,
-                UntargetedInteractionDelegate,
-            )>()
-            .find(|(_, (_, anchor, intr_delegate))| {
-                &anchor.0 == vehicle && &intr_delegate.0 == vehicle
-            })
-            .map(|(e, _)| e)?;
-        Some(Self {
-            vehicle: *vehicle,
-            door,
-        })
+    fn deconstruct(self) -> (EntityRef, EntityRef) {
+        (self.vehicle, self.door)
+    }
+
+    fn reconstruct(args: (&EntityRef, &EntityRef)) -> Self {
+        Self {
+            vehicle: *args.0,
+            door: *args.1,
+        }
     }
 }

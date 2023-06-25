@@ -31,7 +31,7 @@ pub const PLAYER_TEMPLATE: EntityTemplate = EntityTemplate {
                 Affected::<Acceleration>::default(),
             ),
         );
-        cmds.mark_for_removal(&character.vision_field);
+        // cmds.mark_for_removal(&character.vision_field);
         Some(*character.primary_entity())
     },
 };

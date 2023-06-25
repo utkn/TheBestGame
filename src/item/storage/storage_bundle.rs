@@ -2,13 +2,14 @@ use crate::{controller::ProximityInteractable, physics::*, prelude::*};
 
 use super::Storage;
 
+#[derive(Clone, Copy, Debug)]
 pub struct StorageBundle {
     storage: EntityRef,
     activator: EntityRef,
 }
 
-impl EntityBundle for StorageBundle {
-    fn create(trans: Transform, cmds: &mut StateCommands) -> Self {
+impl StorageBundle {
+    pub fn create(trans: Transform, cmds: &mut StateCommands) -> Self {
         let storage = cmds.create_from((
             trans,
             Hitbox(HitboxType::Static, Shape::Rect { w: 20., h: 20. }),
@@ -26,27 +27,25 @@ impl EntityBundle for StorageBundle {
             InteractTarget::<Hitbox>::default(),
             ExistenceDependency(storage),
         ));
-        Self { storage, activator }
+        cmds.push_bundle(Self { storage, activator })
     }
+}
+
+impl<'a> EntityBundle<'a> for StorageBundle {
+    type TupleRepr = (EntityRef, EntityRef);
 
     fn primary_entity(&self) -> &EntityRef {
         &self.storage
     }
 
-    fn try_reconstruct(storage: &EntityRef, state: &State) -> Option<Self> {
-        let activator = state
-            .select::<(
-                ProximityInteractable,
-                AnchorTransform,
-                UntargetedInteractionDelegate,
-            )>()
-            .find(|(_, (_, anchor, intr_delegate))| {
-                &anchor.0 == storage && &intr_delegate.0 == storage
-            })
-            .map(|(e, _)| e)?;
-        Some(Self {
-            storage: *storage,
-            activator,
-        })
+    fn deconstruct(self) -> Self::TupleRepr {
+        (self.storage, self.activator)
+    }
+
+    fn reconstruct(args: <Self::TupleRepr as EntityTuple<'a>>::AsRefTuple) -> Self {
+        Self {
+            storage: *args.0,
+            activator: *args.1,
+        }
     }
 }

@@ -1,11 +1,12 @@
 use std::collections::HashSet;
 
 use itertools::Itertools;
+use notan::egui::epaint::ahash::HashMap;
 
 use super::{
     component::{Component, ComponentManager, ComponentTuple},
     event::{Event, EventManager},
-    EntityManager, EntityRef, EntityValiditySet,
+    EntityBundle, EntityManager, EntityRef, EntityTuple, EntityValiditySet,
 };
 
 #[derive(Default, Debug)]
@@ -14,12 +15,32 @@ pub struct State {
     entity_mgr: EntityManager,
     event_mgr: EventManager,
     to_remove: HashSet<EntityRef>,
+    bundles: HashMap<EntityRef, Vec<EntityRef>>,
 }
 
 impl State {
     /// Marks the given entity for removal.
     fn mark_for_removal(&mut self, e: &EntityRef) {
+        // If the entity is part of a bundle, remove the bundle altogether.
+        let containing_bundle_key = self
+            .bundles
+            .iter()
+            .find(|(_, bundle_entities)| bundle_entities.contains(e))
+            .map(|(bundle_key, _)| *bundle_key);
+        if let Some(bundle_key) = containing_bundle_key {
+            return self.mark_for_removal(&bundle_key);
+        }
         self.to_remove.insert(*e);
+        // Mark the bundle entities for removal as well.
+        if let Some(bundle_entities) = self.bundles.get(e) {
+            self.to_remove.extend(bundle_entities.iter().cloned())
+        }
+    }
+
+    fn push_bundle<'a, B: EntityBundle<'a>>(&mut self, bundle: B) {
+        let bundle_key = *bundle.primary_entity();
+        let bundle_vec = Vec::from_iter(bundle.deconstruct().into_array().into_iter());
+        self.bundles.insert(bundle_key, bundle_vec);
     }
 
     /// Clears all the events in the state. Should be called at the end of an update.
@@ -90,6 +111,17 @@ impl State {
         }
         self.component_mgr.select_one::<S>(e.id())
     }
+
+    /// Reads a bundle of entities.
+    pub fn read_bundle<'a, B: EntityBundle<'a>>(
+        &'a mut self,
+        primary_entity: &EntityRef,
+    ) -> Option<B> {
+        let bundle_vec = self.bundles.get(primary_entity)?;
+        let bundle_tuple = B::TupleRepr::from_slice(&bundle_vec);
+        let bundle = B::reconstruct(bundle_tuple);
+        Some(bundle)
+    }
 }
 
 struct StateMod(pub u8, pub Box<dyn FnOnce(&mut State)>);
@@ -142,6 +174,16 @@ impl StateCommands {
         });
         self.modifications.push(StateMod(0, f));
         self.tmp_entity_mgr.create()
+    }
+
+    /// Dispatches a request to create a new bundle in the next update.
+    pub fn push_bundle<'a, S: EntityBundle<'a>>(&mut self, bundle: S) -> S {
+        let bundle_clone = bundle.clone();
+        let f = Box::new(move |state: &mut State| {
+            state.push_bundle(bundle_clone);
+        });
+        self.modifications.push(StateMod(0, f));
+        bundle
     }
 
     /// Dispatches a request to create a new entity with the given components in the next update.
