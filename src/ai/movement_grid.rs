@@ -100,11 +100,7 @@ impl MovementGrid {
                 let dy = cell_idx.1 - dst.1;
                 dx.abs() + dy.abs()
             },
-            |cell_idx| {
-                let dx = cell_idx.0 - dst.0;
-                let dy = cell_idx.1 - dst.1;
-                dx.abs().max(dy.abs()) <= 2
-            },
+            |cell_idx| *cell_idx == dst,
         );
         astar_path.map(|(output, _)| {
             VecDeque::from_iter(output.into_iter().map(|pos| {
