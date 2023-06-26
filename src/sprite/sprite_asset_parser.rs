@@ -4,15 +4,15 @@ use itertools::Itertools;
 
 use crate::prelude::TagSource;
 
-use super::{SpriteAsset, SpriteTags};
+use super::{SpriteFrames, SpriteTags};
 
 /// Maintains the set of representible tags for a specific sprite id.
 /// The representible tags are read from the names of the files in the assets folder.
 #[derive(Clone, Debug, Default)]
 pub struct SpriteAssetParser {
     sprite_id: String,
-    // source name => SpriteAssets
-    tag_subsets: HashMap<&'static str, Vec<SpriteAsset>>,
+    // source name => all relevant SpriteFrames (e.g., idle, walking+tired, etc.)
+    frames_map: HashMap<&'static str, Vec<SpriteFrames>>,
 }
 
 impl SpriteAssetParser {
@@ -20,7 +20,7 @@ impl SpriteAssetParser {
     pub fn new(sprite_id: String) -> Self {
         Self {
             sprite_id,
-            tag_subsets: Default::default(),
+            frames_map: Default::default(),
         }
     }
 
@@ -28,13 +28,13 @@ impl SpriteAssetParser {
     pub fn with<S: TagSource>(mut self) -> Self {
         let source_name = S::source_name();
         let file_pattern = format!("./assets/{}/{}@*", self.sprite_id, source_name);
-        let sprite_assets = glob::glob(&file_pattern)
+        let frames = glob::glob(&file_pattern)
             .expect("assets folder do not exist")
             .flatten()
-            .flat_map(|sprite_file| SpriteAsset::new(sprite_file))
+            .flat_map(|sprite_file| SpriteFrames::load(sprite_file))
             .collect_vec();
-        if sprite_assets.len() > 0 {
-            self.tag_subsets.insert(source_name, sprite_assets);
+        if frames.len() > 0 {
+            self.frames_map.insert(source_name, frames);
         }
         self
     }
@@ -43,9 +43,9 @@ impl SpriteAssetParser {
     pub fn try_represent_as<'a, S: TagSource>(
         &'a self,
         existing_tags: SpriteTags<S>,
-    ) -> Option<&'a SpriteAsset> {
+    ) -> Option<&'a SpriteFrames> {
         let src_name = S::source_name();
-        let repr_tag_subsets = self.tag_subsets.get(src_name)?;
+        let repr_tag_subsets = self.frames_map.get(src_name)?;
         let existing_tag_names = &existing_tags.into_stringified_tags();
         repr_tag_subsets
             .iter()

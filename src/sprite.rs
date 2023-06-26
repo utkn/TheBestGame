@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use crate::{building::Building, character::Character, item::Item, prelude::*, vehicle::Vehicle};
 
 mod default_sprite;
-mod sprite_asset;
 mod sprite_asset_parser;
+mod sprite_frames;
 mod sprite_tags;
 
 use default_sprite::*;
-use sprite_asset::*;
 use sprite_asset_parser::*;
+use sprite_frames::*;
 use sprite_tags::*;
 
 #[derive(Clone, Copy, Debug)]
@@ -52,15 +52,6 @@ impl Sprite {
     }
 }
 
-fn parse_all_representible_tags_for(sprite_id: String) -> SpriteAssetParser {
-    SpriteAssetParser::new(sprite_id)
-        .with::<DefaultSprite>()
-        .with::<Character>()
-        .with::<Vehicle>()
-        .with::<Item>()
-        .with::<Building>()
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct SpriteRepresentor {
     /// Maps a sprite id to the representible tags parsed from the relevant assets folder.
@@ -68,29 +59,41 @@ pub struct SpriteRepresentor {
 }
 
 impl SpriteRepresentor {
+    /// Parses the sprite asset folder for the given sprite id.
+    fn parse_for_sprite_id(&mut self, sprite_entity: &EntityRef, state: &State) -> Option<()> {
+        let sprite_id = &state.select_one::<(Sprite,)>(sprite_entity)?.0.sprite_id;
+        self.repr_tags.entry(sprite_id.clone()).or_insert_with(|| {
+            let sprite_id = sprite_id.clone();
+            SpriteAssetParser::new(sprite_id)
+                .with::<DefaultSprite>()
+                .with::<Character>()
+                .with::<Vehicle>()
+                .with::<Item>()
+                .with::<Building>()
+        });
+        Some(())
+    }
     /// Tries to find the asset path that represents the given entity best with respect to the
     /// given tag source `S`.
     fn try_represent_as<'a, S: TagSource>(
-        &'a mut self,
+        &'a self,
         sprite_entity: &EntityRef,
         state: &State,
-    ) -> Option<SpriteAsset> {
-        let sprite_id = &state.select_one::<(Sprite,)>(sprite_entity)?.0.sprite_id;
-        let repr_tags = self
-            .repr_tags
-            .entry(sprite_id.clone())
-            .or_insert_with(|| parse_all_representible_tags_for(sprite_id.clone()));
+    ) -> Option<&'a SpriteFrames> {
         let entity_tags = SpriteTags::<S>::of(sprite_entity, state)?;
-        repr_tags.try_represent_as::<S>(entity_tags).cloned()
+        let sprite_id = &state.select_one::<(Sprite,)>(sprite_entity)?.0.sprite_id;
+        let repr_tags = self.repr_tags.get(sprite_id)?;
+        repr_tags.try_represent_as::<S>(entity_tags)
     }
 
     /// Tries to find the asset paths that represents the state of the given sprite entity the best.
     /// The returned representations are ordered with their priority.
-    pub fn get_representations(
-        &mut self,
+    pub fn get_representations<'a>(
+        &'a mut self,
         sprite_entity: &EntityRef,
         state: &State,
-    ) -> impl Iterator<Item = SpriteAsset> {
+    ) -> impl Iterator<Item = &'a SpriteFrames> {
+        self.parse_for_sprite_id(sprite_entity, state);
         let representations = [
             self.try_represent_as::<Character>(sprite_entity, state),
             self.try_represent_as::<Vehicle>(sprite_entity, state),

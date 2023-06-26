@@ -5,15 +5,15 @@ use itertools::Itertools;
 use super::Sprite;
 
 #[derive(Clone, Debug, Default)]
-pub struct SpriteAsset {
+pub struct SpriteFrames {
     src_name: String,
     representing_tags: HashSet<String>,
     frame_assets: Vec<PathBuf>,
 }
 
-impl SpriteAsset {
+impl SpriteFrames {
     /// Constructs a new sprite asset from the given sprite asset folder/file.
-    pub fn new(asset_path: PathBuf) -> Option<Self> {
+    pub fn load(asset_path: PathBuf) -> Option<Self> {
         let file_stem = asset_path.file_stem()?.to_str().to_owned()?;
         let (src_name, tags) = file_stem.split("@").take(2).collect_tuple()?;
         let src_name = src_name.to_owned();
@@ -60,8 +60,8 @@ impl SpriteAsset {
         self.representing_tags.intersection(tags).count()
     }
 
-    pub fn get_corresponding_path(&self, sprite: &Sprite) -> Option<PathBuf> {
+    pub fn get_corresponding_frame<'a>(&'a self, sprite: &Sprite) -> Option<&'a PathBuf> {
         let idx = ((sprite.curr_time / 0.167).floor() as usize) % (self.frame_assets.len());
-        self.frame_assets.get(idx).cloned()
+        self.frame_assets.get(idx)
     }
 }

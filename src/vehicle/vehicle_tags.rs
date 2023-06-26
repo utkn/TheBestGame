@@ -34,8 +34,8 @@ impl TagSource for Vehicle {
         }
         let mut tags = HashSet::new();
         let is_idle = state
-            .select_one::<(TargetVelocity,)>(e)
-            .map(|(target_vel,)| target_vel.x == 0. && target_vel.y == 0.)
+            .select_one::<(Velocity,)>(e)
+            .map(|(vel,)| vel.x == 0. && vel.y == 0.)
             .unwrap_or(true);
         if is_idle {
             tags.insert(VehicleTag::Idle);

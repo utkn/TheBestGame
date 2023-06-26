@@ -139,8 +139,8 @@ fn draw_game(rnd: &mut draw::Draw, app_state: &mut AppState) {
                 .sprite_representor
                 .get_representations(&sprite_entity, game_state)
                 .next()
-                .and_then(|sprite_asset| sprite_asset.get_corresponding_path(sprite))
-                .and_then(|path| app_state.asset_map.get(&path))
+                .and_then(|sprite_frames| sprite_frames.get_corresponding_frame(sprite))
+                .and_then(|path| app_state.asset_map.get(path))
                 .map(|tx| (trans, sprite, tx))
         })
         .sorted_by_key(|(_, sprite, _)| sprite.z_index)
@@ -203,7 +203,7 @@ fn draw(
 ) {
     // Draw the game
     let mut game_rnd = gfx.create_draw();
-    game_rnd.clear(notan::prelude::Color::GRAY);
+    game_rnd.clear(notan::prelude::Color::BLACK);
     draw_game(&mut game_rnd, app_state);
     draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);
