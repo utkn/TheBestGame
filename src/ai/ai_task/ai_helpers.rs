@@ -5,7 +5,7 @@ use crate::{
     vehicle::VehicleInsights,
 };
 
-use super::{AiTask, AiTaskOutput};
+use super::{AiMovementHandler, AiTask, AiTaskOutput};
 
 /// Returns the enemy on sight.
 pub(super) fn try_get_enemy_on_sight<'a>(actor: &EntityRef, state: &'a State) -> Option<EntityRef> {
@@ -38,20 +38,23 @@ pub(super) fn try_move_towards_projectile(actor: &EntityRef, state: &State) -> O
 }
 
 /// Returns the actions that have the priority.
-pub(super) fn get_priority_actions(actor: &EntityRef, state: &State) -> Vec<AiTaskOutput> {
+pub(super) fn get_urgent_actions(actor: &EntityRef, state: &State) -> Vec<AiTaskOutput> {
     // Move towards the projectile.
-    if let Some((target_x, target_y)) = try_move_towards_projectile(actor, state) {
-        return vec![AiTaskOutput::QueueFront(AiTask::TryMoveToPos {
-            x: target_x,
-            y: target_y,
-            scale_obstacles: true,
-        })];
+    if let Some(target_pos) = try_move_towards_projectile(actor, state) {
+        return vec![AiTaskOutput::QueueFront(AiTask::MoveToPos(
+            AiMovementHandler::new(target_pos),
+        ))];
     }
     // Attack on sight.
     if let Some(target) = try_get_enemy_on_sight(actor, state) {
         return vec![AiTaskOutput::QueueFront(AiTask::Attack { target })];
     }
     return vec![];
+}
+
+/// Returns whether there are urgent actions that needs to be taken (should be handled by the `Routine` task).
+pub(super) fn has_urgent_actions(actor: &EntityRef, state: &State) -> bool {
+    get_urgent_actions(actor, state).len() > 0
 }
 
 pub(super) fn get_dpos(
@@ -71,6 +74,6 @@ pub(super) fn reached_destination(
     state: &State,
 ) -> bool {
     get_dpos(target_x, target_y, actor, state)
-        .map(|dpos| dpos.0.abs() <= 5. && dpos.1.abs() <= 5.)
+        .map(|dpos| dpos.0.abs() <= 16. && dpos.1.abs() <= 16.)
         .unwrap_or(true)
 }

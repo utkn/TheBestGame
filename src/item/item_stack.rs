@@ -114,9 +114,4 @@ impl ItemStack {
             false
         }
     }
-
-    /// Returns an iterator on the contents of this stack.
-    pub fn iter(&self) -> impl Iterator<Item = &EntityRef> {
-        self.items().iter()
-    }
 }

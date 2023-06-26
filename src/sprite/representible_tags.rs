@@ -7,7 +7,7 @@ use itertools::Itertools;
 
 use crate::prelude::TagSource;
 
-use super::entity_tags::SpriteTags;
+use super::sprite_tags::SpriteTags;
 
 pub type TagSubsets = Vec<(HashSet<String>, PathBuf)>;
 

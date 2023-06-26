@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use crate::{character::Character, item::Item, prelude::*, vehicle::Vehicle};
 
 mod default_sprite;
-mod entity_tags;
 mod representible_tags;
+mod sprite_tags;
 
 use default_sprite::*;
-use entity_tags::*;
 use representible_tags::*;
+use sprite_tags::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Sprite {

@@ -72,6 +72,7 @@ pub enum TransformedShape {
 }
 
 impl TransformedShape {
+    /// Creates a new transformed shape from the given transform, shape and offset (from the given transform)
     pub fn new(trans: &Transform, primitive_shape: &Shape, offset: (f32, f32)) -> Self {
         match primitive_shape {
             Shape::Circle { r } => {
@@ -120,25 +121,25 @@ impl TransformedShape {
 
 /// Represents a collider that should be checked against collisions.
 #[derive(Clone, Debug)]
-pub struct EffectiveHitbox {
+pub struct EffectiveHitbox<'a> {
     pub entity: EntityRef,
-    pub hb: Hitbox,
-    pub trans: Transform,
+    pub hitbox: &'a Hitbox,
+    pub trans: &'a Transform,
     pub shape: TransformedShape,
 }
 
-impl EffectiveHitbox {
-    pub fn new(e: &EntityRef, state: &State) -> Option<Self> {
-        let (hb, trans) = state.select_one::<(Hitbox, Transform)>(e)?;
+impl<'a> EffectiveHitbox<'a> {
+    pub fn new(e: &EntityRef, state: &'a State) -> Option<Self> {
+        let (hitbox, trans) = state.select_one::<(Hitbox, Transform)>(e)?;
         let offset = state
             .select_one::<(AnchorTransform,)>(e)
             .map(|(anchor_trans,)| anchor_trans.1)
             .unwrap_or_default();
         Some(Self {
             entity: *e,
-            hb: *hb,
-            trans: *trans,
-            shape: TransformedShape::new(trans, &hb.1, offset),
+            hitbox,
+            trans,
+            shape: TransformedShape::new(trans, &hitbox.1, offset),
         })
     }
 }

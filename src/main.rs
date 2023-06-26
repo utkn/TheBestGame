@@ -68,11 +68,11 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         (Transform::at(0., 0.), PLAYER_TEMPLATE),
         (Transform::at(50., 50.), CHEST_TEMPLATE),
         (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
-        (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
+        // (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
         (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
         (Transform::at(10., 10.), SIMPLE_BACKPACK_TEMPLATE),
         (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
-        // (Transform::at(-50., -50.), BANDIT_TEMPLATE),
+        (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));
     world.update_with(|_, cmds| {
         BuildingBundle::create(Transform::at(-100., -100.), 200., 200., cmds);

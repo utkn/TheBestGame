@@ -105,7 +105,7 @@ impl System for VisionSystem {
                             // Do not consider itself as a blocker.
                             .filter(|(e, _, _)| e != colliding_e)
                             // Only concrete hitboxes can block views.
-                            .filter(|(_, _, ehb)| ehb.hb.0.is_concrete())
+                            .filter(|(_, _, ehb)| ehb.hitbox.0.is_concrete())
                             .all(|(_, _, ehb)| {
                                 !sepax2d::line::intersects_segment(
                                     ehb.shape.shape_ref(),

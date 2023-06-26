@@ -35,6 +35,9 @@ impl System for ApproachVelocitySystem {
             .for_each(|(e, (vel, target_vel, acc))| {
                 let vel = notan::math::vec2(vel.x, vel.y);
                 let target_vel = notan::math::vec2(target_vel.x, target_vel.y);
+                if vel.distance_squared(target_vel) <= 1. {
+                    return;
+                }
                 let new_vel = vel + acc.0 * ctx.dt * (target_vel - vel).normalize_or_zero();
                 cmds.set_component(
                     &e,

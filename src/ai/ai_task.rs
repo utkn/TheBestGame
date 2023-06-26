@@ -2,8 +2,10 @@ use crate::{controller::ControlCommand, prelude::*};
 
 mod ai_handlers;
 mod ai_helpers;
+mod ai_movement;
 
 use ai_handlers::*;
+use ai_movement::*;
 
 /// Represents what an [`AiTask`] can output.
 #[derive(Clone, Debug)]
@@ -19,18 +21,8 @@ pub enum AiTaskOutput {
 pub enum AiTask {
     /// Actor attacks the target.
     Attack { target: EntityRef },
-    /// Actor tries to move to the given position. The movement can be interrupted.
-    TryMoveToPos {
-        x: f32,
-        y: f32,
-        /// Denotes whether the actor should try to scale obstacles while performing the movement. Otherwise,
-        /// the actor will keep trying to reach the position while being stuck.
-        scale_obstacles: bool,
-    },
-    /// Ai tries to move to the given position. The movement must be completed.
-    MoveToPos { x: f32, y: f32 },
-    /// Ai tries to get itself unstuck.
-    TryScaleObstacle,
+    /// Actor tries to move to the given position.
+    MoveToPos(AiMovementHandler),
     /// Routine actions of the ai.
     Routine,
 }
@@ -41,14 +33,8 @@ impl AiTask {
         // Dispatch to the correct handler.
         match self {
             AiTask::Attack { target } => attack_handler(target, actor, state),
-            AiTask::TryMoveToPos {
-                x,
-                y,
-                scale_obstacles,
-            } => try_move_to_pos_handler(x, y, scale_obstacles, actor, state),
-            AiTask::MoveToPos { x, y } => move_to_pos_handler(x, y, actor, state),
-            AiTask::TryScaleObstacle => try_scale_obstacle_handler(actor, state),
             AiTask::Routine => routine_handler(actor, state),
+            AiTask::MoveToPos(handler) => handler.handle(actor, state),
         }
     }
 }

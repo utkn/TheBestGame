@@ -9,6 +9,7 @@ use crate::item::EquipmentInsights;
 pub struct CharacterBundle {
     pub character: EntityRef,
     pub vision_field: EntityRef,
+    pub collision_senser: EntityRef,
 }
 
 impl CharacterBundle {
@@ -43,14 +44,21 @@ impl CharacterBundle {
         ));
         let vision_field = cmds.create_from((
             Transform::default(),
-            AnchorTransform(character, (200., 0.)),
-            Hitbox(HitboxType::Ghost, Shape::Circle { r: 200. }),
+            AnchorTransform(character, (100., 0.)),
+            Hitbox(HitboxType::Ghost, Shape::Circle { r: 100. }),
             InteractTarget::<Hitbox>::default(),
-            VisionField(200.),
+            VisionField(100.),
+        ));
+        let collision_senser = cmds.create_from((
+            Transform::default(),
+            AnchorTransform(character, (0., 0.)),
+            Hitbox(HitboxType::Ghost, Shape::Rect { w: 30., h: 30. }),
+            InteractTarget::<Hitbox>::default(),
         ));
         cmds.push_bundle(Self {
             character,
             vision_field,
+            collision_senser,
         })
     }
 
@@ -69,23 +77,43 @@ impl CharacterBundle {
             .equippable_at(&self.character, &EquipmentSlot::Backpack)
             .and_then(|item_stack| item_stack.head_item())
     }
+
+    pub fn concrete_overlaps<'a>(&self, state: &'a State) -> Vec<&'a (f32, f32)> {
+        state
+            .read_events::<CollisionEvt>()
+            .filter(|evt| &evt.e1 == &self.collision_senser)
+            .filter(|evt| &evt.e2 != &self.character)
+            .filter(|evt| {
+                state
+                    .select_one::<(Hitbox,)>(&evt.e2)
+                    .map(|(hb,)| hb.0.is_concrete())
+                    .unwrap_or(false)
+            })
+            .map(|evt| &evt.overlap)
+            .collect()
+    }
+
+    pub fn is_colliding(&self, state: &State) -> bool {
+        self.concrete_overlaps(state).len() >= 1
+    }
 }
 
 impl<'a> EntityBundle<'a> for CharacterBundle {
-    type TupleRepr = (EntityRef, EntityRef);
+    type TupleRepr = (EntityRef, EntityRef, EntityRef);
 
     fn primary_entity(&self) -> &EntityRef {
         &self.character
     }
 
     fn deconstruct(self) -> Self::TupleRepr {
-        (self.character, self.vision_field)
+        (self.character, self.vision_field, self.collision_senser)
     }
 
     fn reconstruct(args: <Self::TupleRepr as EntityTuple<'a>>::AsRefTuple) -> Self {
         Self {
             character: *args.0,
             vision_field: *args.1,
+            collision_senser: *args.2,
         }
     }
 }

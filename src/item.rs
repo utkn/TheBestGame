@@ -191,7 +191,7 @@ impl System for ItemPickupSystem {
             .filter(|item| StateInsights::of(state).location_of(item) == ItemLocation::Ground)
             .for_each(|item| {
                 cmds.remove_component::<AnchorTransform>(&item);
-                cmds.remove_component::<ProximityInteractable>(&item);
+                cmds.set_component(&item, ProximityInteractable);
             });
         // Handle transfer to equipment/storage.
         state
@@ -202,15 +202,11 @@ impl System for ItemPickupSystem {
                     .read_events::<ItemStoredEvt>()
                     .map(|evt| (evt.storage_entity, evt.item_entity)),
             )
-            .filter(|(_, item)| StateInsights::of(state).location_of(item) != ItemLocation::Ground)
             .for_each(|(actor, item)| {
+                cmds.remove_component::<ProximityInteractable>(&item);
                 cmds.set_components(
                     &item,
-                    (
-                        Transform::default(),
-                        AnchorTransform(actor, (0., 0.)),
-                        ProximityInteractable,
-                    ),
+                    (Transform::default(), AnchorTransform(actor, (0., 0.))),
                 );
             });
         state
