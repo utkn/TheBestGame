@@ -12,15 +12,24 @@ use sprite_tags::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TilingConfig {
-    pub repeat_x: Option<u8>,
-    pub repeat_y: Option<u8>,
+    pub repeat_x: u8,
+    pub repeat_y: u8,
+}
+
+impl Default for TilingConfig {
+    fn default() -> Self {
+        Self {
+            repeat_x: 1,
+            repeat_y: 1,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Sprite {
     pub sprite_id: &'static str,
     pub z_index: usize,
-    pub tiling_config: Option<TilingConfig>,
+    pub tiling_config: TilingConfig,
 }
 
 impl Sprite {
@@ -28,12 +37,13 @@ impl Sprite {
         Self {
             sprite_id,
             z_index,
-            tiling_config: None,
+            tiling_config: Default::default(),
         }
     }
 
-    pub fn with_tiling(mut self, config: TilingConfig) -> Self {
-        self.tiling_config = Some(config);
+    pub fn with_tiling(mut self, repeat_x: u8, repeat_y: u8) -> Self {
+        self.tiling_config.repeat_x = repeat_x;
+        self.tiling_config.repeat_y = repeat_y;
         self
     }
 }

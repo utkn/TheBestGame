@@ -74,7 +74,10 @@ pub const BANDIT_TEMPLATE: EntityTemplate = EntityTemplate {
 pub const CHEST_TEMPLATE: EntityTemplate = EntityTemplate {
     generator: |trans, _state, cmds| {
         let storage_bundle = StorageBundle::create(trans, cmds);
-        cmds.set_component(storage_bundle.primary_entity(), Name("some random chest"));
+        cmds.set_components(
+            storage_bundle.primary_entity(),
+            (Sprite::new("chest", 2), Name("some random chest")),
+        );
         Some(*storage_bundle.primary_entity())
     },
 };

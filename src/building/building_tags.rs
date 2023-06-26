@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    controller::{ControlDriver, Controller, UserInputDriver},
+    controller::{Controller, UserInputDriver},
     physics::Hitbox,
     prelude::*,
 };

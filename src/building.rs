@@ -1,7 +1,7 @@
 use crate::{
     physics::{Hitbox, HitboxType, Shape, VisionField},
     prelude::*,
-    sprite::{Sprite, TilingConfig},
+    sprite::Sprite,
 };
 
 mod building_tags;
@@ -16,7 +16,8 @@ pub struct BuildingBundle {
     wall_top: EntityRef,
     wall_btm_lft: EntityRef,
     wall_btm_rgt: EntityRef,
-    activator: EntityRef,
+    building: EntityRef,
+    floors: EntityRef,
 }
 
 impl BuildingBundle {
@@ -27,26 +28,37 @@ impl BuildingBundle {
                 HitboxType::Ghost,
                 Shape::Rect {
                     w: width,
-                    h: height + 40.,
+                    h: height,
                 },
             ),
             InteractTarget::<Hitbox>::default(),
-            Sprite::new("derelict_house", 5).with_tiling(TilingConfig {
-                repeat_x: Some(4),
-                repeat_y: Some(4),
-            }),
+            Sprite::new("derelict_house/ceilings", 20).with_tiling(4, 4),
+        ));
+        let floors = cmds.create_from((
+            Transform::default(),
+            AnchorTransform(building, (0., 0.)),
+            Hitbox(
+                HitboxType::Ghost,
+                Shape::Rect {
+                    w: width,
+                    h: height,
+                },
+            ),
+            Sprite::new("derelict_house/floors", 0).with_tiling(4, 4),
         ));
         let wall_lft = cmds.create_from((
             Transform::default(),
             AnchorTransform(building, (-width / 2., 0.)),
             InteractTarget::<VisionField>::default(),
             Hitbox(HitboxType::Static, Shape::Rect { w: 20., h: height }),
+            Sprite::new("derelict_house/walls", 19).with_tiling(1, 17),
         ));
         let wall_rgt = cmds.create_from((
             Transform::default(),
             AnchorTransform(building, (width / 2., 0.)),
             InteractTarget::<VisionField>::default(),
             Hitbox(HitboxType::Static, Shape::Rect { w: 20., h: height }),
+            Sprite::new("derelict_house/walls", 19).with_tiling(1, 17),
         ));
         let wall_top = cmds.create_from((
             Transform::default(),
@@ -59,6 +71,7 @@ impl BuildingBundle {
                     h: 20.,
                 },
             ),
+            Sprite::new("derelict_house/walls", 19).with_tiling(17, 1),
         ));
         let wall_btm_lft = cmds.create_from((
             Transform::default(),
@@ -71,6 +84,7 @@ impl BuildingBundle {
                     h: 20.,
                 },
             ),
+            Sprite::new("derelict_house/walls", 19).with_tiling(7, 1),
         ));
         let wall_btm_rgt = cmds.create_from((
             Transform::default(),
@@ -83,14 +97,16 @@ impl BuildingBundle {
                     h: 20.,
                 },
             ),
+            Sprite::new("derelict_house/walls", 19).with_tiling(7, 1),
         ));
         cmds.push_bundle(Self {
+            building,
             wall_lft,
             wall_rgt,
             wall_top,
             wall_btm_lft,
             wall_btm_rgt,
-            activator: building,
+            floors,
         })
     }
 }
@@ -103,31 +119,34 @@ impl<'a> EntityBundle<'a> for BuildingBundle {
         EntityRef,
         EntityRef,
         EntityRef,
+        EntityRef,
     );
 
     fn primary_entity(&self) -> &EntityRef {
-        &self.activator
+        &self.building
     }
 
     fn deconstruct(self) -> Self::TupleRepr {
         (
-            self.activator,
+            self.building,
             self.wall_lft,
             self.wall_top,
             self.wall_rgt,
             self.wall_btm_rgt,
             self.wall_btm_lft,
+            self.floors,
         )
     }
 
     fn reconstruct(args: <Self::TupleRepr as EntityTuple<'a>>::AsRefTuple) -> Self {
         Self {
-            activator: *args.0,
+            building: *args.0,
             wall_lft: *args.1,
             wall_top: *args.2,
             wall_rgt: *args.3,
             wall_btm_rgt: *args.4,
             wall_btm_lft: *args.5,
+            floors: *args.6,
         }
     }
 }

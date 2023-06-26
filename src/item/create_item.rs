@@ -19,6 +19,6 @@ pub fn create_item(
         InteractTarget::<Hitbox>::default(),
         Equippable(slots),
         InteractTarget::<VisionField>::default(),
-        Sprite::new("generic_item", 0),
+        Sprite::new("generic_item", 1),
     ))
 }

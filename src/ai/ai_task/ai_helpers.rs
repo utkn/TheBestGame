@@ -33,7 +33,7 @@ pub(super) fn try_move_towards_projectile(actor: &EntityRef, state: &State) -> O
         .map(|(_, hit_vel)| hit_vel)?;
     let ai_trans = insights.transform_of(actor)?;
     let rev_dir = notan::math::vec2(-*vx, -*vy).normalize();
-    let target_pos = notan::math::vec2(ai_trans.x, ai_trans.y) + rev_dir * 150.;
+    let target_pos = notan::math::vec2(ai_trans.x, ai_trans.y) + rev_dir * 40.;
     Some((target_pos.x, target_pos.y))
 }
 

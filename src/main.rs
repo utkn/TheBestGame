@@ -65,7 +65,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         .collect();
     // Generate a debugging world.
     let mut world = WorldGenerator::generate(WorldTemplate::new([
-        (Transform::at(0., 0.), PLAYER_TEMPLATE),
+        (Transform::at(40., 40.), PLAYER_TEMPLATE),
         (Transform::at(50., 50.), CHEST_TEMPLATE),
         (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
         // (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
@@ -106,11 +106,11 @@ fn draw_sprite(
     x: f32,
     y: f32,
     deg: f32,
-    tiling_config: Option<TilingConfig>,
+    tiling_config: TilingConfig,
     tx: &Texture,
 ) {
-    let repeat_x = tiling_config.and_then(|tc| tc.repeat_x).unwrap_or(1);
-    let repeat_y = tiling_config.and_then(|tc| tc.repeat_y).unwrap_or(1);
+    let repeat_x = tiling_config.repeat_x;
+    let repeat_y = tiling_config.repeat_y;
     let tx_x = x - (tx.width() * (repeat_x as f32)) / 2.;
     let tx_y = y - (tx.height() * (repeat_y as f32)) / 2.;
     for row in 0..repeat_y {
@@ -174,10 +174,6 @@ fn draw_debug(rnd: &mut draw::Draw, state: &State) {
                 .position(x, y)
                 .rotate_degrees_from((x - offset_x, y - offset_y), -trans.deg)
                 .fill_color(notan::prelude::Color::BLUE);
-            // let (dir_x, dir_y) = trans.dir_vec();
-            // rnd.line((x, y), (x + dir_x * 5., y + dir_y * 5.))
-            // .rotate_degrees_from((x - offset_x, y - offset_y), -trans.deg)
-            //     .color(notan::prelude::Color::BLUE);
             match hitbox.1 {
                 Shape::Circle { r } => {
                     rnd.circle(r)
@@ -206,7 +202,7 @@ fn draw(
     let mut game_rnd = gfx.create_draw();
     game_rnd.clear(notan::prelude::Color::GRAY);
     draw_game(&mut game_rnd, app_state);
-    draw_debug(&mut game_rnd, app_state.world.get_state());
+    // draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);
     // Draw the ui
     let egui_rnd = plugins.egui(|ctx| {
