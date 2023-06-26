@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{character::Character, item::Item, prelude::*, vehicle::Vehicle};
+use crate::{building::Building, character::Character, item::Item, prelude::*, vehicle::Vehicle};
 
 mod default_sprite;
 mod representible_tags;
@@ -11,14 +11,30 @@ use representible_tags::*;
 use sprite_tags::*;
 
 #[derive(Clone, Copy, Debug)]
+pub struct TilingConfig {
+    pub repeat_x: Option<u8>,
+    pub repeat_y: Option<u8>,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Sprite {
     pub sprite_id: &'static str,
     pub z_index: usize,
+    pub tiling_config: Option<TilingConfig>,
 }
 
 impl Sprite {
     pub fn new(sprite_id: &'static str, z_index: usize) -> Self {
-        Self { sprite_id, z_index }
+        Self {
+            sprite_id,
+            z_index,
+            tiling_config: None,
+        }
+    }
+
+    pub fn with_tiling(mut self, config: TilingConfig) -> Self {
+        self.tiling_config = Some(config);
+        self
     }
 }
 
@@ -28,6 +44,7 @@ fn parse_all_representible_tags_for(sprite_id: &'static str) -> RepresentibleTag
         .with::<Character>()
         .with::<Vehicle>()
         .with::<Item>()
+        .with::<Building>()
 }
 
 #[derive(Clone, Debug, Default)]
@@ -64,6 +81,7 @@ impl SpriteRepresentor {
             self.try_represent_as::<Character>(sprite_entity, state),
             self.try_represent_as::<Vehicle>(sprite_entity, state),
             self.try_represent_as::<Item>(sprite_entity, state),
+            self.try_represent_as::<Building>(sprite_entity, state),
             self.try_represent_as::<DefaultSprite>(sprite_entity, state),
         ];
         representations.into_iter().flatten()

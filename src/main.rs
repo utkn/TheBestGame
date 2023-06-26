@@ -5,7 +5,7 @@ use std::{collections::HashMap, path::PathBuf};
 use building::BuildingBundle;
 use itertools::Itertools;
 use notan::{
-    draw::{CreateDraw, DrawImages, DrawShapes, DrawTransform},
+    draw::{self, CreateDraw, DrawImages, DrawShapes, DrawTransform},
     egui::EguiPluginSugar,
     prelude::{Asset, Assets, Texture},
 };
@@ -75,7 +75,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));
     world.update_with(|_, cmds| {
-        BuildingBundle::create(Transform::at(-100., -100.), 200., 200., cmds);
+        BuildingBundle::create(Transform::at(-100., -100.), 256., 256., cmds);
     });
     AppState {
         world,
@@ -101,7 +101,30 @@ fn update(app: &mut notan::prelude::App, app_state: &mut AppState) {
     world.update_with_systems(UpdateContext { dt, control_map });
 }
 
-fn draw_game(rnd: &mut notan::draw::Draw, app_state: &mut AppState) {
+fn draw_sprite(
+    rnd: &mut draw::Draw,
+    x: f32,
+    y: f32,
+    deg: f32,
+    tiling_config: Option<TilingConfig>,
+    tx: &Texture,
+) {
+    let repeat_x = tiling_config.and_then(|tc| tc.repeat_x).unwrap_or(1);
+    let repeat_y = tiling_config.and_then(|tc| tc.repeat_y).unwrap_or(1);
+    let tx_x = x - (tx.width() * (repeat_x as f32)) / 2.;
+    let tx_y = y - (tx.height() * (repeat_y as f32)) / 2.;
+    for row in 0..repeat_y {
+        for col in 0..repeat_x {
+            let tx_x = tx_x + tx.width() * col as f32;
+            let tx_y = tx_y + tx.height() * row as f32;
+            rnd.image(tx.as_ref())
+                .position(tx_x, tx_y)
+                .rotate_degrees_from((x, y), -deg);
+        }
+    }
+}
+
+fn draw_game(rnd: &mut draw::Draw, app_state: &mut AppState) {
     let game_state = app_state.world.get_state();
     game_state
         .select::<(Transform, Sprite)>()
@@ -111,21 +134,19 @@ fn draw_game(rnd: &mut notan::draw::Draw, app_state: &mut AppState) {
                 .get_representations(&sprite_entity, game_state)
                 .next()
                 .and_then(|path_buf| app_state.asset_map.get(&path_buf))
-                .map(|tx| (trans, sprite.z_index, tx))
+                .map(|tx| (trans, sprite, tx))
         })
-        .sorted_by_key(|(_, z_index, _)| *z_index)
-        .for_each(|(trans, _, tx)| {
+        .sorted_by_key(|(_, sprite, _)| sprite.z_index)
+        .for_each(|(trans, sprite, tx)| {
             if let Some(tx) = tx.lock() {
                 let (x, y) =
                     map_to_screen_cords(trans.x, trans.y, rnd.width(), rnd.height(), game_state);
-                rnd.image(tx.as_ref())
-                    .position(x - tx.width() / 2., y - tx.height() / 2.)
-                    .rotate_degrees_from((x, y), -trans.deg);
+                draw_sprite(rnd, x, y, trans.deg, sprite.tiling_config, tx.as_ref());
             }
         });
 }
 
-fn draw_debug(rnd: &mut notan::draw::Draw, state: &State) {
+fn draw_debug(rnd: &mut draw::Draw, state: &State) {
     state
         .select::<(Transform, Hitbox)>()
         .for_each(|(e, (trans, hitbox))| {
@@ -183,7 +204,7 @@ fn draw(
 ) {
     // Draw the game
     let mut game_rnd = gfx.create_draw();
-    game_rnd.clear(notan::prelude::Color::BLACK);
+    game_rnd.clear(notan::prelude::Color::GRAY);
     draw_game(&mut game_rnd, app_state);
     draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);

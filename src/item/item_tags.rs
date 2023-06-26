@@ -11,9 +11,9 @@ pub enum ItemTag {
     Stored,
 }
 
-impl Into<&'static str> for ItemTag {
-    fn into(self) -> &'static str {
-        match self {
+impl From<ItemTag> for &'static str {
+    fn from(tag: ItemTag) -> Self {
+        match tag {
             ItemTag::Ground => "ground",
             ItemTag::Equipped => "equipped",
             ItemTag::Stored => "stored",

@@ -12,9 +12,9 @@ pub enum CharacterTag {
     Shooting,
 }
 
-impl Into<&'static str> for CharacterTag {
-    fn into(self) -> &'static str {
-        match self {
+impl From<CharacterTag> for &'static str {
+    fn from(tag: CharacterTag) -> Self {
+        match tag {
             CharacterTag::Idle => "idle",
             CharacterTag::Moving => "moving",
             CharacterTag::Driving => "driving",

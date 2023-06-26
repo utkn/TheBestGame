@@ -11,9 +11,9 @@ pub enum VehicleTag {
     Damaged,
 }
 
-impl Into<&'static str> for VehicleTag {
-    fn into(self) -> &'static str {
-        match self {
+impl From<VehicleTag> for &'static str {
+    fn from(tag: VehicleTag) -> Self {
+        match tag {
             VehicleTag::Moving => "moving",
             VehicleTag::Idle => "idle",
             VehicleTag::Damaged => "damaged",
