@@ -1,6 +1,6 @@
 use crate::{
     character::{CharacterBundle, CharacterInsights},
-    physics::ProjectileInsights,
+    physics::{Hitbox, ProjectileInsights},
     prelude::*,
     vehicle::VehicleInsights,
 };
@@ -73,7 +73,16 @@ pub(super) fn reached_destination_approx(
     actor: &EntityRef,
     state: &State,
 ) -> bool {
+    let cell_size = {
+        state
+            .select_one::<(Hitbox,)>(actor)
+            .map(|(hb,)| match hb.1 {
+                crate::physics::Shape::Circle { r } => 2. * r,
+                crate::physics::Shape::Rect { w, h } => w.max(h),
+            })
+            .unwrap_or(20.)
+    };
     get_dpos(target_x, target_y, actor, state)
-        .map(|dpos| dpos.0.abs() <= 16. && dpos.1.abs() <= 16.)
+        .map(|dpos| dpos.0.abs() <= cell_size && dpos.1.abs() <= cell_size)
         .unwrap_or(true)
 }

@@ -85,17 +85,41 @@ fn compute_path(
             })? as isize
     };
     let (actor_trans,) = state.select_one::<(Transform,)>(actor)?;
-    let mut movement_grid = MovementGrid::new(cell_size, &(actor_trans.x, actor_trans.y), target);
+    let actor_pos = (actor_trans.x, actor_trans.y);
     let actor_char = state.read_bundle::<CharacterBundle>(actor)?;
-    let hitboxes_in_range = StateInsights::of(state)
-        .contacts_of(&actor_char.vision_field)
-        .unwrap()
+    let starting_positions = std::iter::once(actor_pos).chain(
+        (1..cell_size).map(|delta| delta as f32).flat_map(|delta| {
+            [
+                (actor_pos.0, actor_pos.1 - delta),
+                (actor_pos.0, actor_pos.1 + delta),
+                (actor_pos.0 - delta, actor_pos.1),
+                (actor_pos.0 - delta, actor_pos.1 - delta),
+                (actor_pos.0 - delta, actor_pos.1 + delta),
+                (actor_pos.0 + delta, actor_pos.1),
+                (actor_pos.0 + delta, actor_pos.1 - delta),
+                (actor_pos.0 + delta, actor_pos.1 + delta),
+            ]
+        }),
+    );
+    starting_positions
         .into_iter()
-        .filter(|e| !StateInsights::of(state).is_character(&e))
-        .flat_map(|e| state.select_one::<(Hitbox,)>(e).map(|(hb,)| (e, hb)))
-        .filter(|(_, hb)| hb.0.is_concrete())
-        .flat_map(|(e, _)| EffectiveHitbox::new(&e, state))
-        .collect_vec();
-    movement_grid.fill_obstructions(&hitboxes_in_range);
-    movement_grid.find_path()
+        .flat_map(|starting_pos| {
+            let mut movement_grid = MovementGrid::new(cell_size, &starting_pos, target);
+            let hitboxes_in_range = StateInsights::of(state)
+                .contacts_of(&actor_char.vision_field)
+                .unwrap()
+                .into_iter()
+                .filter(|e| !StateInsights::of(state).is_character(&e))
+                .flat_map(|e| state.select_one::<(Hitbox,)>(e).map(|(hb,)| (e, hb)))
+                .filter(|(_, hb)| hb.0.is_concrete())
+                .flat_map(|(e, _)| EffectiveHitbox::new(&e, state))
+                .collect_vec();
+            movement_grid.fill_obstructions(&hitboxes_in_range);
+            movement_grid.find_path().map(|path| (starting_pos, path))
+        })
+        .next()
+        .map(|(starting_pos, mut path)| {
+            path.push_front(starting_pos);
+            path
+        })
 }
