@@ -1,3 +1,5 @@
+use notan::math;
+
 use crate::prelude::*;
 
 /// A system that handles simple translation using the velocities.
@@ -97,8 +99,11 @@ impl System for AnchorSystem {
                 if !state.is_valid(&anchor.0) {
                     cmds.remove_component::<AnchorTransform>(&child_entity);
                 } else if let Some((parent_trans,)) = state.select_one::<(Transform,)>(&anchor.0) {
+                    let offset = anchor.1;
+                    let rotated_offset = math::Vec2::from_angle(-parent_trans.deg.to_radians())
+                        .rotate(math::vec2(offset.0, offset.1));
                     // Translate by the offset.
-                    let new_trans = parent_trans.translated(anchor.1);
+                    let new_trans = parent_trans.translated((rotated_offset.x, rotated_offset.y));
                     cmds.set_component(&child_entity, new_trans);
                 }
             });

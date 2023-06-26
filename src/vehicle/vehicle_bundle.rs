@@ -4,8 +4,8 @@ use super::Vehicle;
 
 #[derive(Clone, Copy, Debug)]
 pub struct VehicleBundle {
-    vehicle: EntityRef,
-    door: EntityRef,
+    pub vehicle: EntityRef,
+    pub door: EntityRef,
 }
 
 impl VehicleBundle {
@@ -29,6 +29,7 @@ impl VehicleBundle {
             (
                 Name("basic car"),
                 Sprite::new("basic_car", 3),
+                ProximityInteractable,
                 TargetRotation::default(),
                 Equipment::new([EquipmentSlot::VehicleGas, EquipmentSlot::VehicleModule]),
                 InteractTarget::<Equipment>::default(),
@@ -36,10 +37,10 @@ impl VehicleBundle {
         );
         let door = cmds.create_from((
             Transform::default(),
-            AnchorTransform(vehicle, (0., -20.)),
+            AnchorTransform(vehicle, (0., -40.)),
             ProximityInteractable,
             UntargetedInteractionDelegate(vehicle),
-            Hitbox(HitboxType::Ghost, Shape::Rect { w: 40., h: 40. }),
+            Hitbox(HitboxType::Ghost, Shape::Rect { w: 40., h: 30. }),
             InteractTarget::<Hitbox>::default(),
             ExistenceDependency(vehicle),
         ));

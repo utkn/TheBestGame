@@ -215,7 +215,7 @@ impl<I: Interaction> System for InteractionSystem<I> {
             .collect();
         to_end.into_iter().for_each(|(actor, target)| {
             if Self::interaction_exists(&actor, &target, state) {
-                // println!("ending {:?} -> {:?}: {:?}", actor, target, self.pd);
+                println!("ending {:?} -> {:?}: {:?}", actor, target, self.pd);
                 cmds.emit_event(InteractionEndedEvt::<I>::new(actor, target));
                 cmds.update_component(&target, move |interactable: &mut InteractTarget<I>| {
                     interactable.actors.remove(&actor);
@@ -238,7 +238,7 @@ impl<I: Interaction> System for InteractionSystem<I> {
             .collect();
         to_start.into_iter().for_each(|(actor, target)| {
             cmds.emit_event(InteractionStartedEvt::<I>::new(actor, target));
-            // println!("starting {:?} -> {:?}: {:?}", actor, target, self.pd);
+            println!("starting {:?} -> {:?}: {:?}", actor, target, self.pd);
             cmds.update_component(&target, move |interactable: &mut InteractTarget<I>| {
                 interactable.actors.insert(actor);
             });

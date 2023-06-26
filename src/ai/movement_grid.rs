@@ -130,7 +130,7 @@ impl MovementGrid {
                 w: self.cell_size as f32,
                 h: self.cell_size as f32,
             };
-            let cell_hb = TransformedShape::new(&transform, &shape, (0., 0.));
+            let cell_hb = TransformedShape::new(&transform, &shape);
             let is_colliding = hitboxes.iter().any(|target_hb| {
                 sepax2d::sat_overlap(target_hb.shape.shape_ref(), cell_hb.shape_ref())
             });

@@ -69,7 +69,7 @@ impl Window for EquipmentWindow {
             .resizable(false);
         // Handle alignment & positioning.
         if self.is_player_equipment {
-            win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 120.));
+            win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 130.));
         } else {
             let (x, y) = game_state
                 .select_one::<(Transform,)>(&self.equipment_entity)
@@ -123,7 +123,7 @@ impl Window for StorageWindow {
             .resizable(false);
         // Handle alignment & positioning.
         if self.is_player_storage {
-            win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 400.));
+            win = win.anchor(egui::Align2::RIGHT_TOP, (-10., 405.));
         } else {
             let (x, y) = game_state
                 .select_one::<(Transform,)>(&self.storage_entity)

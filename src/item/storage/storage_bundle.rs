@@ -4,8 +4,8 @@ use super::Storage;
 
 #[derive(Clone, Copy, Debug)]
 pub struct StorageBundle {
-    storage: EntityRef,
-    activator: EntityRef,
+    pub storage: EntityRef,
+    pub activator: EntityRef,
 }
 
 impl StorageBundle {

@@ -73,18 +73,10 @@ pub enum TransformedShape {
 
 impl TransformedShape {
     /// Creates a new transformed shape from the given transform, shape and offset (from the given transform)
-    pub fn new(trans: &Transform, primitive_shape: &Shape, offset: (f32, f32)) -> Self {
+    pub fn new(trans: &Transform, primitive_shape: &Shape) -> Self {
         match primitive_shape {
             Shape::Circle { r } => {
-                let rotated_offset = notan::math::Vec2::from_angle(-trans.deg.to_radians())
-                    .rotate(notan::math::vec2(offset.0, offset.1));
-                Self::Circle(sepax2d::circle::Circle::new(
-                    (
-                        trans.x - offset.0 + rotated_offset.x,
-                        trans.y - offset.1 + rotated_offset.y,
-                    ),
-                    *r,
-                ))
+                Self::Circle(sepax2d::circle::Circle::new((trans.x, trans.y), *r))
             }
             Shape::Rect { w, h } => {
                 let mut poly = sepax2d::polygon::Polygon::from_vertices(
@@ -96,15 +88,7 @@ impl TransformedShape {
                         (-w / 2., h / 2.),
                     ],
                 );
-                poly.vertices.iter_mut().for_each(|v| {
-                    v.0 += offset.0;
-                    v.1 += offset.1;
-                });
                 poly.rotate(-trans.deg.to_radians());
-                poly.vertices.iter_mut().for_each(|v| {
-                    v.0 -= offset.0;
-                    v.1 -= offset.1;
-                });
                 poly.position = (trans.x, trans.y);
                 Self::Poly(poly)
             }
@@ -131,15 +115,11 @@ pub struct EffectiveHitbox<'a> {
 impl<'a> EffectiveHitbox<'a> {
     pub fn new(e: &EntityRef, state: &'a State) -> Option<Self> {
         let (hitbox, trans) = state.select_one::<(Hitbox, Transform)>(e)?;
-        let offset = state
-            .select_one::<(AnchorTransform,)>(e)
-            .map(|(anchor_trans,)| anchor_trans.1)
-            .unwrap_or_default();
         Some(Self {
             entity: *e,
             hitbox,
             trans,
-            shape: TransformedShape::new(trans, &hitbox.1, offset),
+            shape: TransformedShape::new(trans, &hitbox.1),
         })
     }
 }

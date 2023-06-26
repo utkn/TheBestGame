@@ -20,17 +20,6 @@ pub struct EndProximityInteractReq(pub EntityRef);
 
 impl System for ProximityInteractionSystem {
     fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        // Try to end the proximity interaction with collision end events.
-        state
-            .select::<(ProximityInteractable,)>()
-            .for_each(|(target, _)| {
-                StateInsights::of(state)
-                    .new_collision_enders_of(&target)
-                    .into_iter()
-                    .for_each(|actor| {
-                        cmds.emit_event(TryUninteractReq::new(*actor, target));
-                    });
-            });
         // Try to start proximity interactions.
         state
             .read_events::<StartProximityInteractReq>()
@@ -46,10 +35,10 @@ impl System for ProximityInteractionSystem {
                         });
                 }
             });
+        // Try to uninteract with all possible targets.
         state
             .read_events::<EndProximityInteractReq>()
             .for_each(|evt| {
-                // Try to uninteract with all possible targets.
                 let actor = evt.0;
                 if let Some(contacts) = StateInsights::of(state).contacts_of(&actor) {
                     contacts

@@ -4,7 +4,7 @@ use crate::{
     prelude::*,
 };
 
-use super::Vehicle;
+use super::{Vehicle, VehicleBundle};
 
 #[derive(Clone, Default, Debug)]
 pub struct VehicleSystem;
@@ -44,10 +44,17 @@ impl System for VehicleSystem {
                 cmds.update_component(driver, |hb: &mut Hitbox| {
                     hb.0 = HitboxType::Dynamic;
                 });
-                // Position the driver a bit right for collision detection to resolve it.
-                cmds.update_component(driver, |trans: &mut Transform| {
-                    trans.x += 40.;
-                });
+                // Position the driver at the door.
+                // TODO: check if it is occupied before trying to do so.
+                if let Some(vehicle_bundle) = state.read_bundle::<VehicleBundle>(vehicle) {
+                    let door_transform = *StateInsights::of(state)
+                        .transform_of(&vehicle_bundle.door)
+                        .unwrap();
+                    cmds.update_component(driver, move |trans: &mut Transform| {
+                        trans.x = door_transform.x;
+                        trans.y = door_transform.y;
+                    });
+                }
             });
     }
 }
