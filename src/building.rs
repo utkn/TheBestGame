@@ -21,7 +21,13 @@ pub struct BuildingBundle {
 }
 
 impl BuildingBundle {
-    pub fn create(trans: Transform, width: f32, height: f32, cmds: &mut StateCommands) -> Self {
+    pub fn create(
+        trans: Transform,
+        width: f32,
+        height: f32,
+        sprite_id: &'static str,
+        cmds: &mut StateCommands,
+    ) -> Self {
         let building = cmds.create_from((
             trans,
             Hitbox(
@@ -32,7 +38,7 @@ impl BuildingBundle {
                 },
             ),
             InteractTarget::<Hitbox>::default(),
-            Sprite::new("derelict_house/ceilings", 20).with_tiling(4, 4),
+            Sprite::new(format!("{}/ceilings", sprite_id), 20).with_tiling(4, 4),
         ));
         let floors = cmds.create_from((
             Transform::default(),
@@ -44,21 +50,21 @@ impl BuildingBundle {
                     h: height,
                 },
             ),
-            Sprite::new("derelict_house/floors", 0).with_tiling(4, 4),
+            Sprite::new(format!("{}/floors", sprite_id), 0).with_tiling(4, 4),
         ));
         let wall_lft = cmds.create_from((
             Transform::default(),
             AnchorTransform(building, (-width / 2., 0.)),
             InteractTarget::<VisionField>::default(),
             Hitbox(HitboxType::Static, Shape::Rect { w: 20., h: height }),
-            Sprite::new("derelict_house/walls", 19).with_tiling(1, 17),
+            Sprite::new(format!("{}/walls", sprite_id), 19).with_tiling(1, 17),
         ));
         let wall_rgt = cmds.create_from((
             Transform::default(),
             AnchorTransform(building, (width / 2., 0.)),
             InteractTarget::<VisionField>::default(),
             Hitbox(HitboxType::Static, Shape::Rect { w: 20., h: height }),
-            Sprite::new("derelict_house/walls", 19).with_tiling(1, 17),
+            Sprite::new(format!("{}/walls", sprite_id), 19).with_tiling(1, 17),
         ));
         let wall_top = cmds.create_from((
             Transform::default(),
@@ -71,7 +77,7 @@ impl BuildingBundle {
                     h: 20.,
                 },
             ),
-            Sprite::new("derelict_house/walls", 19).with_tiling(17, 1),
+            Sprite::new(format!("{}/walls", sprite_id), 19).with_tiling(17, 1),
         ));
         let wall_btm_lft = cmds.create_from((
             Transform::default(),
@@ -84,7 +90,7 @@ impl BuildingBundle {
                     h: 20.,
                 },
             ),
-            Sprite::new("derelict_house/walls", 19).with_tiling(7, 1),
+            Sprite::new(format!("{}/walls", sprite_id), 19).with_tiling(7, 1),
         ));
         let wall_btm_rgt = cmds.create_from((
             Transform::default(),
@@ -97,7 +103,7 @@ impl BuildingBundle {
                     h: 20.,
                 },
             ),
-            Sprite::new("derelict_house/walls", 19).with_tiling(7, 1),
+            Sprite::new(format!("{}/walls", sprite_id), 19).with_tiling(7, 1),
         ));
         cmds.push_bundle(Self {
             building,

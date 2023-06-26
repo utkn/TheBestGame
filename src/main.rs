@@ -75,7 +75,13 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));
     world.update_with(|_, cmds| {
-        BuildingBundle::create(Transform::at(-100., -100.), 256., 256., cmds);
+        BuildingBundle::create(
+            Transform::at(-100., -100.),
+            256.,
+            256.,
+            "derelict_house",
+            cmds,
+        );
     });
     AppState {
         world,
@@ -133,7 +139,8 @@ fn draw_game(rnd: &mut draw::Draw, app_state: &mut AppState) {
                 .sprite_representor
                 .get_representations(&sprite_entity, game_state)
                 .next()
-                .and_then(|path_buf| app_state.asset_map.get(&path_buf))
+                .and_then(|sprite_asset| sprite_asset.get_corresponding_path(sprite))
+                .and_then(|path| app_state.asset_map.get(&path))
                 .map(|tx| (trans, sprite, tx))
         })
         .sorted_by_key(|(_, sprite, _)| sprite.z_index)

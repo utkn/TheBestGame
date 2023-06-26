@@ -3,11 +3,13 @@ use std::collections::HashMap;
 use crate::{building::Building, character::Character, item::Item, prelude::*, vehicle::Vehicle};
 
 mod default_sprite;
-mod representible_tags;
+mod sprite_asset;
+mod sprite_asset_parser;
 mod sprite_tags;
 
 use default_sprite::*;
-use representible_tags::*;
+use sprite_asset::*;
+use sprite_asset_parser::*;
 use sprite_tags::*;
 
 #[derive(Clone, Copy, Debug)]
@@ -25,19 +27,21 @@ impl Default for TilingConfig {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Sprite {
-    pub sprite_id: &'static str,
+    pub sprite_id: String,
     pub z_index: usize,
     pub tiling_config: TilingConfig,
+    pub curr_time: f32,
 }
 
 impl Sprite {
-    pub fn new(sprite_id: &'static str, z_index: usize) -> Self {
+    pub fn new(sprite_id: impl Into<String>, z_index: usize) -> Self {
         Self {
-            sprite_id,
+            sprite_id: sprite_id.into(),
             z_index,
             tiling_config: Default::default(),
+            curr_time: 0.,
         }
     }
 
@@ -48,8 +52,8 @@ impl Sprite {
     }
 }
 
-fn parse_all_representible_tags_for(sprite_id: &'static str) -> RepresentibleTags {
-    RepresentibleTags::new(sprite_id)
+fn parse_all_representible_tags_for(sprite_id: String) -> SpriteAssetParser {
+    SpriteAssetParser::new(sprite_id)
         .with::<DefaultSprite>()
         .with::<Character>()
         .with::<Vehicle>()
@@ -60,7 +64,7 @@ fn parse_all_representible_tags_for(sprite_id: &'static str) -> RepresentibleTag
 #[derive(Clone, Debug, Default)]
 pub struct SpriteRepresentor {
     /// Maps a sprite id to the representible tags parsed from the relevant assets folder.
-    repr_tags: HashMap<&'static str, RepresentibleTags>,
+    repr_tags: HashMap<String, SpriteAssetParser>,
 }
 
 impl SpriteRepresentor {
@@ -70,12 +74,12 @@ impl SpriteRepresentor {
         &'a mut self,
         sprite_entity: &EntityRef,
         state: &State,
-    ) -> Option<std::path::PathBuf> {
-        let sprite_id = state.select_one::<(Sprite,)>(sprite_entity)?.0.sprite_id;
+    ) -> Option<SpriteAsset> {
+        let sprite_id = &state.select_one::<(Sprite,)>(sprite_entity)?.0.sprite_id;
         let repr_tags = self
             .repr_tags
-            .entry(sprite_id)
-            .or_insert_with(|| parse_all_representible_tags_for(sprite_id));
+            .entry(sprite_id.clone())
+            .or_insert_with(|| parse_all_representible_tags_for(sprite_id.clone()));
         let entity_tags = SpriteTags::<S>::of(sprite_entity, state)?;
         repr_tags.try_represent_as::<S>(entity_tags).cloned()
     }
@@ -86,7 +90,7 @@ impl SpriteRepresentor {
         &mut self,
         sprite_entity: &EntityRef,
         state: &State,
-    ) -> impl Iterator<Item = std::path::PathBuf> {
+    ) -> impl Iterator<Item = SpriteAsset> {
         let representations = [
             self.try_represent_as::<Character>(sprite_entity, state),
             self.try_represent_as::<Vehicle>(sprite_entity, state),
@@ -95,5 +99,19 @@ impl SpriteRepresentor {
             self.try_represent_as::<DefaultSprite>(sprite_entity, state),
         ];
         representations.into_iter().flatten()
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SpriteAnimationSystem;
+
+impl System for SpriteAnimationSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+        state.select::<(Sprite,)>().for_each(|(e, _)| {
+            let dt = ctx.dt;
+            cmds.update_component(&e, move |sprite: &mut Sprite| {
+                sprite.curr_time += dt;
+            });
+        })
     }
 }

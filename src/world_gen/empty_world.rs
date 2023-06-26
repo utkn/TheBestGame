@@ -6,6 +6,7 @@ use crate::needs::*;
 use crate::physics::*;
 use crate::prelude::*;
 
+use crate::sprite::SpriteAnimationSystem;
 use crate::vehicle::*;
 
 pub fn create_empty_world() -> World {
@@ -56,6 +57,8 @@ pub fn create_empty_world() -> World {
     world.register_system(VisionSystem);
     world.register_system(InteractionSystem::<VisionField>::default());
     world.register_system(ControlSystem::<AiDriver>::default());
+    // Sprite
+    world.register_system(SpriteAnimationSystem);
     // Misc
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());
