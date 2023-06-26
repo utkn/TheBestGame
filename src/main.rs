@@ -183,7 +183,7 @@ fn draw(
 ) {
     // Draw the game
     let mut game_rnd = gfx.create_draw();
-    game_rnd.clear(notan::prelude::Color::SADDLE_BROWN);
+    game_rnd.clear(notan::prelude::Color::BLACK);
     draw_game(&mut game_rnd, app_state);
     draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);

@@ -4,6 +4,8 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::{physics::*, prelude::Transform};
 
+const PADDING: isize = 3;
+
 #[derive(Clone, Debug)]
 pub struct MovementGrid {
     cell_size: isize,
@@ -24,8 +26,14 @@ impl MovementGrid {
         let btm_right = (from.0.max(to.0), from.1.max(to.1));
         let top_left_cell_idx = Self::pos_to_cell_idx(cell_size, &top_left);
         let btm_right_cell_idx = Self::pos_to_cell_idx(cell_size, &btm_right);
-        let (min_x, max_x) = (top_left_cell_idx.0, btm_right_cell_idx.0);
-        let (min_y, max_y) = (top_left_cell_idx.1, btm_right_cell_idx.1);
+        let (min_x, max_x) = (
+            top_left_cell_idx.0 - PADDING,
+            btm_right_cell_idx.0 + PADDING,
+        );
+        let (min_y, max_y) = (
+            top_left_cell_idx.1 - PADDING,
+            btm_right_cell_idx.1 + PADDING,
+        );
         let mut cell_obstructions = HashMap::new();
         for row in min_y..=max_y {
             for col in min_x..=max_x {
