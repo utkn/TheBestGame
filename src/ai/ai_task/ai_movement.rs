@@ -33,7 +33,7 @@ impl AiMovementHandler {
                 0., 0.,
             ))];
         }
-        if reached_destination(&self.target.0, &self.target.1, actor, state) {
+        if reached_destination_approx(&self.target.0, &self.target.1, actor, state) {
             return vec![AiTaskOutput::IssueCmd(ControlCommand::SetTargetVelocity(
                 0., 0.,
             ))];
@@ -49,7 +49,7 @@ impl AiMovementHandler {
             }
         }
         let next_milestone = self.path_to_follow.front().unwrap();
-        if reached_destination(&next_milestone.0, &next_milestone.1, actor, state) {
+        if reached_destination_approx(&next_milestone.0, &next_milestone.1, actor, state) {
             self.path_to_follow.pop_front();
             return vec![AiTaskOutput::QueueFront(AiTask::MoveToPos(self))];
         }
@@ -76,10 +76,17 @@ fn compute_path(
     actor: &EntityRef,
     state: &State,
 ) -> Option<VecDeque<(f32, f32)>> {
-    let cell_size = 5;
-    let (actor_trans,) = state.select_one::<(Transform,)>(actor).unwrap();
+    let cell_size = {
+        state
+            .select_one::<(Hitbox,)>(actor)
+            .map(|(hb,)| match hb.1 {
+                crate::physics::Shape::Circle { r } => 2. * r,
+                crate::physics::Shape::Rect { w, h } => w.max(h),
+            })? as isize
+    };
+    let (actor_trans,) = state.select_one::<(Transform,)>(actor)?;
     let mut movement_grid = MovementGrid::new(cell_size, &(actor_trans.x, actor_trans.y), target);
-    let actor_char = state.read_bundle::<CharacterBundle>(actor).unwrap();
+    let actor_char = state.read_bundle::<CharacterBundle>(actor)?;
     let hitboxes_in_range = StateInsights::of(state)
         .contacts_of(&actor_char.vision_field)
         .unwrap()

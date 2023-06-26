@@ -67,7 +67,7 @@ pub(super) fn get_dpos(
     Some((target_x - actor_trans.x, target_y - actor_trans.y))
 }
 
-pub(super) fn reached_destination(
+pub(super) fn reached_destination_approx(
     target_x: &f32,
     target_y: &f32,
     actor: &EntityRef,
