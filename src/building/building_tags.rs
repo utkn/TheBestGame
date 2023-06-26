@@ -30,7 +30,7 @@ impl TagSource for Building {
         "building"
     }
 
-    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>> {
+    fn try_generate(e: &EntityRef, state: &State) -> anyhow::Result<HashSet<Self::TagType>> {
         let player_inside = state
             .select_one::<(InteractTarget<Hitbox>,)>(e)
             .map(|(hb_intr,)| &hb_intr.actors)
@@ -43,9 +43,9 @@ impl TagSource for Building {
             })
             .unwrap_or(false);
         if player_inside {
-            Some(HashSet::from_iter([BuildingTag::PlayerInside]))
+            Ok(HashSet::from_iter([BuildingTag::PlayerInside]))
         } else {
-            Some(HashSet::from_iter([BuildingTag::PlayerOutside]))
+            Ok(HashSet::from_iter([BuildingTag::PlayerOutside]))
         }
     }
 }

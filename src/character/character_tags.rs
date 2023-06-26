@@ -30,9 +30,9 @@ impl TagSource for Character {
         "character"
     }
 
-    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>> {
+    fn try_generate(e: &EntityRef, state: &State) -> anyhow::Result<HashSet<Self::TagType>> {
         if !StateInsights::of(state).is_character(e) {
-            return None;
+            anyhow::bail!("{:?} is not a character", e);
         }
         let mut tags = HashSet::new();
         let is_idle = state
@@ -55,6 +55,6 @@ impl TagSource for Character {
         if is_shooting {
             tags.insert(CharacterTag::Shooting);
         }
-        Some(tags)
+        Ok(tags)
     }
 }

@@ -28,9 +28,9 @@ impl TagSource for Vehicle {
         "vehicle"
     }
 
-    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>> {
+    fn try_generate(e: &EntityRef, state: &State) -> anyhow::Result<HashSet<Self::TagType>> {
         if !StateInsights::of(state).is_vehicle(e) {
-            return None;
+            anyhow::bail!("{:?} is not a vehicle", e);
         }
         let mut tags = HashSet::new();
         let is_idle = state
@@ -42,6 +42,6 @@ impl TagSource for Vehicle {
         } else {
             tags.insert(VehicleTag::Moving);
         }
-        Some(tags)
+        Ok(tags)
     }
 }

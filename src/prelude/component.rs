@@ -83,7 +83,7 @@ impl ComponentManager {
         self.0.get_bag_mut::<ComponentVec<T>>()
     }
 
-    pub(super) fn get_components<T>(&self) -> Option<&ComponentVec<T>>
+    pub(super) fn get_components<T>(&self) -> anyhow::Result<&ComponentVec<T>>
     where
         T: Component,
     {
@@ -109,6 +109,6 @@ impl ComponentManager {
         &'a self,
         id: usize,
     ) -> Option<<S as ComponentTuple<'a>>::RefOutput> {
-        S::try_fetch(id, self)
+        S::try_fetch(id, self).ok()
     }
 }

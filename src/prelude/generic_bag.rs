@@ -37,11 +37,19 @@ impl GenericBagMap {
             .unwrap()
     }
 
-    pub fn get_bag<C: ConcreteBag>(&self) -> Option<&C> {
+    pub fn get_bag<C: ConcreteBag>(&self) -> anyhow::Result<&C> {
         self.bags
-            .get(&std::any::TypeId::of::<C::Item>())?
+            .get(&std::any::TypeId::of::<C::Item>())
+            .ok_or(anyhow::anyhow!(
+                "generic bag for {:?} doesn't exist",
+                std::any::type_name::<C::Item>()
+            ))?
             .as_any()
             .downcast_ref::<C>()
+            .ok_or(anyhow::anyhow!(
+                "could not downcast the generic bag to {:?}",
+                std::any::type_name::<C>()
+            ))
     }
 
     pub fn max_len(&self) -> usize {

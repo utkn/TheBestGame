@@ -28,12 +28,12 @@ impl TagSource for Item {
         "item"
     }
 
-    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>> {
+    fn try_generate(e: &EntityRef, state: &State) -> anyhow::Result<HashSet<Self::TagType>> {
         let insights = StateInsights::of(state);
         if !insights.is_item(e) {
-            return None;
+            anyhow::bail!("{:?} is not an item", e);
         }
-        Some(HashSet::from_iter([match insights.location_of(e) {
+        Ok(HashSet::from_iter([match insights.location_of(e) {
             ItemLocation::Ground => ItemTag::Ground,
             ItemLocation::Equipment(_) => ItemTag::Equipped,
             ItemLocation::Storage(_) => ItemTag::Stored,

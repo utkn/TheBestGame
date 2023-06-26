@@ -11,3 +11,4 @@ sepax2d = "0.3.8"
 notan = {version = "0.9.5", features = ["egui"]}
 glob = "0.3.1"
 pathfinding = "4.3.0"
+anyhow = "1.0.71"

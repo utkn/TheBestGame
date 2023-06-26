@@ -6,7 +6,7 @@ pub trait ComponentTuple<'a>: Clone + 'static {
     /// Returns true iff the manager contains an entity with these specific set of components.
     fn matches(entity_id: usize, mgr: &'a ComponentManager) -> bool;
     /// Materializes the components associated with the given entity.
-    fn try_fetch(entity_id: usize, mgr: &'a ComponentManager) -> Option<Self::RefOutput>;
+    fn try_fetch(entity_id: usize, mgr: &'a ComponentManager) -> anyhow::Result<Self::RefOutput>;
     /// Batch adds the components to the given entity.
     fn insert(self, entity_id: usize, mgr: &mut ComponentManager);
 }
@@ -20,13 +20,14 @@ variadic_generics::va_expand! { ($va_len:tt) ($($va_idents:ident),+) ($($va_indi
             $(mgr.get_components::<$va_idents>().map(|bag| bag.has(entity_id)).unwrap_or(false))&&+
         }
 
-        fn try_fetch(entity_id: usize, mgr: &'a ComponentManager) -> Option<Self::RefOutput> {
+        fn try_fetch(entity_id: usize, mgr: &'a ComponentManager) -> anyhow::Result<Self::RefOutput> {
             let out = (
-                $(mgr.get_components::<$va_idents>()
-                    .map(|bag| bag.get(entity_id))
-                    .flatten()?,)
+                $(mgr.get_components::<$va_idents>()?
+                    .get(entity_id)
+                    .ok_or(anyhow::anyhow!("could not fetch the component {:?} from the bag for the entity id {}",
+                        std::any::type_name::<$va_idents>(), entity_id))?,)
                 +);
-            Some(out)
+            Ok(out)
         }
 
         fn insert(self, entity_id: usize, mgr: &mut ComponentManager) {

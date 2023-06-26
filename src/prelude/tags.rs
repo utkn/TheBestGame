@@ -12,5 +12,5 @@ pub trait TagSource: 'static + Clone + std::fmt::Debug {
     fn source_name() -> &'static str;
     /// Generates the set of tags for the given entity. Returns `None` if the given entity cannot be
     /// represented by this tag source.
-    fn try_generate(e: &EntityRef, state: &State) -> Option<HashSet<Self::TagType>>;
+    fn try_generate(e: &EntityRef, state: &State) -> anyhow::Result<HashSet<Self::TagType>>;
 }

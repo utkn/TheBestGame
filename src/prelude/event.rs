@@ -101,7 +101,7 @@ impl EventManager {
     }
 
     pub(super) fn get_events<T: Event>(&self) -> Option<&EventVec<T>> {
-        self.0.get_bag::<EventVec<T>>()
+        self.0.get_bag::<EventVec<T>>().ok()
     }
 
     pub(super) fn get_events_iter<'a, T: Event>(&'a self) -> OptionalIter<'a, T> {

@@ -79,11 +79,27 @@ impl SpriteRepresentor {
         &'a self,
         sprite_entity: &EntityRef,
         state: &State,
-    ) -> Option<&'a SpriteFrames> {
+    ) -> anyhow::Result<&'a SpriteFrames> {
         let entity_tags = SpriteTags::<S>::of(sprite_entity, state)?;
-        let sprite_id = &state.select_one::<(Sprite,)>(sprite_entity)?.0.sprite_id;
-        let repr_tags = self.repr_tags.get(sprite_id)?;
-        repr_tags.try_represent_as::<S>(entity_tags)
+        let sprite_id = &state
+            .select_one::<(Sprite,)>(sprite_entity)
+            .ok_or(anyhow::anyhow!(
+                "{:?} is not a sprite entity",
+                sprite_entity
+            ))?
+            .0
+            .sprite_id;
+        let repr_tags = self.repr_tags.get(sprite_id).ok_or(anyhow::anyhow!(
+            "no representible tags were loaded for the sprite id {:?}",
+            sprite_id
+        ))?;
+        repr_tags
+            .try_represent_as::<S>(entity_tags.clone())
+            .ok_or(anyhow::anyhow!(
+                "no possible representation for the sprite entity {:?} with tags {:?}",
+                sprite_entity,
+                &entity_tags
+            ))
     }
 
     /// Tries to find the asset paths that represents the state of the given sprite entity the best.
