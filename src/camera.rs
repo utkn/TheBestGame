@@ -2,7 +2,19 @@ use crate::prelude::*;
 
 /// The entity tagged by this component will be followed by the camera.
 #[derive(Clone, Copy, Debug)]
-pub struct CameraFollow;
+pub struct CameraFollow {
+    pub camera_width: f32,
+    pub camera_height: f32,
+}
+
+impl CameraFollow {
+    pub fn new(camera_width: f32, camera_height: f32) -> Self {
+        Self {
+            camera_width,
+            camera_height,
+        }
+    }
+}
 
 /// Converts from world coordinates to the screen coordinates.
 pub fn map_to_screen_cords(

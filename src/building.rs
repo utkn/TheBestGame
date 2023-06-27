@@ -194,6 +194,7 @@ impl WallBundle {
         sprite_id: &'static str,
         cmds: &mut StateCommands,
     ) -> Self {
+        let wall_size = 30.;
         let num_tiles = if with_door {
             (size / 32. - 2.) as u8
         } else {
@@ -208,7 +209,7 @@ impl WallBundle {
                 HitboxType::Static,
                 Shape::Rect {
                     w: size / 2. - door_offset,
-                    h: 20.,
+                    h: wall_size,
                 },
             ),
             InteractTarget::<Hitbox>::default(),
@@ -222,7 +223,7 @@ impl WallBundle {
                 HitboxType::Static,
                 Shape::Rect {
                     w: size / 2. - door_offset,
-                    h: 20.,
+                    h: wall_size,
                 },
             ),
             InteractTarget::<Hitbox>::default(),

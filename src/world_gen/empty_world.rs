@@ -29,7 +29,6 @@ pub fn create_empty_world() -> World {
     world.register_system(UntargetedInteractionDelegateSystem);
     // Basic physics
     world.register_system(CollisionDetectionSystem);
-    world.register_system(SeparateCollisionsSystem);
     world.register_system(InteractionSystem::<Hitbox>::default());
     // Item stuff
     world.register_system(StorageSystem);
@@ -63,6 +62,5 @@ pub fn create_empty_world() -> World {
     world.register_system(TimedRemoveSystem::<NeedMutator>::default());
     world.register_system(EffectSystem::<MaxSpeed>::default());
     world.register_system(EffectSystem::<Acceleration>::default());
-    world.register_system(ExistenceDependencySystem);
     world
 }

@@ -25,7 +25,6 @@ impl StorageBundle {
             UntargetedInteractionDelegate(storage),
             Hitbox(HitboxType::Ghost, Shape::Rect { w: 40., h: 40. }),
             InteractTarget::<Hitbox>::default(),
-            ExistenceDependency(storage),
         ));
         cmds.push_bundle(Self { storage, activator })
     }

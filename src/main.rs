@@ -72,9 +72,9 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         // (Transform::at(50., 50.), CHEST_TEMPLATE),
         // (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
         // (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
-        // (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
-        // (Transform::at(10., 10.), SIMPLE_BACKPACK_TEMPLATE),
-        // (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
+        (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
+        (Transform::at(10., 10.), SIMPLE_BACKPACK_TEMPLATE),
+        (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
         // (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));
     world.update_with(|state, cmds| {
@@ -93,7 +93,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         //     cmds,
         // );
         HouseGenerator::new("derelict_house").try_generate(
-            &Rect::new((0., 0.), (512., 512.)),
+            &Rect::new((0., 0.), (1024., 1024.)),
             state,
             cmds,
         );
@@ -220,7 +220,7 @@ fn draw(
     let mut game_rnd = gfx.create_draw();
     game_rnd.clear(notan::prelude::Color::GRAY);
     draw_game(&mut game_rnd, app_state);
-    draw_debug(&mut game_rnd, app_state.world.get_state());
+    // draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);
     // Draw the ui
     let egui_rnd = plugins.egui(|ctx| {

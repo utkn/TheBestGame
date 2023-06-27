@@ -78,25 +78,6 @@ impl CharacterBundle {
             .equippable_at(&self.character, &EquipmentSlot::Backpack)
             .and_then(|item_stack| item_stack.head_item())
     }
-
-    pub fn concrete_overlaps<'a>(&self, state: &'a State) -> Vec<&'a (f32, f32)> {
-        state
-            .read_events::<CollisionEvt>()
-            .filter(|evt| &evt.e1 == &self.collision_senser)
-            .filter(|evt| &evt.e2 != &self.character)
-            .filter(|evt| {
-                state
-                    .select_one::<(Hitbox,)>(&evt.e2)
-                    .map(|(hb,)| hb.0.is_concrete())
-                    .unwrap_or(false)
-            })
-            .map(|evt| &evt.overlap)
-            .collect()
-    }
-
-    pub fn is_colliding(&self, state: &State) -> bool {
-        self.concrete_overlaps(state).len() >= 1
-    }
 }
 
 impl<'a> EntityBundle<'a> for CharacterBundle {

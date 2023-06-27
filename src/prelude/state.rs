@@ -116,6 +116,7 @@ impl State {
     }
 }
 
+/// Represents a state modification.
 struct StateMod(pub u8, pub Box<dyn FnOnce(&mut State)>);
 
 pub struct StateCommands {
@@ -135,7 +136,7 @@ impl From<&State> for StateCommands {
 }
 
 impl StateCommands {
-    /// Returns a draining filter on the saved modifications.
+    /// Returns a draining iterator on the saved modifications.
     fn drain_modifications<'a>(&'a mut self) -> impl Iterator<Item = StateMod> + 'a {
         self.modifications.drain(0..self.modifications.len())
     }

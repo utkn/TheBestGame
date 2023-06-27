@@ -79,10 +79,6 @@ pub struct Acceleration(pub f32);
 #[derive(Clone, Copy, Debug)]
 pub struct AnchorTransform(pub EntityRef, pub (f32, f32), pub f32);
 
-/// Entities tagged with this component will be removed if the given parent entity is removed.
-#[derive(Clone, Copy, Debug)]
-pub struct ExistenceDependency(pub EntityRef);
-
 /// A name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Name(pub &'static str);

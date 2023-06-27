@@ -42,7 +42,6 @@ impl VehicleBundle {
             UntargetedInteractionDelegate(vehicle),
             Hitbox(HitboxType::Ghost, Shape::Rect { w: 40., h: 30. }),
             InteractTarget::<Hitbox>::default(),
-            ExistenceDependency(vehicle),
         ));
         cmds.push_bundle(Self { vehicle, door })
     }

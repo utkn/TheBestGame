@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::prelude::*;
 
-use super::{CollisionEvt, Hitbox};
+use super::Hitbox;
 
 /// Represents insights about an entity that could possibly be a collider (i.e., have a hitbox).
 pub trait ColliderInsights<'a> {
@@ -14,7 +14,6 @@ pub trait ColliderInsights<'a> {
     fn new_collision_starters_of(&self, e: &EntityRef) -> HashSet<&'a EntityRef>;
     /// Returns the set of entities that just stopped colliding with this entity in the last update.
     fn new_collision_enders_of(&self, e: &EntityRef) -> HashSet<&'a EntityRef>;
-    fn concrete_contact_overlaps_of(&self, e: &EntityRef) -> Vec<&'a (f32, f32)>;
 }
 
 impl<'a> ColliderInsights<'a> for StateInsights<'a> {
@@ -55,20 +54,6 @@ impl<'a> ColliderInsights<'a> for StateInsights<'a> {
             .read_events::<InteractionEndedEvt<Hitbox>>()
             .filter(|evt| &evt.target == e)
             .map(|evt| &evt.actor)
-            .collect()
-    }
-
-    fn concrete_contact_overlaps_of(&self, e: &EntityRef) -> Vec<&'a (f32, f32)> {
-        self.0
-            .read_events::<CollisionEvt>()
-            .filter(|evt| &evt.e1 == e)
-            .filter(|evt| {
-                self.0
-                    .select_one::<(Hitbox,)>(&evt.e2)
-                    .map(|(hb,)| hb.0.is_concrete())
-                    .unwrap_or(false)
-            })
-            .map(|evt| &evt.overlap)
             .collect()
     }
 }

@@ -108,7 +108,6 @@ impl TransformedShape {
 pub struct EffectiveHitbox<'a> {
     pub entity: EntityRef,
     pub hitbox: &'a Hitbox,
-    pub trans: &'a Transform,
     pub shape: TransformedShape,
 }
 
@@ -118,8 +117,18 @@ impl<'a> EffectiveHitbox<'a> {
         Some(Self {
             entity: *e,
             hitbox,
-            trans,
             shape: TransformedShape::new(trans, &hitbox.1),
+        })
+    }
+
+    pub fn new_speculative(e: &EntityRef, dt: f32, state: &'a State) -> Option<Self> {
+        let (hitbox, &(mut trans), vel) = state.select_one::<(Hitbox, Transform, Velocity)>(e)?;
+        trans.x += vel.x * dt;
+        trans.y += vel.y * dt;
+        Some(Self {
+            entity: *e,
+            hitbox,
+            shape: TransformedShape::new(&trans, &hitbox.1),
         })
     }
 }
@@ -155,89 +164,92 @@ impl CollisionDetectionSystem {
 }
 
 impl System for CollisionDetectionSystem {
-    fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         let effective_hbs = state
             .select::<(Transform, Hitbox)>()
-            .flat_map(|(e, _)| EffectiveHitbox::new(&e, state))
+            .flat_map(|(e, _)| {
+                if let Some(_) = state.select_one::<(Velocity,)>(&e) {
+                    EffectiveHitbox::new_speculative(&e, ctx.dt, state)
+                } else {
+                    EffectiveHitbox::new(&e, state)
+                }
+            })
             .collect_vec();
         let resps = effective_hbs
             .into_iter()
             .tuple_combinations()
             .flat_map(|(ehb1, ehb2)| Self::resolve_collision(&ehb1, &ehb2))
             .collect_vec();
-        // Emit the collision events.
+        // Separate the colliding pairs.
         resps.iter().for_each(|resp| {
-            cmds.emit_event(CollisionEvt {
-                e1: resp.e1,
-                e2: resp.e2,
-                overlap: resp.overlap,
-            });
-            cmds.emit_event(CollisionEvt {
-                e1: resp.e2,
-                e2: resp.e1,
-                overlap: (-resp.overlap.0, -resp.overlap.1),
-            });
+            let neg_overlap = (-resp.overlap.0, -resp.overlap.1);
+            separate_collision(&resp.e1, &resp.e2, &resp.overlap, state, cmds);
+            separate_collision(&resp.e2, &resp.e1, &neg_overlap, state, cmds);
         });
         // Generate the new pair of collisions.
         let colliding_pairs: HashSet<_> = resps.iter().map(|resp| (resp.e1, resp.e2)).collect();
-        let all_pairs: HashSet<_> = state
-            .select_all()
-            .collect_vec()
-            .into_iter()
-            .tuple_combinations()
-            .collect();
-        all_pairs.into_iter().for_each(|(e1, e2)| {
-            if colliding_pairs.contains(&(e1, e2)) || colliding_pairs.contains(&(e2, e1)) {
-                if !Hitbox::interaction_exists(&e1, &e2, state) {
-                    cmds.emit_event(InteractReq::<Hitbox>::new(e1, e2));
-                    cmds.emit_event(InteractReq::<Hitbox>::new(e2, e1));
+        // Handle the hitbox interaction.
+        state
+            .select::<(InteractTarget<Hitbox>,)>()
+            .flat_map(|(target, (hb_intr,))| {
+                hb_intr.actors.iter().map(move |actor| (*actor, target))
+            })
+            .unique()
+            .for_each(|(actor, target)| {
+                if !colliding_pairs.contains(&(actor, target))
+                    && !colliding_pairs.contains(&(target, actor))
+                {
+                    cmds.emit_event(UninteractReq::<Hitbox>::new(actor, target));
+                    cmds.emit_event(UninteractReq::<Hitbox>::new(target, actor));
                 }
-            } else if Hitbox::interaction_exists(&e1, &e2, state) {
-                cmds.emit_event(UninteractReq::<Hitbox>::new(e1, e2));
-                cmds.emit_event(UninteractReq::<Hitbox>::new(e2, e1));
+            });
+        colliding_pairs.into_iter().for_each(|(e1, e2)| {
+            if !Hitbox::interaction_exists(&e1, &e2, state) {
+                cmds.emit_event(InteractReq::<Hitbox>::new(e1, e2));
+                cmds.emit_event(InteractReq::<Hitbox>::new(e2, e1));
             }
         });
     }
 }
 
-/// A system that separates the colliding entities by listening to the `CollisionEvt` events.
-#[derive(Clone, Debug, Default)]
-pub struct SeparateCollisionsSystem;
-
-impl System for SeparateCollisionsSystem {
-    fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state
-            .read_events::<CollisionEvt>()
-            .filter(|evt| {
-                let anchored = StateInsights::of(state).anchor_parent_of(&evt.e1).is_some()
-                    || StateInsights::of(state)
-                        .anchor_parent_of(&evt.e2)
-                        .map(|parent| parent == &evt.e1)
-                        .unwrap_or(false);
-                !anchored
-            })
-            .for_each(|evt| {
-                if let Some((trans, hb)) = state.select_one::<(Transform, Hitbox)>(&evt.e1) {
-                    let mut dpos = notan::math::vec2(-evt.overlap.0, -evt.overlap.1);
-                    if dpos.length_squared() == 0. {
-                        return;
-                    }
-                    if let Some((other_hb,)) = state.select_one::<(Hitbox,)>(&evt.e2) {
-                        if hb.0 != HitboxType::Dynamic || other_hb.0 == HitboxType::Ghost {
-                            return;
-                        }
-                        // this = dynamic, other = dynamic | static
-                        if other_hb.0 == HitboxType::Dynamic {
-                            dpos *= 0.5;
-                        }
-                        let new_pos = notan::math::vec2(trans.x, trans.y) + dpos;
-                        cmds.set_component(&evt.e1, trans.with_pos(new_pos.x, new_pos.y));
-                        // Reset the velocity.
-                        if other_hb.0 == HitboxType::Static {
-                            cmds.set_component(&evt.e1, Velocity::default());
-                        }
-                    }
-                }
-            })
+fn separate_collision(
+    e1: &EntityRef,
+    e2: &EntityRef,
+    overlap: &(f32, f32),
+    state: &State,
+    cmds: &mut StateCommands,
+) {
+    let anchored = StateInsights::of(state).anchor_parent_of(e1).is_some()
+        || StateInsights::of(state)
+            .anchor_parent_of(&e2)
+            .map(|parent| parent == e1)
+            .unwrap_or(false);
+    if anchored {
+        return;
+    }
+    if let Some((hb,)) = state.select_one::<(Hitbox,)>(e1) {
+        let mut dpos = notan::math::vec2(-overlap.0, -overlap.1);
+        // who cares ??
+        if dpos.length_squared() <= 1. {
+            return;
+        }
+        if let Some((other_hb,)) = state.select_one::<(Hitbox,)>(e2) {
+            if hb.0 != HitboxType::Dynamic || other_hb.0 == HitboxType::Ghost {
+                return;
+            }
+            // this = dynamic, other = dynamic | static
+            if other_hb.0 == HitboxType::Dynamic {
+                dpos *= 0.5;
+            }
+            cmds.update_component(e1, move |trans: &mut Transform| {
+                trans.x += dpos.x;
+                trans.y += dpos.y;
+            });
+            // Reset the velocity.
+            if other_hb.0 == HitboxType::Static {
+                cmds.set_component(e1, Velocity::default());
+                // cmds.set_component(e1, TargetVelocity::default());
+            }
+        }
     }
 }

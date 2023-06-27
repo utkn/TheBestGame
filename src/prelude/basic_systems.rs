@@ -10,15 +10,13 @@ impl System for MovementSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .select::<(Transform, Velocity)>()
+            // No movement for anchored entities!
             .filter(|(e, _)| state.select_one::<(AnchorTransform,)>(e).is_none())
             .for_each(|(e, (trans, vel))| {
-                // No movement for anchored entities!
-                if let Some(_) = state.select_one::<(AnchorTransform,)>(&e) {
-                    return;
-                };
                 let (mut new_pos_x, mut new_pos_y) = (trans.x, trans.y);
-                new_pos_x += vel.x * ctx.dt;
-                new_pos_y += vel.y * ctx.dt;
+                let (dx, dy) = (vel.x * ctx.dt, vel.y * ctx.dt);
+                new_pos_x += dx;
+                new_pos_y += dy;
                 cmds.update_component(&e, move |trans: &mut Transform| {
                     trans.x = new_pos_x;
                     trans.y = new_pos_y;
@@ -35,20 +33,27 @@ impl System for ApproachVelocitySystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .select::<(Velocity, TargetVelocity, Acceleration)>()
+            // No movement for anchored entities!
             .filter(|(e, _)| state.select_one::<(AnchorTransform,)>(e).is_none())
             .for_each(|(e, (vel, target_vel, acc))| {
                 let vel = notan::math::vec2(vel.x, vel.y);
                 let target_vel = notan::math::vec2(target_vel.x, target_vel.y);
-                if vel.distance_squared(target_vel) < 1. {
-                    cmds.set_component(
-                        &e,
-                        Velocity {
-                            x: target_vel.x,
-                            y: target_vel.y,
-                        },
-                    );
+                // who cares ??
+                if vel.distance_squared(target_vel) <= 1. {
+                    return;
                 } else {
-                    let new_vel = vel + acc.0 * ctx.dt * (target_vel - vel).normalize_or_zero();
+                    let mut new_vel = vel + acc.0 * ctx.dt * (target_vel - vel).normalize_or_zero();
+                    // Clamp to the target velocity.
+                    new_vel.x = if target_vel.x.is_sign_positive() {
+                        new_vel.x.min(target_vel.x)
+                    } else {
+                        new_vel.x.max(target_vel.x)
+                    };
+                    new_vel.y = if target_vel.y.is_sign_positive() {
+                        new_vel.y.min(target_vel.y)
+                    } else {
+                        new_vel.y.max(target_vel.y)
+                    };
                     cmds.set_component(
                         &e,
                         Velocity {
@@ -69,6 +74,7 @@ impl System for ApproachRotationSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .select::<(Transform, TargetRotation, Acceleration)>()
+            // No movement for anchored entities!
             .filter(|(e, _)| state.select_one::<(AnchorTransform,)>(e).is_none())
             .for_each(|(e, (trans, target_rot, acc))| {
                 let curr_deg = trans.deg;
@@ -110,22 +116,6 @@ impl System for AnchorSystem {
                         .translated((rotated_offset.x, rotated_offset.y))
                         .with_deg(parent_trans.deg + anchor.2);
                     cmds.set_component(&child_entity, new_trans);
-                }
-            });
-    }
-}
-
-/// A system that handles position and rotation anchoring.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ExistenceDependencySystem;
-
-impl System for ExistenceDependencySystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
-        state
-            .select::<(ExistenceDependency,)>()
-            .for_each(|(child_entity, (dependency,))| {
-                if !state.is_valid(&dependency.0) {
-                    cmds.mark_for_removal(&child_entity);
                 }
             });
     }
