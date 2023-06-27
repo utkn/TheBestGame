@@ -37,7 +37,7 @@ impl VehicleBundle {
         );
         let door = cmds.create_from((
             Transform::default(),
-            AnchorTransform(vehicle, (0., -40.)),
+            AnchorTransform(vehicle, (0., -40.), 0.),
             ProximityInteractable,
             UntargetedInteractionDelegate(vehicle),
             Hitbox(HitboxType::Ghost, Shape::Rect { w: 40., h: 30. }),

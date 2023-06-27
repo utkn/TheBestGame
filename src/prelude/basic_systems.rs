@@ -10,6 +10,7 @@ impl System for MovementSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .select::<(Transform, Velocity)>()
+            .filter(|(e, _)| state.select_one::<(AnchorTransform,)>(e).is_none())
             .for_each(|(e, (trans, vel))| {
                 // No movement for anchored entities!
                 if let Some(_) = state.select_one::<(AnchorTransform,)>(&e) {
@@ -34,6 +35,7 @@ impl System for ApproachVelocitySystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .select::<(Velocity, TargetVelocity, Acceleration)>()
+            .filter(|(e, _)| state.select_one::<(AnchorTransform,)>(e).is_none())
             .for_each(|(e, (vel, target_vel, acc))| {
                 let vel = notan::math::vec2(vel.x, vel.y);
                 let target_vel = notan::math::vec2(target_vel.x, target_vel.y);
@@ -67,6 +69,7 @@ impl System for ApproachRotationSystem {
     fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
         state
             .select::<(Transform, TargetRotation, Acceleration)>()
+            .filter(|(e, _)| state.select_one::<(AnchorTransform,)>(e).is_none())
             .for_each(|(e, (trans, target_rot, acc))| {
                 let curr_deg = trans.deg;
                 let target_deg = target_rot.deg;
@@ -103,7 +106,9 @@ impl System for AnchorSystem {
                     let rotated_offset = math::Vec2::from_angle(-parent_trans.deg.to_radians())
                         .rotate(math::vec2(offset.0, offset.1));
                     // Translate by the offset.
-                    let new_trans = parent_trans.translated((rotated_offset.x, rotated_offset.y));
+                    let new_trans = parent_trans
+                        .translated((rotated_offset.x, rotated_offset.y))
+                        .with_deg(parent_trans.deg + anchor.2);
                     cmds.set_component(&child_entity, new_trans);
                 }
             });

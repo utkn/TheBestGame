@@ -4,6 +4,7 @@ use crate::prelude::*;
 #[derive(Clone, Copy, Debug)]
 pub struct CameraFollow;
 
+/// Converts from world coordinates to the screen coordinates.
 pub fn map_to_screen_cords(
     world_x: f32,
     world_y: f32,
@@ -21,6 +22,7 @@ pub fn map_to_screen_cords(
     }
 }
 
+/// Converts from screen coordinates to world coordinates.
 pub fn map_to_world_cords(
     screen_x: f32,
     screen_y: f32,

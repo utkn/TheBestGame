@@ -1,8 +1,11 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
-use building::BuildingBundle;
+use building::{BuildingBundle, WallDirection};
 use itertools::Itertools;
 use notan::{
     draw::{self, CreateDraw, DrawImages, DrawShapes, DrawTransform},
@@ -65,21 +68,33 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         .collect();
     // Generate a debugging world.
     let mut world = WorldGenerator::generate(WorldTemplate::new([
-        (Transform::at(40., 40.), PLAYER_TEMPLATE),
-        (Transform::at(50., 50.), CHEST_TEMPLATE),
-        (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
+        (Transform::at(-40., -40.), PLAYER_TEMPLATE),
+        // (Transform::at(50., 50.), CHEST_TEMPLATE),
+        // (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
         // (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
-        (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
-        (Transform::at(10., 10.), SIMPLE_BACKPACK_TEMPLATE),
-        (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
-        (Transform::at(-50., -50.), BANDIT_TEMPLATE),
+        // (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
+        // (Transform::at(10., 10.), SIMPLE_BACKPACK_TEMPLATE),
+        // (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
+        // (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));
-    world.update_with(|_, cmds| {
-        BuildingBundle::create(
-            Transform::at(-100., -100.),
-            256.,
-            256.,
-            "derelict_house",
+    world.update_with(|state, cmds| {
+        // BuildingBundle::create(
+        //     Transform::default(),
+        //     128.,
+        //     128.,
+        //     HashSet::from_iter([
+        //         WallDirection::Left,
+        //         WallDirection::Right,
+        //         WallDirection::Top,
+        //         WallDirection::Bottom,
+        //     ]),
+        //     HashSet::from_iter([WallDirection::Left]),
+        //     "derelict_house",
+        //     cmds,
+        // );
+        HouseGenerator::new("derelict_house").try_generate(
+            &Rect::new((0., 0.), (512., 512.)),
+            state,
             cmds,
         );
     });
@@ -203,7 +218,7 @@ fn draw(
 ) {
     // Draw the game
     let mut game_rnd = gfx.create_draw();
-    game_rnd.clear(notan::prelude::Color::BLACK);
+    game_rnd.clear(notan::prelude::Color::GRAY);
     draw_game(&mut game_rnd, app_state);
     draw_debug(&mut game_rnd, app_state.world.get_state());
     gfx.render(&game_rnd);

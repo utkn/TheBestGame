@@ -2,9 +2,13 @@ use crate::prelude::{Transform, World};
 
 mod empty_world;
 mod entity_template;
+mod environment_generator;
+mod generation_area;
 
 use empty_world::*;
 pub use entity_template::*;
+pub use environment_generator::*;
+pub use generation_area::*;
 
 pub struct WorldTemplate {
     entity_templates: Vec<(Transform, EntityTemplate)>,

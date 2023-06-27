@@ -206,7 +206,7 @@ impl System for ItemPickupSystem {
                 cmds.remove_component::<ProximityInteractable>(&item);
                 cmds.set_components(
                     &item,
-                    (Transform::default(), AnchorTransform(actor, (0., 0.))),
+                    (Transform::default(), AnchorTransform(actor, (0., 0.), 0.)),
                 );
             });
         state

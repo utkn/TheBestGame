@@ -42,7 +42,7 @@ impl SpriteFrames {
         if frame_assets.is_empty() {
             return None;
         }
-        println!("read frames {:?}", frame_assets);
+        println!("read sprite frames {:?}", frame_assets);
         Some(Self {
             src_name,
             representing_tags,

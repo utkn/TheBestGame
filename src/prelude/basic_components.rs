@@ -77,7 +77,7 @@ pub struct Acceleration(pub f32);
 
 /// The [`Transform`] of the entities with this component will be fixed to the [`Transform`] of the given parent with an optional offset.
 #[derive(Clone, Copy, Debug)]
-pub struct AnchorTransform(pub EntityRef, pub (f32, f32));
+pub struct AnchorTransform(pub EntityRef, pub (f32, f32), pub f32);
 
 /// Entities tagged with this component will be removed if the given parent entity is removed.
 #[derive(Clone, Copy, Debug)]

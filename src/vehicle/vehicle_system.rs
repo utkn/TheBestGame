@@ -19,7 +19,7 @@ impl System for VehicleSystem {
                 // Copy the driver's controllers to the vehicle.
                 cmds.emit_event(CopyControllersReq::new(*driver, *vehicle));
                 // Anchor the driver to the vehicle.
-                cmds.set_component(driver, AnchorTransform(*vehicle, (0., 0.)));
+                cmds.set_component(driver, AnchorTransform(*vehicle, (0., 0.), 0.));
                 if let Some((vehicle_transform,)) = state.select_one::<(Transform,)>(vehicle) {
                     cmds.set_component(driver, vehicle_transform.clone());
                 }

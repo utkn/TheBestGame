@@ -45,14 +45,14 @@ impl CharacterBundle {
         let vf_radius = 200.;
         let vision_field = cmds.create_from((
             Transform::default(),
-            AnchorTransform(character, (vf_radius, 0.)),
+            AnchorTransform(character, (vf_radius, 0.), 0.),
             Hitbox(HitboxType::Ghost, Shape::Circle { r: vf_radius }),
             InteractTarget::<Hitbox>::default(),
             VisionField(vf_radius),
         ));
         let collision_senser = cmds.create_from((
             Transform::default(),
-            AnchorTransform(character, (0., 0.)),
+            AnchorTransform(character, (0., 0.), 0.),
             Hitbox(HitboxType::Ghost, Shape::Rect { w: 30., h: 30. }),
             InteractTarget::<Hitbox>::default(),
         ));
