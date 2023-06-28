@@ -70,33 +70,25 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
     let mut world = WorldGenerator::generate(WorldTemplate::new([
         (Transform::at(-40., -40.), PLAYER_TEMPLATE),
         // (Transform::at(50., 50.), CHEST_TEMPLATE),
-        // (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
+        (Transform::at(500., 500.), BASIC_CAR_TEMPLATE),
         // (Transform::at(10., 10.), HAND_GUN_TEMPLATE),
         (Transform::at(10., 10.), MACHINE_GUN_TEMPLATE),
         (Transform::at(10., 10.), SIMPLE_BACKPACK_TEMPLATE),
         (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
         // (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));
+    let house_size = 512.;
     world.update_with(|state, cmds| {
-        // BuildingBundle::create(
-        //     Transform::default(),
-        //     128.,
-        //     128.,
-        //     HashSet::from_iter([
-        //         WallDirection::Left,
-        //         WallDirection::Right,
-        //         WallDirection::Top,
-        //         WallDirection::Bottom,
-        //     ]),
-        //     HashSet::from_iter([WallDirection::Left]),
-        //     "derelict_house",
-        //     cmds,
-        // );
         HouseGenerator::new("derelict_house").try_generate(
-            &Rect::new((0., 0.), (1024., 1024.)),
+            &Rect::new((0., 0.), (house_size, house_size)),
             state,
             cmds,
         );
+        // HouseGenerator::new("derelict_house").try_generate(
+        //     &Rect::new((-600., -600.), (house_size, house_size)),
+        //     state,
+        //     cmds,
+        // );
     });
     AppState {
         world,

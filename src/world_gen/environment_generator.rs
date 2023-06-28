@@ -37,7 +37,7 @@ impl EnvGenerator for HouseGenerator {
         cmds: &mut StateCommands,
     ) -> Option<EntityRef> {
         let mut rng = thread_rng();
-        let possible_sizes = [192., 256.];
+        let possible_sizes = [192., 256., 320.];
         let mut curr_pos = available_space.min;
         let mut available_x = available_space.w();
         let mut available_y = available_space.h();

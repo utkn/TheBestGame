@@ -42,17 +42,22 @@ impl System for ApproachVelocitySystem {
                 if vel.distance_squared(target_vel) <= 1. {
                     return;
                 } else {
-                    let mut new_vel = vel + acc.0 * ctx.dt * (target_vel - vel).normalize_or_zero();
+                    let dv = acc.0 * ctx.dt * (target_vel - vel).normalize_or_zero();
+                    let mut new_vel = vel + dv;
                     // Clamp to the target velocity.
-                    new_vel.x = if target_vel.x.is_sign_positive() {
-                        new_vel.x.min(target_vel.x)
+                    new_vel.x = if (dv.x > 0. && new_vel.x >= target_vel.x)
+                        || (dv.x < 0. && new_vel.x <= target_vel.x)
+                    {
+                        target_vel.x
                     } else {
-                        new_vel.x.max(target_vel.x)
+                        new_vel.x
                     };
-                    new_vel.y = if target_vel.y.is_sign_positive() {
-                        new_vel.y.min(target_vel.y)
+                    new_vel.y = if (dv.y > 0. && new_vel.y >= target_vel.y)
+                        || (dv.y < 0. && new_vel.y <= target_vel.y)
+                    {
+                        target_vel.y
                     } else {
-                        new_vel.y.max(target_vel.y)
+                        new_vel.y
                     };
                     cmds.set_component(
                         &e,
