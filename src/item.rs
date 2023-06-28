@@ -115,8 +115,8 @@ impl ItemTransferSystem {
     }
 }
 
-impl System for ItemTransferSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for ItemTransferSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         state.read_events::<ItemTransferReq>().for_each(|evt| {
             let is_valid_from_loc = self.from_loc_valid(&evt.item_entity, &evt.from_loc, state);
             let is_valid_to_loc = self.to_loc_valid(&evt.item_entity, &evt.to_loc, state);
@@ -177,8 +177,8 @@ impl Interaction for Item {
 #[derive(Clone, Copy, Debug)]
 pub struct ItemPickupSystem;
 
-impl System for ItemPickupSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for ItemPickupSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Handle transfer from equipment/storage.
         state
             .read_events::<ItemUnequippedEvt>()

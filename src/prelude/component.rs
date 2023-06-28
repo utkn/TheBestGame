@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use super::generic_bag::{ConcreteBag, GenericBag, GenericBagMap};
 
 pub use super::component_tuple::ComponentTuple;
@@ -71,6 +73,44 @@ impl<T: Component> ComponentVec<T> {
     }
 }
 
+pub struct ComponentIter<'a, S: ComponentTuple<'a>> {
+    component_mgr: &'a ComponentManager,
+    curr_idx: usize,
+    max_idx: usize,
+    pd: PhantomData<S>,
+}
+
+impl<'a, S: ComponentTuple<'a>> ComponentIter<'a, S> {
+    pub fn new(component_mgr: &'a ComponentManager, max_idx: usize) -> Self {
+        Self {
+            component_mgr,
+            max_idx,
+            curr_idx: 0,
+            pd: Default::default(),
+        }
+    }
+}
+
+impl<'a, S: ComponentTuple<'a>> Iterator for ComponentIter<'a, S> {
+    type Item = (usize, S::RefOutput);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.curr_idx > self.max_idx {
+            return None;
+        }
+        let curr_idx = self.curr_idx;
+        self.curr_idx += 1;
+        if S::matches(curr_idx, self.component_mgr) {
+            Some((
+                curr_idx,
+                S::try_fetch(curr_idx, self.component_mgr).unwrap(),
+            ))
+        } else {
+            self.next()
+        }
+    }
+}
+
 /// Manages multiple types of components associated with entities.
 #[derive(Default, Debug)]
 pub struct ComponentManager(GenericBagMap);
@@ -80,7 +120,7 @@ impl ComponentManager {
     where
         T: Component,
     {
-        self.0.get_bag_mut::<ComponentVec<T>>()
+        self.0.get_bag_mut::<ComponentVec<T>>().unwrap()
     }
 
     pub(super) fn get_components<T>(&self) -> anyhow::Result<&ComponentVec<T>>
@@ -96,12 +136,8 @@ impl ComponentManager {
     }
 
     /// Fetches all the components as a tuple.
-    pub(super) fn select<'a, S: ComponentTuple<'a>>(
-        &'a self,
-    ) -> impl Iterator<Item = (usize, <S as ComponentTuple<'a>>::RefOutput)> {
-        (0..self.0.max_len())
-            .filter(|id| S::matches(*id, self))
-            .map(|id| (id, S::try_fetch(id, self).unwrap()))
+    pub(super) fn select<'a, S: ComponentTuple<'a>>(&'a self) -> ComponentIter<'a, S> {
+        ComponentIter::new(self, self.0.max_len().saturating_sub(1))
     }
 
     /// Fetches the component tuple associated with the given entity.

@@ -190,8 +190,8 @@ impl<I: Interaction> InteractionSystem<I> {
     }
 }
 
-impl<I: Interaction> System for InteractionSystem<I> {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<I: Interaction, R: StateReader, W: StateWriter> System<R, W> for InteractionSystem<I> {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Auto invalidate interactions.
         let invalidated_interactions = Self::interactions(state).filter(|(actor, target)| {
             state.will_be_removed(actor) || state.will_be_removed(target)

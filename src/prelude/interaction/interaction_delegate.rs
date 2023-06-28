@@ -9,8 +9,8 @@ pub struct UntargetedInteractionDelegate(pub EntityRef);
 #[derive(Clone, Copy, Debug)]
 pub struct UntargetedInteractionDelegateSystem;
 
-impl System for UntargetedInteractionDelegateSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for UntargetedInteractionDelegateSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Remove delegate components if the delegee is invalid.
         state
             .select::<(UntargetedInteractionDelegate,)>()

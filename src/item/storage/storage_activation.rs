@@ -31,8 +31,8 @@ impl Interaction for Storage {
 #[derive(Clone, Copy, Debug)]
 pub struct StorageDeactivationSystem;
 
-impl System for StorageDeactivationSystem {
-    fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for StorageDeactivationSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         state
             .select::<(Storage, InteractTarget<Storage>)>()
             .for_each(|(storage_entity, _)| {

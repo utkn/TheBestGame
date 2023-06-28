@@ -38,12 +38,6 @@ impl EntityManager {
         self.curr_versions.get(&id).cloned()
     }
 
-    pub(super) fn get_all<'a>(&'a self) -> impl Iterator<Item = EntityRef> + 'a {
-        self.curr_versions
-            .iter()
-            .map(|(id, v)| EntityRef::new(*id, *v))
-    }
-
     /// Returns true iff the given entity reference is valid.
     pub fn is_valid(&self, e: &EntityRef) -> bool {
         self.curr_versions

@@ -39,7 +39,7 @@ pub const PLAYER_TEMPLATE: EntityTemplate = EntityTemplate {
             character.primary_entity(),
             (
                 Sprite::new("player", 3),
-                CameraFollow::new(400., 400.),
+                CameraFollow::new(1200., 1200.),
                 Controller(UserInputDriver),
                 Affected::<MaxSpeed>::default(),
                 Affected::<Acceleration>::default(),

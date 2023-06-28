@@ -1,4 +1,4 @@
-use super::{EntityRef, State, StateCommands};
+use super::{EntityRef, State, StateCommands, StateReader, StateWriter};
 
 /// Represents the current state of the controller.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -45,9 +45,9 @@ pub struct UpdateContext {
     pub control_map: ControlMap,
 }
 
-pub trait System: 'static + std::fmt::Debug {
+pub trait System<R: StateReader, W: StateWriter>: 'static + std::fmt::Debug {
     /// The update function for the system. This is called at every update iteration on the registered systems.
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands);
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W);
     #[allow(unused_variables)]
     fn on_entity_added(&mut self, entity_ref: &EntityRef, state: &State) {}
     #[allow(unused_variables)]

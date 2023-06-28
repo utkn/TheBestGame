@@ -64,8 +64,8 @@ impl CopyControllersReq {
 #[derive(Clone, Copy, Debug)]
 pub struct DeleteControllersReq(pub EntityRef);
 
-impl<D: ControlDriver> System for ControlSystem<D> {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<D: ControlDriver, R: StateReader, W: StateWriter> System<R, W> for ControlSystem<D> {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         state.read_events::<CopyControllersReq>().for_each(|evt| {
             if let Some((from_controller,)) = state.select_one::<(Controller<D>,)>(&evt.from) {
                 cmds.set_component(&evt.to, from_controller.clone());

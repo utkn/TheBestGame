@@ -60,7 +60,7 @@ impl<T: Event> EventVec<T> {
 }
 
 /// An iterator that can initialized with `None` to be empty.
-pub(super) struct OptionalIter<'a, T>(Option<core::slice::Iter<'a, T>>);
+pub struct OptionalIter<'a, T>(Option<core::slice::Iter<'a, T>>);
 
 impl<'a, T> Iterator for OptionalIter<'a, T> {
     type Item = &'a T;
@@ -96,8 +96,8 @@ impl EventManager {
         });
     }
 
-    pub(super) fn get_events_mut<T: Event>(&mut self) -> &mut EventVec<T> {
-        self.0.get_bag_mut::<EventVec<T>>()
+    pub(super) fn get_events_mut<T: Event>(&mut self) -> Option<&mut EventVec<T>> {
+        self.0.get_bag_mut::<EventVec<T>>().ok()
     }
 
     pub(super) fn get_events<T: Event>(&self) -> Option<&EventVec<T>> {

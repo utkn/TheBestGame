@@ -3,10 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 use sepax2d::{sat_collision, sat_overlap, Rotate};
 
-use crate::{
-    camera::{self, CameraFollow},
-    prelude::*,
-};
+use crate::{camera::CameraFollow, prelude::*};
 
 pub use collider_insights::*;
 pub use projectile::*;
@@ -208,21 +205,15 @@ impl CollisionDetectionSystem {
     }
 }
 
-impl System for CollisionDetectionSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for CollisionDetectionSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         let collision_bounds = state
             .select::<(Transform, CameraFollow)>()
             .next()
             .map(|(_, (trans, camera))| {
                 (
-                    (
-                        trans.x - camera.camera_width / 2.,
-                        trans.y - camera.camera_height / 2.,
-                    ),
-                    (
-                        trans.x + camera.camera_width / 2.,
-                        trans.y + camera.camera_height / 2.,
-                    ),
+                    (trans.x - camera.w / 2., trans.y - camera.h / 2.),
+                    (trans.x + camera.w / 2., trans.y + camera.h / 2.),
                 )
             })
             .unwrap_or_default();
@@ -243,6 +234,7 @@ impl System for CollisionDetectionSystem {
         let resps = effective_hbs
             .into_iter()
             .tuple_combinations()
+            .filter(|(ehb1, _)| ehb1.hitbox.0 != HitboxType::Static)
             .flat_map(|(ehb1, ehb2)| Self::resolve_collision(&ehb1, &ehb2))
             .collect_vec();
         // Separate the colliding pairs.

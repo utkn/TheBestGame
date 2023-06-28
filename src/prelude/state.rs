@@ -4,10 +4,16 @@ use itertools::Itertools;
 use notan::egui::epaint::ahash::HashMap;
 
 use super::{
-    component::{Component, ComponentManager, ComponentTuple},
-    event::{Event, EventManager},
+    component::{Component, ComponentIter, ComponentManager, ComponentTuple},
+    event::{Event, EventManager, OptionalIter},
     EntityBundle, EntityManager, EntityRef, EntityRefBag, EntityTuple,
 };
+
+mod state_reader;
+mod state_writer;
+
+pub use state_reader::*;
+pub use state_writer::*;
 
 #[derive(Default, Debug)]
 pub struct State {
@@ -22,21 +28,26 @@ impl State {
     /// Marks the given entity for removal.
     fn mark_for_removal(&mut self, e: &EntityRef) {
         // If the entity is part of a bundle, remove the bundle altogether.
-        let containing_bundle_key = self
+        let containing_bundle = self
             .bundles
             .iter()
-            .find(|(_, bundle_entities)| bundle_entities.contains(e))
-            .map(|(bundle_key, _)| *bundle_key);
-        if let Some(bundle_key) = containing_bundle_key {
-            return self.mark_for_removal(&bundle_key);
+            .find(|(_, bundle_entities)| bundle_entities.contains(e));
+        if let Some((&bundle_key, _)) = containing_bundle {
+            // Recurse on the parent key (go up in the parent tree)
+            if !self.to_remove.contains(&bundle_key) {
+                return self.mark_for_removal(&bundle_key);
+            }
         }
+        // Otherwise, remove the entity and it's own bundle (go down)
         self.to_remove.insert(*e);
-        // Mark the bundle entities for removal as well.
-        if let Some(bundle_entities) = self.bundles.get(e) {
-            self.to_remove.extend(bundle_entities.iter().cloned())
-        }
+        self.bundles.get(e).cloned().map(|bundle_entities| {
+            bundle_entities.into_iter().for_each(|e| {
+                self.mark_for_removal(&e);
+            });
+        });
     }
 
+    /// Registers a new bundle.
     fn push_bundle<'a, B: EntityBundle<'a>>(&mut self, bundle: B) {
         let bundle_key = *bundle.primary_entity();
         let bundle_vec = Vec::from_iter(bundle.deconstruct().into_array().into_iter());
@@ -67,37 +78,51 @@ impl State {
     pub(super) fn reset_removal_requests(&mut self) {
         self.to_remove.clear()
     }
+}
+
+pub struct EntityRefComponentIter<'a, S: ComponentTuple<'a>>(
+    ComponentIter<'a, S>,
+    &'a EntityManager,
+);
+
+impl<'a, S: ComponentTuple<'a>> Iterator for EntityRefComponentIter<'a, S> {
+    type Item = (EntityRef, S::RefOutput);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some((id, component_tuple)) = self.0.next() {
+            let version = self.1.get_curr_version(id).unwrap_or(0);
+            Some((EntityRef::new(id, version), component_tuple))
+        } else {
+            None
+        }
+    }
+}
+
+impl StateReader for State {
+    type EventIterator<'a, T: Event> = OptionalIter<'a, T>;
+    type ComponentIterator<'a, S: ComponentTuple<'a>> = EntityRefComponentIter<'a, S>;
     /// Returns true if the given entity reference is valid.
-    pub fn is_valid(&self, e: &EntityRef) -> bool {
+    fn is_valid(&self, e: &EntityRef) -> bool {
         self.entity_mgr.is_valid(e)
     }
 
     /// Returns true if the given entity reference will be removed in the next update.
-    pub fn will_be_removed(&self, e: &EntityRef) -> bool {
+    fn will_be_removed(&self, e: &EntityRef) -> bool {
         self.to_remove.contains(e)
     }
 
     /// Returns an iterator over the emitted events of the given type in the last frame.
-    pub fn read_events<'a, T: Event>(&'a self) -> impl Iterator<Item = &'a T> {
+    fn read_events<'a, T: Event>(&'a self) -> Self::EventIterator<'a, T> {
         self.event_mgr.get_events_iter()
     }
 
     /// Returns an iterator over the components identified by the given component selector.
-    pub fn select<'a, S: ComponentTuple<'a>>(
-        &'a self,
-    ) -> impl Iterator<Item = (EntityRef, <S as ComponentTuple<'a>>::RefOutput)> {
-        self.component_mgr.select::<S>().map(|(id, res)| {
-            let version = self.entity_mgr.get_curr_version(id).unwrap_or(0);
-            (EntityRef::new(id, version), res)
-        })
-    }
-
-    pub fn select_all<'a>(&'a self) -> impl Iterator<Item = EntityRef> + 'a {
-        self.entity_mgr.get_all()
+    fn select<'a, S: ComponentTuple<'a>>(&'a self) -> Self::ComponentIterator<'a, S> {
+        EntityRefComponentIter(self.component_mgr.select::<S>(), &self.entity_mgr)
     }
 
     /// Returns the components of the given entity identified by the given component selector.
-    pub fn select_one<'a, S: ComponentTuple<'a>>(
+    fn select_one<'a, S: ComponentTuple<'a>>(
         &'a self,
         e: &EntityRef,
     ) -> Option<<S as ComponentTuple<'a>>::RefOutput> {
@@ -107,8 +132,8 @@ impl State {
         self.component_mgr.select_one::<S>(e.id())
     }
 
-    /// Reads a bundle of entities.
-    pub fn read_bundle<'a, B: EntityBundle<'a>>(&'a self, primary_entity: &EntityRef) -> Option<B> {
+    /// Reads a bundle of entities from the given `primary_entity`.
+    fn read_bundle<'a, B: EntityBundle<'a>>(&'a self, primary_entity: &EntityRef) -> Option<B> {
         let bundle_vec = self.bundles.get(primary_entity)?;
         let bundle_tuple = B::TupleRepr::from_slice(&bundle_vec);
         let bundle = B::reconstruct(bundle_tuple);
@@ -148,6 +173,7 @@ impl StateCommands {
             if !state.is_valid(&e) {
                 return;
             }
+            state.bundles.remove(&e);
             state.entity_mgr.remove(e.id());
             state.component_mgr.clear_components(e.id());
         });
@@ -156,7 +182,9 @@ impl StateCommands {
 
     /// Pushes a new event to be handled on the next update.
     pub fn emit_event<T: Event>(&mut self, evt: T) {
-        self.tmp_event_mgr.get_events_mut::<T>().push(evt)
+        if let Some(events) = self.tmp_event_mgr.get_events_mut::<T>() {
+            events.push(evt);
+        }
     }
 
     /// Dispatches a request to create a new entity in the next update and returns its would-be reference.

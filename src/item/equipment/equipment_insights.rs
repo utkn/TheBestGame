@@ -1,7 +1,4 @@
-use crate::{
-    item::ItemStack,
-    prelude::{EntityRef, StateInsights},
-};
+use crate::{item::ItemStack, prelude::*};
 
 use super::{Equipment, EquipmentSlot};
 

@@ -124,8 +124,8 @@ impl SpriteRepresentor {
 #[derive(Clone, Copy, Debug)]
 pub struct SpriteAnimationSystem;
 
-impl System for SpriteAnimationSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for SpriteAnimationSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         state.select::<(Sprite,)>().for_each(|(e, _)| {
             let dt = ctx.dt;
             cmds.update_component(&e, move |sprite: &mut Sprite| {

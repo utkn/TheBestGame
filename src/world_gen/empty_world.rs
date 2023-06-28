@@ -9,9 +9,9 @@ use crate::prelude::*;
 use crate::sprite::SpriteAnimationSystem;
 use crate::vehicle::*;
 
-pub fn create_empty_world() -> World {
+pub fn create_empty_world() -> SystemManager<State, StateCommands> {
     // Create the world from an empty state.
-    let mut world = World::from(State::default());
+    let mut world = SystemManager::from(State::default());
     // Control & movement
     world.register_system(MovementSystem);
     world.register_system(AnchorSystem);

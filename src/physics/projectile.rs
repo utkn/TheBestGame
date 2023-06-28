@@ -54,8 +54,8 @@ pub struct GenerateProjectileReq {
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectileGenerationSystem;
 
-impl System for ProjectileGenerationSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for ProjectileGenerationSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Try to automatically uninteract from the activated [`ProjectileGenerator`]s upon unequipping them.
         state.read_events::<ItemUnequippedEvt>().for_each(|evt| {
             if Storage::interaction_exists(&evt.equipment_entity, &evt.item_entity, state) {
@@ -195,8 +195,8 @@ pub struct HitEvt {
 #[derive(Clone, Copy, Debug)]
 pub struct HitSystem;
 
-impl System for HitSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for HitSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Emit the projectile hit events.
         state
             .select::<(Hitter, Velocity)>()
@@ -235,8 +235,8 @@ pub struct SuicideOnHit;
 #[derive(Clone, Copy, Debug)]
 pub struct SuicideOnHitSystem;
 
-impl System for SuicideOnHitSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for SuicideOnHitSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Remove the entities that should be removed after a hit.
         state.read_events::<HitEvt>().for_each(|evt| {
             if let Some(_) = state.select_one::<(SuicideOnHit,)>(&evt.hitter) {
@@ -272,8 +272,8 @@ impl<T: Component> Default for ApplyOnHitSystem<T> {
     }
 }
 
-impl<T: Component> System for ApplyOnHitSystem<T> {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<T: Component, R: StateReader, W: StateWriter> System<R, W> for ApplyOnHitSystem<T> {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         state.read_events::<HitEvt>().for_each(|evt| {
             if let Some((apply_on_hit,)) = state.select_one::<(ApplyOnHit<T>,)>(&evt.hitter) {
                 let target = evt.target;

@@ -10,7 +10,7 @@ pub trait GenericBag: std::fmt::Debug {
     fn as_any(&self) -> &dyn std::any::Any;
     /// Returns itself as a mutable `Any` reference, which can be used to safely cast into the underlying concrete bag.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-    /// Consumes and merges the contents of the other generic bag into this one. Should panic if the underlying concrete types are different.
+    /// Consumes and merges the contents of the other generic bag into this one. Will panic if the underlying concrete types are different.
     fn merge(&mut self, other: Box<dyn GenericBag>);
     /// Removes the value at the given index.
     fn remove_at(&mut self, index: usize) -> bool;
@@ -28,13 +28,16 @@ pub struct GenericBagMap {
 }
 
 impl GenericBagMap {
-    pub fn get_bag_mut<C: ConcreteBag>(&mut self) -> &mut C {
+    pub fn get_bag_mut<C: ConcreteBag>(&mut self) -> anyhow::Result<&mut C> {
         self.bags
             .entry(std::any::TypeId::of::<C::Item>())
             .or_insert(Box::new(C::default()))
             .as_any_mut()
             .downcast_mut::<C>()
-            .unwrap()
+            .ok_or(anyhow::anyhow!(
+                "could not downcast the generic bag to {:?}",
+                std::any::type_name::<C>()
+            ))
     }
 
     pub fn get_bag<C: ConcreteBag>(&self) -> anyhow::Result<&C> {

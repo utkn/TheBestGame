@@ -3,16 +3,13 @@ use crate::prelude::*;
 /// The entity tagged by this component will be followed by the camera.
 #[derive(Clone, Copy, Debug)]
 pub struct CameraFollow {
-    pub camera_width: f32,
-    pub camera_height: f32,
+    pub w: f32,
+    pub h: f32,
 }
 
 impl CameraFollow {
-    pub fn new(camera_width: f32, camera_height: f32) -> Self {
-        Self {
-            camera_width,
-            camera_height,
-        }
+    pub fn new(w: f32, h: f32) -> Self {
+        Self { w, h }
     }
 }
 

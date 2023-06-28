@@ -34,8 +34,8 @@ impl Interaction for VisionField {
 #[derive(Clone, Copy, Debug)]
 pub struct VisionSystem;
 
-impl System for VisionSystem {
-    fn update(&mut self, _ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for VisionSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         state.select::<(VisionField,)>().for_each(|(e, _)| {
             StateInsights::of(state)
                 .new_collision_enders_of(&e)

@@ -74,8 +74,8 @@ pub struct ItemUnstoredEvt {
 #[derive(Clone, Debug)]
 pub struct StorageSystem;
 
-impl System for StorageSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for StorageSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Maintain the shadow storages.
         let mut shadow_storage_map = HashMap::<EntityRef, ShadowStorage>::new();
         // Perform the unstorings on the shadow storages.

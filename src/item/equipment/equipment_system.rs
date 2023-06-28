@@ -81,8 +81,8 @@ pub struct ItemUnequippedEvt {
 #[derive(Clone, Debug)]
 pub struct EquipmentSystem;
 
-impl System for EquipmentSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for EquipmentSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Maintain the shadow equipments.
         let mut shadow_equipment_map = HashMap::<EntityRef, ShadowEquipment>::new();
         // Perform the unequippings on the shadow equipments.

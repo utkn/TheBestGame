@@ -1,11 +1,7 @@
 #![allow(dead_code)]
 
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-};
+use std::{collections::HashMap, path::PathBuf};
 
-use building::{BuildingBundle, WallDirection};
 use itertools::Itertools;
 use notan::{
     draw::{self, CreateDraw, DrawImages, DrawShapes, DrawTransform},
@@ -24,6 +20,7 @@ mod ai;
 mod building;
 mod camera;
 mod character;
+mod chunks;
 mod controller;
 mod effects;
 mod item;
@@ -40,7 +37,7 @@ type AssetMap = HashMap<PathBuf, Asset<Texture>>;
 
 #[derive(notan::AppState)]
 struct AppState {
-    world: World,
+    world: SystemManager<State, StateCommands>,
     ui_state: ui::UiState,
     asset_map: AssetMap,
     sprite_representor: SpriteRepresentor,
@@ -77,7 +74,7 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
         (Transform::at(10., 10.), RUNNING_SHOES_TEMPLATE),
         // (Transform::at(-50., -50.), BANDIT_TEMPLATE),
     ]));
-    let house_size = 512.;
+    let house_size = 4096.;
     world.update_with(|state, cmds| {
         HouseGenerator::new("derelict_house").try_generate(
             &Rect::new((0., 0.), (house_size, house_size)),
@@ -99,7 +96,8 @@ fn setup(app: &mut notan::prelude::App, assets: &mut Assets) -> AppState {
 }
 
 fn update(app: &mut notan::prelude::App, app_state: &mut AppState) {
-    let dt = app.timer.delta_f32();
+    // let dt = app.timer.delta_f32();
+    let dt = 1. / 60.;
     let mut control_map = ControlMap::from_app_state(&app);
     // Move the mouse into the world coordinates.
     control_map.mouse_pos = map_to_world_cords(
@@ -139,8 +137,22 @@ fn draw_sprite(
 
 fn draw_game(rnd: &mut draw::Draw, app_state: &mut AppState) {
     let game_state = app_state.world.get_state();
+    let draw_bounds = game_state
+        .select::<(Transform, CameraFollow)>()
+        .next()
+        .map(|(_, (trans, camera))| {
+            (
+                (trans.x - camera.w / 2., trans.y - camera.h / 2.),
+                (trans.x + camera.w / 2., trans.y + camera.h / 2.),
+            )
+        })
+        .unwrap_or_default();
     game_state
         .select::<(Transform, Sprite)>()
+        .filter(|(_, (trans, _))| {
+            trans.x.clamp(draw_bounds.0 .0, draw_bounds.1 .0) == trans.x
+                && trans.y.clamp(draw_bounds.0 .1, draw_bounds.1 .1) == trans.y
+        })
         .flat_map(|(sprite_entity, (trans, sprite))| {
             app_state
                 .sprite_representor

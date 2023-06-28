@@ -112,8 +112,8 @@ pub struct NeedChangeEvt(EntityRef, NeedType, NeedChange);
 #[derive(Clone, Debug)]
 pub struct NeedStateSystem;
 
-impl System for NeedStateSystem {
-    fn update(&mut self, _: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for NeedStateSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         // Handle need status changes...
         state.select::<(Needs,)>().for_each(|(e, (curr_needs,))| {
             curr_needs.0.iter().for_each(|(need_type, curr_status)| {
@@ -176,8 +176,8 @@ impl NeedMutator {
 #[derive(Clone, Copy, Debug)]
 pub struct NeedMutatorSystem;
 
-impl System for NeedMutatorSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &State, cmds: &mut StateCommands) {
+impl<R: StateReader, W: StateWriter> System<R, W> for NeedMutatorSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
         state
             .select::<(NeedMutator,)>()
             .for_each(|(e, (mutator,))| {

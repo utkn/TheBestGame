@@ -1,4 +1,4 @@
-use crate::prelude::{Transform, World};
+use crate::prelude::*;
 
 mod empty_world;
 mod entity_template;
@@ -25,7 +25,7 @@ impl WorldTemplate {
 pub struct WorldGenerator;
 
 impl WorldGenerator {
-    pub fn generate(world_template: WorldTemplate) -> World {
+    pub fn generate(world_template: WorldTemplate) -> SystemManager<State, StateCommands> {
         let mut world = create_empty_world();
         world.update_with(|state, cmds| {
             world_template
