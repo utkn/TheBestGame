@@ -12,7 +12,7 @@ impl TagSource for DefaultSprite {
         "default"
     }
 
-    fn try_generate(_: &EntityRef, _: &State) -> anyhow::Result<HashSet<Self::TagType>> {
+    fn try_generate(_: &EntityRef, _: &impl StateReader) -> anyhow::Result<HashSet<Self::TagType>> {
         Ok(HashSet::new())
     }
 }

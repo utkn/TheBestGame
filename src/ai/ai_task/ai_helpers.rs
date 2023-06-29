@@ -8,7 +8,10 @@ use crate::{
 use super::{AiMovementHandler, AiTask, AiTaskOutput};
 
 /// Returns the enemy on sight.
-pub(super) fn try_get_enemy_on_sight<'a>(actor: &EntityRef, state: &'a State) -> Option<EntityRef> {
+pub(super) fn try_get_enemy_on_sight<'a>(
+    actor: &EntityRef,
+    state: &'a impl StateReader,
+) -> Option<EntityRef> {
     let ai_char = state.read_bundle::<CharacterBundle>(actor)?;
     let insights = StateInsights::of(state);
     let visibles = ai_char.visibles(state);
@@ -24,7 +27,10 @@ pub(super) fn try_get_enemy_on_sight<'a>(actor: &EntityRef, state: &'a State) ->
 }
 
 /// Returns the position to move to if the `actor` is hit by a projectile.
-pub(super) fn try_move_towards_projectile(actor: &EntityRef, state: &State) -> Option<(f32, f32)> {
+pub(super) fn try_move_towards_projectile(
+    actor: &EntityRef,
+    state: &impl StateReader,
+) -> Option<(f32, f32)> {
     let insights = StateInsights::of(state);
     let (vx, vy) = insights
         .new_hitters_of(actor)
@@ -38,7 +44,7 @@ pub(super) fn try_move_towards_projectile(actor: &EntityRef, state: &State) -> O
 }
 
 /// Returns the actions that have the priority.
-pub(super) fn get_urgent_actions(actor: &EntityRef, state: &State) -> Vec<AiTaskOutput> {
+pub(super) fn get_urgent_actions(actor: &EntityRef, state: &impl StateReader) -> Vec<AiTaskOutput> {
     // Move towards the projectile.
     if let Some(target_pos) = try_move_towards_projectile(actor, state) {
         return vec![AiTaskOutput::QueueFront(AiTask::MoveToPos(
@@ -53,7 +59,7 @@ pub(super) fn get_urgent_actions(actor: &EntityRef, state: &State) -> Vec<AiTask
 }
 
 /// Returns whether there are urgent actions that needs to be taken (should be handled by the `Routine` task).
-pub(super) fn has_urgent_actions(actor: &EntityRef, state: &State) -> bool {
+pub(super) fn has_urgent_actions(actor: &EntityRef, state: &impl StateReader) -> bool {
     get_urgent_actions(actor, state).len() > 0
 }
 
@@ -61,7 +67,7 @@ pub(super) fn get_dpos(
     target_x: &f32,
     target_y: &f32,
     actor: &EntityRef,
-    state: &State,
+    state: &impl StateReader,
 ) -> Option<(f32, f32)> {
     let actor_trans = StateInsights::of(state).transform_of(actor)?;
     Some((target_x - actor_trans.x, target_y - actor_trans.y))
@@ -71,7 +77,7 @@ pub(super) fn reached_destination_approx(
     target_x: &f32,
     target_y: &f32,
     actor: &EntityRef,
-    state: &State,
+    state: &impl StateReader,
 ) -> bool {
     let cell_size = {
         state

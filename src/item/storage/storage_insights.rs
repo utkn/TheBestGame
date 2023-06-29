@@ -11,7 +11,7 @@ pub trait StorageInsights {
     fn is_storing(&self, storage_entity: &EntityRef, item_entity: &EntityRef) -> bool;
 }
 
-impl<'a> StorageInsights for StateInsights<'a> {
+impl<'a, R: StateReader> StorageInsights for StateInsights<'a, R> {
     fn has_storage(&self, e: &EntityRef) -> bool {
         self.0.select_one::<(Storage,)>(e).is_some()
     }

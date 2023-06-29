@@ -28,7 +28,7 @@ impl TagSource for Item {
         "item"
     }
 
-    fn try_generate(e: &EntityRef, state: &State) -> anyhow::Result<HashSet<Self::TagType>> {
+    fn try_generate(e: &EntityRef, state: &impl StateReader) -> anyhow::Result<HashSet<Self::TagType>> {
         let insights = StateInsights::of(state);
         if !insights.is_item(e) {
             anyhow::bail!("{:?} is not an item", e);

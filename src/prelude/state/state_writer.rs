@@ -1,6 +1,7 @@
 use crate::prelude::{Component, ComponentTuple, EntityBundle, EntityRef, EntityRefBag, Event};
 
-pub trait StateWriter {
+/// UNUSED
+pub(super) trait StateWriter {
     /// Dispatches a request to remove the given entity from the system in the next update.
     fn remove_entity_for_sure(&mut self, e: &EntityRef);
     /// Pushes a new event to be handled on the next update.

@@ -19,7 +19,7 @@ pub fn map_to_screen_cords(
     world_y: f32,
     screen_width: f32,
     screen_height: f32,
-    state: &State,
+    state: &impl StateReader,
 ) -> (f32, f32) {
     if let Some((_, (_, trans))) = state.select::<(CameraFollow, Transform)>().next() {
         (
@@ -37,7 +37,7 @@ pub fn map_to_world_cords(
     screen_y: f32,
     screen_width: f32,
     screen_height: f32,
-    state: &State,
+    state: &impl StateReader,
 ) -> (f32, f32) {
     if let Some((_, (_, trans))) = state.select::<(CameraFollow, Transform)>().next() {
         (

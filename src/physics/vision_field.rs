@@ -16,17 +16,29 @@ impl Interaction for VisionField {
     }
 
     /// Returns true. Can only be started explicitly by targeted requests.
-    fn can_start_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_start_targeted(
+        _actor: &EntityRef,
+        _target: &EntityRef,
+        _state: &impl StateReader,
+    ) -> bool {
         true
     }
 
     /// Returns false. Can only be started explicitly by targeted requests.
-    fn can_start_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_start_untargeted(
+        _actor: &EntityRef,
+        _target: &EntityRef,
+        _state: &impl StateReader,
+    ) -> bool {
         false
     }
 
     /// Can only be ended explicitly by targeted requests.
-    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_end_untargeted(
+        _actor: &EntityRef,
+        _target: &EntityRef,
+        _state: &impl StateReader,
+    ) -> bool {
         false
     }
 }
@@ -34,8 +46,8 @@ impl Interaction for VisionField {
 #[derive(Clone, Copy, Debug)]
 pub struct VisionSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for VisionSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for VisionSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state.select::<(VisionField,)>().for_each(|(e, _)| {
             StateInsights::of(state)
                 .new_collision_enders_of(&e)

@@ -64,16 +64,16 @@ impl CharacterBundle {
     }
 
     /// Returns true if this character can see the given entity `other`.
-    pub fn can_see(&self, other: &EntityRef, state: &State) -> bool {
+    pub fn can_see(&self, other: &EntityRef, state: &impl StateReader) -> bool {
         self.visibles(state).contains(other)
     }
 
     /// Returns true if this character can see the given entity `other`.
-    pub fn visibles(&self, state: &State) -> HashSet<EntityRef> {
+    pub fn visibles(&self, state: &impl StateReader) -> HashSet<EntityRef> {
         StateInsights::of(state).visibles_of(&self.vision_field)
     }
 
-    pub fn get_backpack<'a>(&self, state: &'a State) -> Option<&'a EntityRef> {
+    pub fn get_backpack<'a>(&self, state: &'a impl StateReader) -> Option<&'a EntityRef> {
         StateInsights::of(state)
             .equippable_at(&self.character, &EquipmentSlot::Backpack)
             .and_then(|item_stack| item_stack.head_item())

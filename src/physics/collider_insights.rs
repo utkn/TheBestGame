@@ -16,7 +16,7 @@ pub trait ColliderInsights<'a> {
     fn new_collision_enders_of(&self, e: &EntityRef) -> HashSet<&'a EntityRef>;
 }
 
-impl<'a> ColliderInsights<'a> for StateInsights<'a> {
+impl<'a, R: StateReader> ColliderInsights<'a> for StateInsights<'a, R> {
     fn contacts_of(&self, e: &EntityRef) -> Option<&'a HashSet<EntityRef>> {
         self.0
             .select_one::<(InteractTarget<Hitbox>,)>(e)

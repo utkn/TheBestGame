@@ -12,17 +12,17 @@ impl Interaction for Equipment {
         Storage::priority()
     }
 
-    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         let insights = StateInsights::of(state);
         insights.has_equipment(target) && insights.is_character(actor)
     }
 
-    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         Self::can_start_targeted(actor, target, state)
             && StateInsights::of(state).location_of(target) == ItemLocation::Ground
     }
 
-    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &impl StateReader) -> bool {
         true
     }
 }

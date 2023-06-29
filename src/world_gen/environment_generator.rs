@@ -14,7 +14,7 @@ pub trait EnvGenerator {
     fn try_generate(
         self,
         available_space: &Rect,
-        state: &State,
+        state: &impl StateReader,
         cmds: &mut StateCommands,
     ) -> Option<EntityRef>;
 }
@@ -33,7 +33,7 @@ impl EnvGenerator for HouseGenerator {
     fn try_generate(
         self,
         available_space: &Rect,
-        state: &State,
+        state: &impl StateReader,
         cmds: &mut StateCommands,
     ) -> Option<EntityRef> {
         let mut rng = thread_rng();
@@ -165,7 +165,7 @@ impl EnvGenerator for RoomGenerator {
     fn try_generate(
         self,
         available_space: &Rect,
-        _state: &State,
+        _state: &impl StateReader,
         cmds: &mut StateCommands,
     ) -> Option<EntityRef> {
         // println!("generating room {:?} for {:?}", self, available_space);

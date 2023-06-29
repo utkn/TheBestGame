@@ -12,7 +12,7 @@ pub trait VisionInsights<'a> {
     fn visibles_of(&self, vision_field_entity: &EntityRef) -> HashSet<EntityRef>;
 }
 
-impl<'a> VisionInsights<'a> for StateInsights<'a> {
+impl<'a, R: StateReader> VisionInsights<'a> for StateInsights<'a, R> {
     fn viewers_of(&self, viewable_entity: &EntityRef) -> Option<&'a HashSet<EntityRef>> {
         self.0
             .select_one::<(InteractTarget<VisionField>,)>(viewable_entity)

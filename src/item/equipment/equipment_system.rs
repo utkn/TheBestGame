@@ -14,7 +14,7 @@ impl From<Equipment> for ShadowEquipment {
 
 impl ShadowEquipment {
     /// Tries to place the given entity in the underlying equipment and returns `true` iff it succeeds.
-    fn try_equip(&mut self, item_entity: EntityRef, state: &State) -> bool {
+    fn try_equip(&mut self, item_entity: EntityRef, state: &impl StateReader) -> bool {
         if let Some(eq_slots) = self.0.get_slots_to_occupy(&item_entity, state) {
             eq_slots.into_iter().for_each(|eq_slot| {
                 self.0
@@ -81,8 +81,8 @@ pub struct ItemUnequippedEvt {
 #[derive(Clone, Debug)]
 pub struct EquipmentSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for EquipmentSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for EquipmentSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Maintain the shadow equipments.
         let mut shadow_equipment_map = HashMap::<EntityRef, ShadowEquipment>::new();
         // Perform the unequippings on the shadow equipments.

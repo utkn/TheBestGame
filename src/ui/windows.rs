@@ -26,16 +26,10 @@ impl From<Option<WindowType>> for ItemLocation {
     }
 }
 
-pub trait Window {
+pub trait Window<R: StateReader> {
     fn window_id(&self) -> egui::Id;
     fn window_type(&self) -> WindowType;
-    fn add_into(
-        &mut self,
-        ctx: &egui::Context,
-        game_state: &State,
-        ui_cmds: &mut StateCommands,
-        ui_state: &mut UiState,
-    );
+    fn add_into(&mut self, ctx: &egui::Context, game_state: &R, ui_state: &mut UiState);
 }
 
 pub(super) struct EquipmentWindow {
@@ -44,7 +38,7 @@ pub(super) struct EquipmentWindow {
     pub(super) is_player_equipment: bool,
 }
 
-impl Window for EquipmentWindow {
+impl<R: StateReader> Window<R> for EquipmentWindow {
     fn window_id(&self) -> egui::Id {
         format!("EquipmentWindow[{:?}]", self.equipment_entity).into()
     }
@@ -53,17 +47,11 @@ impl Window for EquipmentWindow {
         WindowType::Equipment(self.equipment_entity)
     }
 
-    fn add_into(
-        &mut self,
-        ctx: &egui::Context,
-        game_state: &State,
-        ui_cmds: &mut StateCommands,
-        ui_state: &mut UiState,
-    ) {
+    fn add_into(&mut self, ctx: &egui::Context, game_state: &R, ui_state: &mut UiState) {
         let screen_width = ctx.input().screen_rect().width();
         let screen_height = ctx.input().screen_rect().height();
         let mut win = egui::Window::new(self.title)
-            .id(self.window_id())
+            .id(Window::<R>::window_id(self))
             .collapsible(false)
             .default_width(WINDOW_WIDTH)
             .resizable(false);
@@ -83,7 +71,6 @@ impl Window for EquipmentWindow {
             ui.add(EquipmentWidget(
                 &self.equipment_entity,
                 game_state,
-                ui_cmds,
                 ui_state,
             ));
         });
@@ -96,7 +83,7 @@ pub(super) struct StorageWindow {
     pub(super) is_player_storage: bool,
 }
 
-impl Window for StorageWindow {
+impl<R: StateReader> Window<R> for StorageWindow {
     fn window_id(&self) -> egui::Id {
         format!("StorageWindow[{:?}]", self.storage_entity).into()
     }
@@ -105,17 +92,11 @@ impl Window for StorageWindow {
         WindowType::Storage(self.storage_entity)
     }
 
-    fn add_into(
-        &mut self,
-        ctx: &egui::Context,
-        game_state: &State,
-        ui_cmds: &mut StateCommands,
-        ui_state: &mut UiState,
-    ) {
+    fn add_into(&mut self, ctx: &egui::Context, game_state: &R, ui_state: &mut UiState) {
         let screen_width = ctx.input().screen_rect().width();
         let screen_height = ctx.input().screen_rect().height();
         let mut win = egui::Window::new(self.title)
-            .id(self.window_id())
+            .id(Window::<R>::window_id(self))
             .collapsible(false)
             .default_width(WINDOW_WIDTH)
             .default_height(150.)
@@ -134,19 +115,14 @@ impl Window for StorageWindow {
         }
         win.show(ctx, |ui| {
             ui.set_width(ui.available_width());
-            ui.add(StorageWidget(
-                &self.storage_entity,
-                game_state,
-                ui_cmds,
-                ui_state,
-            ))
+            ui.add(StorageWidget(&self.storage_entity, game_state, ui_state))
         });
     }
 }
 
 pub(super) struct NeedsWindow(pub(super) EntityRef);
 
-impl Window for NeedsWindow {
+impl<R: StateReader> Window<R> for NeedsWindow {
     fn window_id(&self) -> egui::Id {
         format!("NeedsWindow[{:?}]", self.0).into()
     }
@@ -155,15 +131,9 @@ impl Window for NeedsWindow {
         WindowType::Needs(self.0)
     }
 
-    fn add_into(
-        &mut self,
-        ctx: &egui::Context,
-        game_state: &State,
-        ui_cmds: &mut StateCommands,
-        ui_state: &mut UiState,
-    ) {
+    fn add_into(&mut self, ctx: &egui::Context, game_state: &R, ui_state: &mut UiState) {
         egui::Window::new("Needs")
-            .id(self.window_id())
+            .id(Window::<R>::window_id(self))
             .anchor(egui::Align2::RIGHT_TOP, (-10., 10.))
             .collapsible(false)
             .title_bar(false)
@@ -174,7 +144,7 @@ impl Window for NeedsWindow {
             .show(ctx, |ui| {
                 ui.set_width(ui.available_width());
                 ui.set_height(ui.available_height());
-                ui.add(NeedsWidget(&self.0, game_state, ui_cmds, ui_state));
+                ui.add(NeedsWidget(&self.0, game_state, ui_state));
             });
     }
 }

@@ -44,15 +44,15 @@ impl Interaction for Hitbox {
         0
     }
 
-    fn can_start_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_start_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &impl StateReader) -> bool {
         true
     }
 
-    fn can_start_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_start_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &impl StateReader) -> bool {
         false
     }
 
-    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &impl StateReader) -> bool {
         false
     }
 }
@@ -112,7 +112,7 @@ pub struct EffectiveHitbox<'a> {
 }
 
 impl<'a> EffectiveHitbox<'a> {
-    pub fn new(e: &EntityRef, state: &'a State) -> Option<Self> {
+    pub fn new(e: &EntityRef, state: &'a impl StateReader) -> Option<Self> {
         let (hitbox, trans) = state.select_one::<(Hitbox, Transform)>(e)?;
         Some(Self {
             entity: *e,
@@ -121,7 +121,7 @@ impl<'a> EffectiveHitbox<'a> {
         })
     }
 
-    pub fn new_speculative(e: &EntityRef, dt: f32, state: &'a State) -> Option<Self> {
+    pub fn new_speculative(e: &EntityRef, dt: f32, state: &'a impl StateReader) -> Option<Self> {
         let (hitbox, &(mut trans), vel) = state.select_one::<(Hitbox, Transform, Velocity)>(e)?;
         trans.x += vel.x * dt;
         trans.y += vel.y * dt;
@@ -166,7 +166,7 @@ impl CollisionDetectionSystem {
         e1: &EntityRef,
         e2: &EntityRef,
         overlap: &(f32, f32),
-        state: &State,
+        state: &impl StateReader,
         cmds: &mut StateCommands,
     ) {
         let anchored = StateInsights::of(state).anchor_parent_of(e1).is_some()
@@ -205,8 +205,8 @@ impl CollisionDetectionSystem {
     }
 }
 
-impl<R: StateReader, W: StateWriter> System<R, W> for CollisionDetectionSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for CollisionDetectionSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         let collision_bounds = state
             .select::<(Transform, CameraFollow)>()
             .next()

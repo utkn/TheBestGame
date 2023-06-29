@@ -40,10 +40,10 @@ impl Equipment {
             .map(|(eq_slot, item_stack)| (eq_slot, item_stack))
     }
 
-    pub fn content_description<'a>(
+    pub fn content_description<'a, R: StateReader>(
         &'a self,
-        state: &'a State,
-    ) -> HashMap<EquipmentSlot, ItemDescription<'a>> {
+        state: &'a R,
+    ) -> HashMap<EquipmentSlot, ItemDescription<'a, R>> {
         self.slots
             .iter()
             .filter_map(|(eq_slot, item_stack)| {
@@ -60,7 +60,7 @@ impl Equipment {
     pub fn get_slots_to_occupy(
         &self,
         item_entity: &EntityRef,
-        state: &State,
+        state: &impl StateReader,
     ) -> Option<HashSet<EquipmentSlot>> {
         let slot_selector = &state.select_one::<(Equippable,)>(item_entity)?.0 .0;
         slot_selector.choose_slots(item_entity, &self.slots, state)

@@ -90,14 +90,24 @@ pub struct ItemTransferSystem;
 
 impl ItemTransferSystem {
     /// Returns true if the given item is indeed in the given location.
-    fn from_loc_valid(&self, item_entity: &EntityRef, loc: &ItemLocation, state: &State) -> bool {
+    fn from_loc_valid(
+        &self,
+        item_entity: &EntityRef,
+        loc: &ItemLocation,
+        state: &impl StateReader,
+    ) -> bool {
         let is_item_entity_valid = state.select_one::<(Item,)>(item_entity).is_some();
         let curr_location = StateInsights::of(state).location_of(item_entity);
         is_item_entity_valid && curr_location == *loc
     }
 
     /// Returns true if the given item can be moved to the given location.
-    fn to_loc_valid(&self, item_entity: &EntityRef, loc: &ItemLocation, state: &State) -> bool {
+    fn to_loc_valid(
+        &self,
+        item_entity: &EntityRef,
+        loc: &ItemLocation,
+        state: &impl StateReader,
+    ) -> bool {
         let is_item_entity_valid = state.select_one::<(Item,)>(item_entity).is_some();
         is_item_entity_valid
             && match loc {
@@ -115,8 +125,8 @@ impl ItemTransferSystem {
     }
 }
 
-impl<R: StateReader, W: StateWriter> System<R, W> for ItemTransferSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for ItemTransferSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state.read_events::<ItemTransferReq>().for_each(|evt| {
             let is_valid_from_loc = self.from_loc_valid(&evt.item_entity, &evt.from_loc, state);
             let is_valid_to_loc = self.to_loc_valid(&evt.item_entity, &evt.to_loc, state);
@@ -157,18 +167,26 @@ impl Interaction for Item {
         100
     }
 
-    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         let insights = StateInsights::of(state);
         insights.is_item(target)
             && insights.location_of(target) == ItemLocation::Ground
             && insights.is_character(actor)
     }
 
-    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_untargeted(
+        actor: &EntityRef,
+        target: &EntityRef,
+        state: &impl StateReader,
+    ) -> bool {
         Self::can_start_targeted(actor, target, state)
     }
 
-    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_end_untargeted(
+        _actor: &EntityRef,
+        _target: &EntityRef,
+        _state: &impl StateReader,
+    ) -> bool {
         true
     }
 }
@@ -177,8 +195,8 @@ impl Interaction for Item {
 #[derive(Clone, Copy, Debug)]
 pub struct ItemPickupSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for ItemPickupSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for ItemPickupSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Handle transfer from equipment/storage.
         state
             .read_events::<ItemUnequippedEvt>()

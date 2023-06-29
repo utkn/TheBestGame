@@ -7,7 +7,7 @@ use super::{AiMovementHandler, AiTask, AiTaskOutput};
 pub(super) fn attack_handler(
     target: EntityRef,
     actor: &EntityRef,
-    state: &State,
+    state: &impl StateReader,
 ) -> Vec<AiTaskOutput> {
     // Cancel the attack if the target is no longer valid.
     if !state.is_valid(&target) {
@@ -55,7 +55,7 @@ pub(super) fn attack_handler(
     ];
 }
 
-pub(super) fn routine_handler(actor: &EntityRef, state: &State) -> Vec<AiTaskOutput> {
+pub(super) fn routine_handler(actor: &EntityRef, state: &impl StateReader) -> Vec<AiTaskOutput> {
     let mut priority_actions = get_urgent_actions(actor, state);
     priority_actions.insert(0, AiTaskOutput::QueueFront(AiTask::Routine));
     priority_actions

@@ -17,7 +17,7 @@ pub trait EquipmentInsights<'a> {
     ) -> Option<&'a ItemStack>;
 }
 
-impl<'a> EquipmentInsights<'a> for StateInsights<'a> {
+impl<'a, R: StateReader> EquipmentInsights<'a> for StateInsights<'a, R> {
     fn has_equipment(&self, e: &EntityRef) -> bool {
         self.0.select_one::<(Equipment,)>(e).is_some()
     }

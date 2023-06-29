@@ -4,22 +4,17 @@ use crate::{
 };
 
 pub struct EntityTemplate {
-    generator: fn(trans: Transform, state: &State, cmds: &mut StateCommands) -> Option<EntityRef>,
+    generator: fn(trans: Transform, cmds: &mut StateCommands) -> Option<EntityRef>,
 }
 
 impl EntityTemplate {
-    pub(super) fn generate(
-        &self,
-        trans: Transform,
-        state: &State,
-        cmds: &mut StateCommands,
-    ) -> Option<EntityRef> {
-        (self.generator)(trans, state, cmds)
+    pub(super) fn generate(&self, trans: Transform, cmds: &mut StateCommands) -> Option<EntityRef> {
+        (self.generator)(trans, cmds)
     }
 }
 
 pub const SIMPLE_BACKPACK_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, _state, cmds| {
+    generator: |trans, cmds| {
         let item = create_item(
             Item::unstackable(),
             trans,
@@ -33,7 +28,7 @@ pub const SIMPLE_BACKPACK_TEMPLATE: EntityTemplate = EntityTemplate {
 };
 
 pub const PLAYER_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, _state, cmds| {
+    generator: |trans, cmds| {
         let character = CharacterBundle::create(trans, cmds);
         cmds.set_components(
             character.primary_entity(),
@@ -51,7 +46,7 @@ pub const PLAYER_TEMPLATE: EntityTemplate = EntityTemplate {
 };
 
 pub const BANDIT_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, state, cmds| {
+    generator: |trans, cmds| {
         let character = CharacterBundle::create(trans, cmds);
         cmds.set_components(
             character.primary_entity(),
@@ -62,7 +57,7 @@ pub const BANDIT_TEMPLATE: EntityTemplate = EntityTemplate {
                 Affected::<Acceleration>::default(),
             ),
         );
-        let bandit_weapon = MACHINE_GUN_TEMPLATE.generate(trans, state, cmds)?;
+        let bandit_weapon = MACHINE_GUN_TEMPLATE.generate(trans, cmds)?;
         cmds.emit_event(ItemTransferReq::equip_from_ground(
             bandit_weapon,
             *character.primary_entity(),
@@ -72,7 +67,7 @@ pub const BANDIT_TEMPLATE: EntityTemplate = EntityTemplate {
 };
 
 pub const CHEST_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, _state, cmds| {
+    generator: |trans, cmds| {
         let storage_bundle = StorageBundle::create(trans, cmds);
         cmds.set_components(
             storage_bundle.primary_entity(),
@@ -83,11 +78,11 @@ pub const CHEST_TEMPLATE: EntityTemplate = EntityTemplate {
 };
 
 pub const BASIC_CAR_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, _state, cmds| Some(*VehicleBundle::create(trans, cmds).primary_entity()),
+    generator: |trans, cmds| Some(*VehicleBundle::create(trans, cmds).primary_entity()),
 };
 
 pub const HAND_GUN_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, _state, cmds| {
+    generator: |trans, cmds| {
         let item = create_item(
             Item::stackable(2),
             trans,
@@ -118,7 +113,7 @@ pub const HAND_GUN_TEMPLATE: EntityTemplate = EntityTemplate {
 };
 
 pub const MACHINE_GUN_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, _state, cmds| {
+    generator: |trans, cmds| {
         let item = create_item(
             Item::unstackable(),
             trans,
@@ -151,7 +146,7 @@ pub const MACHINE_GUN_TEMPLATE: EntityTemplate = EntityTemplate {
     },
 };
 pub const RUNNING_SHOES_TEMPLATE: EntityTemplate = EntityTemplate {
-    generator: |trans, _state, cmds| {
+    generator: |trans, cmds| {
         let item = create_item(
             Item::unstackable(),
             trans,

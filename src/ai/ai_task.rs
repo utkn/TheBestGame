@@ -29,7 +29,7 @@ pub enum AiTask {
 
 impl AiTask {
     /// Given the current state of the game, returns a list of [`AiTaskOutput`]s to be handled by the caller.
-    pub fn evaluate(self, actor: &EntityRef, state: &State) -> Vec<AiTaskOutput> {
+    pub fn evaluate(self, actor: &EntityRef, state: &impl StateReader) -> Vec<AiTaskOutput> {
         // Dispatch to the correct handler.
         match self {
             AiTask::Attack { target } => attack_handler(target, actor, state),

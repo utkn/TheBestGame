@@ -25,7 +25,7 @@ impl ControlDriver for AiDriver {
         &mut self,
         actor: &EntityRef,
         _ctx: &UpdateContext,
-        game_state: &State,
+        game_state: &impl StateReader,
     ) -> Vec<ControlCommand> {
         let front_task_output = self
             .tasks

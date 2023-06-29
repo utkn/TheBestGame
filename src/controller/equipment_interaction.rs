@@ -13,11 +13,10 @@ pub struct EquipmentUninteractReq(pub EntityRef, pub EquipmentSlot);
 
 /// A system that handles the entities that can interact with their equipment.
 #[derive(Clone, Copy, Debug)]
-pub struct HandInteractionSystem;
+pub struct EquipmentInteractionSystem;
 
-/// TODO: integrate with the new controller system. Refactor as `EquipmentInteractorSystem` that listens to equipment interaction events.
-impl<R: StateReader, W: StateWriter> System<R, W> for HandInteractionSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for EquipmentInteractionSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state.read_events::<EquipmentInteractReq>().for_each(|evt| {
             if let Some((equipment,)) = state.select_one::<(Equipment,)>(&evt.0) {
                 let item_at_slot = equipment

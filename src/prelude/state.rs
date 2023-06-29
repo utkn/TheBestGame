@@ -10,10 +10,8 @@ use super::{
 };
 
 mod state_reader;
-mod state_writer;
 
 pub use state_reader::*;
-pub use state_writer::*;
 
 #[derive(Default, Debug)]
 pub struct State {
@@ -52,31 +50,6 @@ impl State {
         let bundle_key = *bundle.primary_entity();
         let bundle_vec = Vec::from_iter(bundle.deconstruct().into_array().into_iter());
         self.bundles.insert(bundle_key, bundle_vec);
-    }
-
-    /// Clears all the events in the state. Should be called at the end of an update.
-    pub(super) fn clear_events(&mut self) {
-        self.event_mgr.clear_all()
-    }
-
-    /// Updates the state through the given commands.
-    pub(super) fn apply_cmds(&mut self, mut cmds: StateCommands) {
-        cmds.drain_modifications()
-            .sorted_by_key(|m| m.0)
-            .for_each(|m| m.1(self));
-        // Take in the emitted events.
-        self.event_mgr.merge_events(cmds.tmp_event_mgr);
-    }
-
-    /// Converts the entities marked as invalid to eager entity removals and copies them into the given `StateCommands`.
-    pub(super) fn transfer_removals(&mut self, cmds: &mut StateCommands) {
-        self.to_remove.iter().for_each(|to_remove| {
-            cmds.remove_entity_for_sure(to_remove);
-        });
-    }
-
-    pub(super) fn reset_removal_requests(&mut self) {
-        self.to_remove.clear()
     }
 }
 
@@ -139,6 +112,35 @@ impl StateReader for State {
         let bundle = B::reconstruct(bundle_tuple);
         Some(bundle)
     }
+
+    fn cloned_entity_manager(&self) -> EntityManager {
+        self.entity_mgr.clone()
+    }
+
+    /// Updates the state through the given commands.
+    fn apply_cmds(&mut self, mut cmds: StateCommands) {
+        cmds.drain_modifications()
+            .sorted_by_key(|m| m.0)
+            .for_each(|m| m.1(self));
+        // Take in the emitted events.
+        self.event_mgr.merge_events(cmds.tmp_event_mgr);
+    }
+
+    /// Clears all the events in the state. Should be called at the end of an update.
+    fn clear_events(&mut self) {
+        self.event_mgr.clear_all()
+    }
+
+    /// Converts the entities marked as invalid to eager entity removals and copies them into the given `StateCommands`.
+    fn transfer_removals(&mut self, cmds: &mut StateCommands) {
+        self.to_remove.iter().for_each(|to_remove| {
+            cmds.remove_entity_for_sure(to_remove);
+        });
+    }
+
+    fn reset_removal_requests(&mut self) {
+        self.to_remove.clear()
+    }
 }
 
 /// Represents a state modification.
@@ -150,10 +152,10 @@ pub struct StateCommands {
     modifications: Vec<StateMod>,
 }
 
-impl From<&State> for StateCommands {
-    fn from(state: &State) -> Self {
+impl<R: StateReader> From<&R> for StateCommands {
+    fn from(state: &R) -> Self {
         Self {
-            tmp_entity_mgr: state.entity_mgr.clone(),
+            tmp_entity_mgr: state.cloned_entity_manager(),
             tmp_event_mgr: Default::default(),
             modifications: Default::default(),
         }
@@ -161,24 +163,6 @@ impl From<&State> for StateCommands {
 }
 
 impl StateCommands {
-    /// Returns a draining iterator on the saved modifications.
-    fn drain_modifications<'a>(&'a mut self) -> impl Iterator<Item = StateMod> + 'a {
-        self.modifications.drain(0..self.modifications.len())
-    }
-
-    /// Dispatches a request to remove the given entity from the system in the next update.
-    fn remove_entity_for_sure(&mut self, e: &EntityRef) {
-        let e = *e;
-        let f = Box::new(move |state: &mut State| {
-            if !state.is_valid(&e) {
-                return;
-            }
-            state.bundles.remove(&e);
-            state.entity_mgr.remove(e.id());
-            state.component_mgr.clear_components(e.id());
-        });
-        self.modifications.push(StateMod(3, f));
-    }
 
     /// Pushes a new event to be handled on the next update.
     pub fn emit_event<T: Event>(&mut self, evt: T) {
@@ -294,6 +278,25 @@ impl StateCommands {
                 return;
             }
             state.mark_for_removal(&e);
+        });
+        self.modifications.push(StateMod(3, f));
+    }
+
+    /// Returns a draining iterator on the saved modifications.
+    fn drain_modifications<'a>(&'a mut self) -> impl Iterator<Item = StateMod> + 'a {
+        self.modifications.drain(0..self.modifications.len())
+    }
+
+    /// Dispatches a request to remove the given entity from the system in the next update.
+    fn remove_entity_for_sure(&mut self, e: &EntityRef) {
+        let e = *e;
+        let f = Box::new(move |state: &mut State| {
+            if !state.is_valid(&e) {
+                return;
+            }
+            state.bundles.remove(&e);
+            state.entity_mgr.remove(e.id());
+            state.component_mgr.clear_components(e.id());
         });
         self.modifications.push(StateMod(3, f));
     }

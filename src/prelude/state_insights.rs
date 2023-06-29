@@ -3,10 +3,10 @@ use crate::prelude::*;
 use super::Transform;
 
 /// Provides insights about the given state of the system. Other modules should extend this with new functionality.
-pub struct StateInsights<'a>(pub &'a State);
+pub struct StateInsights<'a, R: StateReader>(pub &'a R);
 
-impl<'a> StateInsights<'a> {
-    pub fn of(state: &'a State) -> Self {
+impl<'a, R: StateReader> StateInsights<'a, R> {
+    pub fn of(state: &'a R) -> Self {
         Self(state)
     }
 }
@@ -16,7 +16,7 @@ pub trait AnchoredInsights<'a> {
     fn anchor_parent_of(&self, e: &EntityRef) -> Option<&'a EntityRef>;
 }
 
-impl<'a> AnchoredInsights<'a> for StateInsights<'a> {
+impl<'a, R: StateReader> AnchoredInsights<'a> for StateInsights<'a, R> {
     /// Returns the anchor parent if it exists.
     fn anchor_parent_of(&self, e: &EntityRef) -> Option<&'a EntityRef> {
         self.0
@@ -35,7 +35,7 @@ pub trait TransformInsights<'a> {
     fn pos_diff(&self, e1: &EntityRef, e2: &EntityRef) -> Option<(f32, f32)>;
 }
 
-impl<'a> TransformInsights<'a> for StateInsights<'a> {
+impl<'a, R: StateReader> TransformInsights<'a> for StateInsights<'a, R> {
     fn transform_of(&self, e: &EntityRef) -> Option<&'a Transform> {
         self.0.select_one::<(Transform,)>(e).map(|(trans,)| trans)
     }

@@ -25,14 +25,14 @@ impl WorldTemplate {
 pub struct WorldGenerator;
 
 impl WorldGenerator {
-    pub fn generate(world_template: WorldTemplate) -> SystemManager<State, StateCommands> {
+    pub fn generate(world_template: WorldTemplate) -> SystemManager<State> {
         let mut world = create_empty_world();
-        world.update_with(|state, cmds| {
+        world.update_with(|_, cmds| {
             world_template
                 .entity_templates
                 .into_iter()
                 .for_each(|(trans, templ)| {
-                    templ.generate(trans, state, cmds);
+                    templ.generate(trans, cmds);
                 })
         });
         world

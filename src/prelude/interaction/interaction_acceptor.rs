@@ -70,8 +70,8 @@ impl ConsensusStrategy {
 #[derive(Clone, Copy, Debug)]
 pub struct InteractionAcceptorSystem(pub ConsensusStrategy, pub ConsensusStrategy);
 
-impl<R: StateReader, W: StateWriter> System<R, W> for InteractionAcceptorSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for InteractionAcceptorSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Interact proposals.
         let consensus_instances = state
             .read_events::<ProposeInteractEvt>()

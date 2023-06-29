@@ -3,15 +3,15 @@ use crate::prelude::*;
 use super::{Equipment, Item, Storage};
 
 #[derive(Clone, Debug)]
-pub struct ItemDescription<'a> {
+pub struct ItemDescription<'a, R: StateReader> {
     base_name: &'a Name,
     item_equipment: Option<&'a Equipment>,
     item_storage: Option<&'a Storage>,
-    state: &'a State,
+    state: &'a R,
     pub weight: f32,
 }
 
-impl<'a> PartialEq for ItemDescription<'a> {
+impl<'a, R: StateReader> PartialEq for ItemDescription<'a, R> {
     fn eq(&self, other: &Self) -> bool {
         self.base_name == other.base_name
             && match (self.item_equipment, other.item_equipment) {
@@ -31,8 +31,8 @@ impl<'a> PartialEq for ItemDescription<'a> {
     }
 }
 
-impl<'a> ItemDescription<'a> {
-    pub fn of(item: &'a EntityRef, state: &'a State) -> Option<Self> {
+impl<'a, R: StateReader> ItemDescription<'a, R> {
+    pub fn of(item: &'a EntityRef, state: &'a R) -> Option<Self> {
         let (Item(weight), base_name) = state.select_one::<(Item, Name)>(item)?;
         let item_equipment = state
             .select_one::<(Equipment,)>(item)

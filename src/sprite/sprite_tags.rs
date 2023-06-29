@@ -10,7 +10,7 @@ pub struct SpriteTags<S: TagSource> {
 }
 
 impl<S: TagSource> SpriteTags<S> {
-    pub fn of(sprite_entity: &EntityRef, state: &State) -> anyhow::Result<Self> {
+    pub fn of(sprite_entity: &EntityRef, state: &impl StateReader) -> anyhow::Result<Self> {
         // Generate the tags for this entity.
         let tags = S::try_generate(sprite_entity, state)?;
         Ok(Self {

@@ -117,8 +117,8 @@ impl<T> Default for EffectSystem<T> {
     }
 }
 
-impl<T: AffectibleComponent, R: StateReader, W: StateWriter> System<R, W> for EffectSystem<T> {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<T: AffectibleComponent, R: StateReader> System<R> for EffectSystem<T> {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Apply the effects.
         state
             .select::<(Affected<T>, T)>()

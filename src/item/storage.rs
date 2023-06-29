@@ -37,7 +37,11 @@ impl Storage {
 
     /// Returns the index of the slot in which the given `item_entity` can be stored.
     /// Returns `None` iff `item_entity` cannot be stored.
-    pub fn get_available_slot(&self, item_entity: &EntityRef, state: &State) -> Option<usize> {
+    pub fn get_available_slot(
+        &self,
+        item_entity: &EntityRef,
+        state: &impl StateReader,
+    ) -> Option<usize> {
         self.stacks
             .iter()
             .find_position(|item_stack| item_stack.can_store(item_entity, state))
@@ -53,7 +57,10 @@ impl Storage {
             .map(|(idx, _)| idx)
     }
 
-    pub fn content_description<'a>(&'a self, state: &'a State) -> Vec<ItemDescription<'a>> {
+    pub fn content_description<'a, R: StateReader>(
+        &'a self,
+        state: &'a R,
+    ) -> Vec<ItemDescription<'a, R>> {
         self.stacks
             .iter()
             .filter_map(|item_stack| {

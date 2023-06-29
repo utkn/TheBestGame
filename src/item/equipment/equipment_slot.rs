@@ -60,7 +60,7 @@ impl SlotSelector {
         &self,
         item_entity: &EntityRef,
         slots: &HashMap<EquipmentSlot, ItemStack>,
-        state: &State,
+        state: &impl StateReader,
     ) -> Option<HashSet<EquipmentSlot>> {
         let mut chosen_slots = HashSet::new();
         for clause in &self.0 {

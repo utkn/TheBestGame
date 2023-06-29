@@ -60,7 +60,7 @@ pub struct SpriteRepresentor {
 
 impl SpriteRepresentor {
     /// Parses the sprite asset folder for the given sprite id.
-    fn parse_for_sprite_id(&mut self, sprite_entity: &EntityRef, state: &State) -> Option<()> {
+    fn parse_for_sprite_id(&mut self, sprite_entity: &EntityRef, state: &impl StateReader) -> Option<()> {
         let sprite_id = &state.select_one::<(Sprite,)>(sprite_entity)?.0.sprite_id;
         self.repr_tags.entry(sprite_id.clone()).or_insert_with(|| {
             let sprite_id = sprite_id.clone();
@@ -78,7 +78,7 @@ impl SpriteRepresentor {
     fn try_represent_as<'a, S: TagSource>(
         &'a self,
         sprite_entity: &EntityRef,
-        state: &State,
+        state: &impl StateReader,
     ) -> anyhow::Result<&'a SpriteFrames> {
         let entity_tags = SpriteTags::<S>::of(sprite_entity, state)?;
         let sprite_id = &state
@@ -107,7 +107,7 @@ impl SpriteRepresentor {
     pub fn get_representations<'a>(
         &'a mut self,
         sprite_entity: &EntityRef,
-        state: &State,
+        state: &impl StateReader,
     ) -> impl Iterator<Item = &'a SpriteFrames> {
         self.parse_for_sprite_id(sprite_entity, state);
         let representations = [
@@ -124,8 +124,8 @@ impl SpriteRepresentor {
 #[derive(Clone, Copy, Debug)]
 pub struct SpriteAnimationSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for SpriteAnimationSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for SpriteAnimationSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state.select::<(Sprite,)>().for_each(|(e, _)| {
             let dt = ctx.dt;
             cmds.update_component(&e, move |sprite: &mut Sprite| {

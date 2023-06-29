@@ -11,7 +11,7 @@ impl ControlDriver for UserInputDriver {
         &mut self,
         actor: &EntityRef,
         ctx: &UpdateContext,
-        game_state: &State,
+        game_state: &impl StateReader,
     ) -> Vec<ControlCommand> {
         if StateInsights::of(game_state).is_vehicle(actor) {
             get_vehicle_commands(actor, ctx, game_state, 200.)
@@ -24,7 +24,7 @@ impl ControlDriver for UserInputDriver {
 fn get_character_commands(
     actor: &EntityRef,
     ctx: &UpdateContext,
-    game_state: &State,
+    game_state: &impl StateReader,
     default_speed: f32,
 ) -> Vec<ControlCommand> {
     let mut vel_cmds = {
@@ -92,7 +92,7 @@ fn get_character_commands(
 fn get_vehicle_commands(
     actor: &EntityRef,
     ctx: &UpdateContext,
-    game_state: &State,
+    game_state: &impl StateReader,
     default_speed: f32,
 ) -> Vec<ControlCommand> {
     let (curr_trans, _curr_vel) = game_state

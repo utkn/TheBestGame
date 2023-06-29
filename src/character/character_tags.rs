@@ -30,7 +30,7 @@ impl TagSource for Character {
         "character"
     }
 
-    fn try_generate(e: &EntityRef, state: &State) -> anyhow::Result<HashSet<Self::TagType>> {
+    fn try_generate(e: &EntityRef, state: &impl StateReader) -> anyhow::Result<HashSet<Self::TagType>> {
         if !StateInsights::of(state).is_character(e) {
             anyhow::bail!("{:?} is not a character", e);
         }

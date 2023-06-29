@@ -7,7 +7,7 @@ pub trait CharacterInsights<'a> {
     fn is_character(&self, e: &EntityRef) -> bool;
 }
 
-impl<'a> CharacterInsights<'a> for StateInsights<'a> {
+impl<'a, R: StateReader> CharacterInsights<'a> for StateInsights<'a, R> {
     fn is_character(&self, e: &EntityRef) -> bool {
         self.0.select_one::<(Character,)>(e).is_some()
     }

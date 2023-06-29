@@ -30,7 +30,7 @@ impl AiMovementHandler {
         }
     }
 
-    pub fn handle(mut self, actor: &EntityRef, state: &State) -> Vec<AiTaskOutput> {
+    pub fn handle(mut self, actor: &EntityRef, state: &impl StateReader) -> Vec<AiTaskOutput> {
         // If there are urgent actions, cancel the movement.
         if get_urgent_actions(actor, state).len() > 0 {
             return vec![AiTaskOutput::IssueCmd(ControlCommand::SetTargetVelocity(
@@ -84,7 +84,7 @@ impl AiMovementHandler {
 fn compute_path(
     target: &(f32, f32),
     actor: &EntityRef,
-    state: &State,
+    state: &impl StateReader,
 ) -> Option<VecDeque<(f32, f32)>> {
     // Dynamic cell size selection. A cell must fully encompass the hitbox of the actor.
     let cell_size = {

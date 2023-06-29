@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rect {
     pub min: (f32, f32),
@@ -130,6 +128,7 @@ impl GenArea {
 }
 
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]

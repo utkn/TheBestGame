@@ -14,7 +14,7 @@ impl From<Storage> for ShadowStorage {
 
 impl ShadowStorage {
     /// Tries to store the given entity in the underlying storage and returns `true` iff it succeeds.
-    fn try_store(&mut self, item_entity: EntityRef, state: &State) -> bool {
+    fn try_store(&mut self, item_entity: EntityRef, state: &impl StateReader) -> bool {
         // Find available slot
         if let Some(idx) = self.0.get_available_slot(&item_entity, state) {
             // Get the stack at the slot.
@@ -74,8 +74,8 @@ pub struct ItemUnstoredEvt {
 #[derive(Clone, Debug)]
 pub struct StorageSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for StorageSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for StorageSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Maintain the shadow storages.
         let mut shadow_storage_map = HashMap::<EntityRef, ShadowStorage>::new();
         // Perform the unstorings on the shadow storages.

@@ -13,17 +13,25 @@ impl Interaction for Storage {
         50
     }
 
-    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         state.select_one::<(Storage,)>(target).is_some()
             && StateInsights::of(state).is_character(actor)
     }
 
-    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_untargeted(
+        actor: &EntityRef,
+        target: &EntityRef,
+        state: &impl StateReader,
+    ) -> bool {
         Self::can_start_targeted(actor, target, state)
             && StateInsights::of(state).location_of(target) == ItemLocation::Ground
     }
 
-    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_end_untargeted(
+        _actor: &EntityRef,
+        _target: &EntityRef,
+        _state: &impl StateReader,
+    ) -> bool {
         true
     }
 }
@@ -31,8 +39,8 @@ impl Interaction for Storage {
 #[derive(Clone, Copy, Debug)]
 pub struct StorageDeactivationSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for StorageDeactivationSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for StorageDeactivationSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .select::<(Storage, InteractTarget<Storage>)>()
             .for_each(|(storage_entity, _)| {

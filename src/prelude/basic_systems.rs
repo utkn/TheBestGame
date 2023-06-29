@@ -6,8 +6,8 @@ use crate::prelude::*;
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MovementSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for MovementSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for MovementSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .select::<(Transform, Velocity)>()
             // No movement for anchored entities!
@@ -29,8 +29,8 @@ impl<R: StateReader, W: StateWriter> System<R, W> for MovementSystem {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ApproachVelocitySystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for ApproachVelocitySystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for ApproachVelocitySystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .select::<(Velocity, TargetVelocity, Acceleration)>()
             // No movement for anchored entities!
@@ -75,8 +75,8 @@ impl<R: StateReader, W: StateWriter> System<R, W> for ApproachVelocitySystem {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ApproachRotationSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for ApproachRotationSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for ApproachRotationSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .select::<(Transform, TargetRotation, Acceleration)>()
             // No movement for anchored entities!
@@ -105,8 +105,8 @@ impl<R: StateReader, W: StateWriter> System<R, W> for ApproachRotationSystem {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct AnchorSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for AnchorSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for AnchorSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .select::<(AnchorTransform, Transform)>()
             .for_each(|(child_entity, (anchor, _))| {
@@ -130,8 +130,8 @@ impl<R: StateReader, W: StateWriter> System<R, W> for AnchorSystem {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct LifetimeSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for LifetimeSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for LifetimeSystem {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state.select::<(Lifetime,)>().for_each(|(e, (lifetime,))| {
             // Remove the entities with ended lifetime.
             if lifetime.remaining_time <= 0. {

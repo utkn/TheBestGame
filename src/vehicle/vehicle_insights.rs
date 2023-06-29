@@ -11,7 +11,7 @@ pub trait VehicleInsights<'a> {
     fn vehicle_of(&self, actor: &EntityRef) -> Option<EntityRef>;
 }
 
-impl<'a> VehicleInsights<'a> for StateInsights<'a> {
+impl<'a, R: StateReader> VehicleInsights<'a> for StateInsights<'a, R> {
     fn is_vehicle(&self, e: &EntityRef) -> bool {
         self.0.select_one::<(Vehicle,)>(e).is_some()
     }

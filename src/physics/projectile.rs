@@ -29,16 +29,28 @@ impl Interaction for ProjectileGenerator {
         Storage::priority() + 10
     }
 
-    fn can_start_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_start_targeted(
+        _actor: &EntityRef,
+        _target: &EntityRef,
+        _state: &impl StateReader,
+    ) -> bool {
         true
     }
 
-    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_untargeted(
+        actor: &EntityRef,
+        target: &EntityRef,
+        state: &impl StateReader,
+    ) -> bool {
         let insights = StateInsights::of(state);
         insights.is_equipping(actor, target) && insights.is_character(actor)
     }
 
-    fn can_end_untargeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_end_untargeted(
+        _actor: &EntityRef,
+        _target: &EntityRef,
+        _state: &impl StateReader,
+    ) -> bool {
         true
     }
 }
@@ -54,8 +66,8 @@ pub struct GenerateProjectileReq {
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectileGenerationSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for ProjectileGenerationSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for ProjectileGenerationSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Try to automatically uninteract from the activated [`ProjectileGenerator`]s upon unequipping them.
         state.read_events::<ItemUnequippedEvt>().for_each(|evt| {
             if Storage::interaction_exists(&evt.equipment_entity, &evt.item_entity, state) {
@@ -195,8 +207,8 @@ pub struct HitEvt {
 #[derive(Clone, Copy, Debug)]
 pub struct HitSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for HitSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for HitSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Emit the projectile hit events.
         state
             .select::<(Hitter, Velocity)>()
@@ -235,8 +247,8 @@ pub struct SuicideOnHit;
 #[derive(Clone, Copy, Debug)]
 pub struct SuicideOnHitSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for SuicideOnHitSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for SuicideOnHitSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Remove the entities that should be removed after a hit.
         state.read_events::<HitEvt>().for_each(|evt| {
             if let Some(_) = state.select_one::<(SuicideOnHit,)>(&evt.hitter) {
@@ -272,8 +284,8 @@ impl<T: Component> Default for ApplyOnHitSystem<T> {
     }
 }
 
-impl<T: Component, R: StateReader, W: StateWriter> System<R, W> for ApplyOnHitSystem<T> {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<T: Component, R: StateReader> System<R> for ApplyOnHitSystem<T> {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state.read_events::<HitEvt>().for_each(|evt| {
             if let Some((apply_on_hit,)) = state.select_one::<(ApplyOnHit<T>,)>(&evt.hitter) {
                 let target = evt.target;

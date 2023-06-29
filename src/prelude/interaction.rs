@@ -14,13 +14,23 @@ use crate::prelude::*;
 /// Represents an interaction that can occur between two entities in the game.
 pub trait Interaction: 'static + std::fmt::Debug + Clone {
     fn priority() -> usize;
-    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool;
-    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool;
-    fn can_end_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool;
-    fn can_end_targeted(_actor: &EntityRef, _target: &EntityRef, _state: &State) -> bool {
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool;
+    fn can_start_untargeted(
+        actor: &EntityRef,
+        target: &EntityRef,
+        state: &impl StateReader,
+    ) -> bool;
+    fn can_end_untargeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool;
+
+    fn can_end_targeted(
+        _actor: &EntityRef,
+        _target: &EntityRef,
+        _state: &impl StateReader,
+    ) -> bool {
         true
     }
-    fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+
+    fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         if let Some((target_intr,)) = state.select_one::<(InteractTarget<Self>,)>(target) {
             target_intr.actors.contains(actor)
         } else {
@@ -145,11 +155,15 @@ impl<I: Interaction> Default for InteractionSystem<I> {
 }
 
 impl<I: Interaction> InteractionSystem<I> {
-    fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn interaction_exists(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         I::interaction_exists(actor, target, state)
     }
 
-    fn can_start_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_untargeted(
+        actor: &EntityRef,
+        target: &EntityRef,
+        state: &impl StateReader,
+    ) -> bool {
         actor != target
             && if let Some(_) = state.select_one::<(InteractTarget<I>,)>(target) {
                 !Self::interaction_exists(actor, target, state)
@@ -159,7 +173,7 @@ impl<I: Interaction> InteractionSystem<I> {
             }
     }
 
-    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_start_targeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         actor != target
             && if let Some(_) = state.select_one::<(InteractTarget<I>,)>(target) {
                 !Self::interaction_exists(actor, target, state)
@@ -169,16 +183,18 @@ impl<I: Interaction> InteractionSystem<I> {
             }
     }
 
-    fn can_end_untargeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_end_untargeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         Self::interaction_exists(actor, target, state)
             && I::can_end_untargeted(actor, target, state)
     }
 
-    fn can_end_targeted(actor: &EntityRef, target: &EntityRef, state: &State) -> bool {
+    fn can_end_targeted(actor: &EntityRef, target: &EntityRef, state: &impl StateReader) -> bool {
         Self::interaction_exists(actor, target, state) && I::can_end_targeted(actor, target, state)
     }
 
-    fn interactions<'a>(state: &'a State) -> impl Iterator<Item = (EntityRef, EntityRef)> + 'a {
+    fn interactions<'a>(
+        state: &'a impl StateReader,
+    ) -> impl Iterator<Item = (EntityRef, EntityRef)> + 'a {
         state
             .select::<(InteractTarget<I>,)>()
             .flat_map(|(target, (intr,))| {
@@ -190,8 +206,8 @@ impl<I: Interaction> InteractionSystem<I> {
     }
 }
 
-impl<I: Interaction, R: StateReader, W: StateWriter> System<R, W> for InteractionSystem<I> {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<I: Interaction, R: StateReader> System<R> for InteractionSystem<I> {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Auto invalidate interactions.
         let invalidated_interactions = Self::interactions(state).filter(|(actor, target)| {
             state.will_be_removed(actor) || state.will_be_removed(target)

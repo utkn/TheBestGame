@@ -9,7 +9,7 @@ mod user_input_driver;
 use equipment_interaction::*;
 use proximity_interaction::*;
 
-pub use equipment_interaction::HandInteractionSystem;
+pub use equipment_interaction::EquipmentInteractionSystem;
 pub use proximity_interaction::{ProximityInteractable, ProximityInteractionSystem};
 pub use user_input_driver::*;
 
@@ -34,7 +34,7 @@ pub trait ControlDriver: 'static + Clone + std::fmt::Debug {
         &mut self,
         actor: &EntityRef,
         ctx: &UpdateContext,
-        game_state: &State,
+        game_state: &impl StateReader,
     ) -> Vec<ControlCommand>;
 }
 
@@ -64,8 +64,8 @@ impl CopyControllersReq {
 #[derive(Clone, Copy, Debug)]
 pub struct DeleteControllersReq(pub EntityRef);
 
-impl<D: ControlDriver, R: StateReader, W: StateWriter> System<R, W> for ControlSystem<D> {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<D: ControlDriver, R: StateReader> System<R> for ControlSystem<D> {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state.read_events::<CopyControllersReq>().for_each(|evt| {
             if let Some((from_controller,)) = state.select_one::<(Controller<D>,)>(&evt.from) {
                 cmds.set_component(&evt.to, from_controller.clone());

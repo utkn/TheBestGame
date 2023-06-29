@@ -6,7 +6,7 @@ pub trait ProjectileInsights<'a> {
     fn new_hitters_of(&self, target: &EntityRef) -> Vec<(&'a EntityRef, &'a (f32, f32))>;
 }
 
-impl<'a> ProjectileInsights<'a> for StateInsights<'a> {
+impl<'a, R: StateReader> ProjectileInsights<'a> for StateInsights<'a, R> {
     fn new_hitters_of(&self, target: &EntityRef) -> Vec<(&'a EntityRef, &'a (f32, f32))> {
         self.0
             .read_events::<HitEvt>()

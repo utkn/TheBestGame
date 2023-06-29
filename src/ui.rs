@@ -16,17 +16,24 @@ mod windows;
 pub use ui_state::UiState;
 use windows::*;
 
-#[derive(Default)]
-pub struct UiBuilder<'a> {
-    windows: Vec<Box<dyn Window + 'a>>,
+pub struct UiBuilder<'a, R> {
+    windows: Vec<Box<dyn Window<R> + 'a>>,
 }
 
-impl<'a> UiBuilder<'a> {
-    fn add_window<T: Window + 'a>(&mut self, win: T) {
+impl<'a, R> Default for UiBuilder<'a, R> {
+    fn default() -> Self {
+        Self {
+            windows: Default::default(),
+        }
+    }
+}
+
+impl<'a, R: StateReader> UiBuilder<'a, R> {
+    fn add_window<W: Window<R> + 'a>(&mut self, win: W) {
         self.windows.push(Box::new(win));
     }
 
-    fn build(&mut self, game_state: &'a State) -> HashMap<egui::Id, WindowType> {
+    fn build(&mut self, game_state: &'a R) -> HashMap<egui::Id, WindowType> {
         let player_entity = EntityRef::new(0, 0);
         let player_char = game_state
             .read_bundle::<CharacterBundle>(&player_entity)
@@ -83,25 +90,24 @@ impl<'a> UiBuilder<'a> {
     pub fn build_and_draw(
         mut self,
         ctx: &egui::Context,
-        game_state: &'a State,
-        ui_cmds: &mut StateCommands,
+        game_state: &'a R,
         ui_state: &mut UiState,
     ) -> HashMap<egui::Id, WindowType> {
         let window_types = self.build(game_state);
         self.windows.into_iter().for_each(|mut w| {
-            w.add_into(ctx, game_state, ui_cmds, ui_state);
+            w.add_into(ctx, game_state, ui_state);
         });
         window_types
     }
 }
 
-pub fn draw_ui(
+pub fn draw_ui<R: StateReader>(
     ctx: &egui::Context,
-    game_state: &State,
+    game_state: &R,
     ui_cmds: &mut StateCommands,
     ui_state: &mut UiState,
 ) {
-    let window_types = UiBuilder::default().build_and_draw(ctx, game_state, ui_cmds, ui_state);
+    let window_types = UiBuilder::<R>::default().build_and_draw(ctx, game_state, ui_state);
     if let Some(drag_result) = ui_state.item_drag.try_complete(ctx) {
         let from_win_type = drag_result
             .from_win_id

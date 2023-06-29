@@ -30,7 +30,7 @@ impl TagSource for Building {
         "building"
     }
 
-    fn try_generate(e: &EntityRef, state: &State) -> anyhow::Result<HashSet<Self::TagType>> {
+    fn try_generate(e: &EntityRef, state: &impl StateReader) -> anyhow::Result<HashSet<Self::TagType>> {
         let player_inside = state
             .select_one::<(InteractTarget<Hitbox>,)>(e)
             .map(|(hb_intr,)| &hb_intr.actors)

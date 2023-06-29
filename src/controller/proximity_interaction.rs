@@ -18,8 +18,8 @@ pub struct StartProximityInteractReq(pub EntityRef);
 #[derive(Clone, Copy, Debug)]
 pub struct EndProximityInteractReq(pub EntityRef);
 
-impl<R: StateReader, W: StateWriter> System<R, W> for ProximityInteractionSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for ProximityInteractionSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         // Try to start proximity interactions.
         state
             .read_events::<StartProximityInteractReq>()

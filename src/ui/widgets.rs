@@ -9,14 +9,13 @@ use crate::{
 
 use super::UiState;
 
-pub(super) struct ItemStackWidget<'a>(
+pub(super) struct ItemStackWidget<'a, R: StateReader>(
     pub(super) &'a ItemStack,
-    pub(super) &'a State,
-    pub(super) &'a mut StateCommands,
+    pub(super) &'a R,
     pub(super) &'a mut UiState,
 );
 
-impl<'a> egui::Widget for ItemStackWidget<'a> {
+impl<'a, R: StateReader> egui::Widget for ItemStackWidget<'a, R> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let head_item = self.0.head_item();
         let head_item_name = if let Some((_, name)) =
@@ -43,32 +42,31 @@ impl<'a> egui::Widget for ItemStackWidget<'a> {
             if let (Some(_), Some(egui::Pos2 { x, y })) =
                 (head_item, draggable_btn.interact_pointer_pos())
             {
-                self.3.item_drag.start(self.0.clone(), (x, y));
+                self.2.item_drag.start(self.0.clone(), (x, y));
             }
         } else if draggable_btn.drag_released() {
             if let Some(egui::Pos2 { x, y }) = draggable_btn.interact_pointer_pos() {
-                self.3.item_drag.stop((x, y));
+                self.2.item_drag.stop((x, y));
             }
         }
         draggable_btn
     }
 }
 
-pub(super) struct EquipmentWidget<'a>(
+pub(super) struct EquipmentWidget<'a, R: StateReader>(
     pub(super) &'a EntityRef,
-    pub(super) &'a State,
-    pub(super) &'a mut StateCommands,
+    pub(super) &'a R,
     pub(super) &'a mut UiState,
 );
 
-impl<'a> egui::Widget for EquipmentWidget<'a> {
+impl<'a, R: StateReader> egui::Widget for EquipmentWidget<'a, R> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         egui::Grid::new(format!("Equipment[{:?}]", self.0))
             .show(ui, |ui| {
                 if let Some((equipment,)) = self.1.select_one::<(Equipment,)>(self.0) {
                     equipment.slots().for_each(|(slot, item_stack)| {
                         ui.label(format!("{:?}", slot));
-                        ui.add(ItemStackWidget(item_stack, self.1, self.2, self.3));
+                        ui.add(ItemStackWidget(item_stack, self.1, self.2));
                         ui.end_row();
                     })
                 }
@@ -77,21 +75,20 @@ impl<'a> egui::Widget for EquipmentWidget<'a> {
     }
 }
 
-pub(super) struct StorageWidget<'a>(
+pub(super) struct StorageWidget<'a, R: StateReader>(
     pub(super) &'a EntityRef,
-    pub(super) &'a State,
-    pub(super) &'a mut StateCommands,
+    pub(super) &'a R,
     pub(super) &'a mut UiState,
 );
 
-impl<'a> egui::Widget for StorageWidget<'a> {
+impl<'a, R: StateReader> egui::Widget for StorageWidget<'a, R> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         egui::Grid::new(format!("Storage[{:?}]", self.0))
             .show(ui, |ui| {
                 if let Some((storage,)) = self.1.select_one::<(Storage,)>(self.0) {
                     storage.stacks().chunks(3).into_iter().for_each(|row| {
                         row.into_iter().for_each(|item_stack| {
-                            ui.add(ItemStackWidget(item_stack, self.1, self.2, self.3));
+                            ui.add(ItemStackWidget(item_stack, self.1, self.2));
                         });
                         ui.end_row();
                     })
@@ -101,14 +98,13 @@ impl<'a> egui::Widget for StorageWidget<'a> {
     }
 }
 
-pub(super) struct NeedsWidget<'a>(
+pub(super) struct NeedsWidget<'a, R: StateReader>(
     pub(super) &'a EntityRef,
-    pub(super) &'a State,
-    pub(super) &'a mut StateCommands,
+    pub(super) &'a R,
     pub(super) &'a mut UiState,
 );
 
-impl<'a> egui::Widget for NeedsWidget<'a> {
+impl<'a, R: StateReader> egui::Widget for NeedsWidget<'a, R> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         egui::Grid::new(format!("Needs[{:?}]", self.0))
             .show(ui, |ui| {

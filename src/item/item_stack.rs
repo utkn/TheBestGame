@@ -66,7 +66,7 @@ impl ItemStack {
     }
 
     /// Returns the sum of the weights in this stack.
-    pub fn total_weight(&self, state: &State) -> f32 {
+    pub fn total_weight(&self, state: &impl StateReader) -> f32 {
         self.items()
             .iter()
             .flat_map(|item| ItemDescription::of(item, state).map(|desc| desc.weight))
@@ -79,7 +79,10 @@ impl ItemStack {
     }
 
     /// Returns the description of the first item on this stack.
-    pub fn head_item_description<'a>(&'a self, state: &'a State) -> Option<ItemDescription<'a>> {
+    pub fn head_item_description<'a, R: StateReader>(
+        &'a self,
+        state: &'a R,
+    ) -> Option<ItemDescription<'a, R>> {
         self.items()
             .iter()
             .next()
@@ -87,7 +90,7 @@ impl ItemStack {
     }
 
     /// Returns true iff the given item can be placed on this stack.
-    pub fn can_store(&self, item_entity: &EntityRef, state: &State) -> bool {
+    pub fn can_store(&self, item_entity: &EntityRef, state: &impl StateReader) -> bool {
         match self {
             ItemStack::Weighted(max_weight, _) => match (
                 self.head_item_description(state),
@@ -106,7 +109,7 @@ impl ItemStack {
     }
 
     /// Tries to store the given entity on this stack. Returns false iff the item cannot be placed.
-    pub fn try_store(&mut self, item_entity: EntityRef, state: &State) -> bool {
+    pub fn try_store(&mut self, item_entity: EntityRef, state: &impl StateReader) -> bool {
         if self.can_store(&item_entity, state) {
             self.items_mut().insert(item_entity);
             true

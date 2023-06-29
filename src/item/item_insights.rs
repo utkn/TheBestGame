@@ -29,7 +29,7 @@ pub trait ItemInsights {
     fn equipped_slots_of(&self, item_entity: &EntityRef) -> Option<HashSet<EquipmentSlot>>;
 }
 
-impl<'a> ItemInsights for StateInsights<'a> {
+impl<'a, R: StateReader> ItemInsights for StateInsights<'a, R> {
     fn is_item(&self, item_entity: &EntityRef) -> bool {
         self.0.select_one::<(Item,)>(item_entity).is_some()
     }

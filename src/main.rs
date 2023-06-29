@@ -37,7 +37,7 @@ type AssetMap = HashMap<PathBuf, Asset<Texture>>;
 
 #[derive(notan::AppState)]
 struct AppState {
-    world: SystemManager<State, StateCommands>,
+    world: SystemManager<State>,
     ui_state: ui::UiState,
     asset_map: AssetMap,
     sprite_representor: SpriteRepresentor,
@@ -172,7 +172,7 @@ fn draw_game(rnd: &mut draw::Draw, app_state: &mut AppState) {
         });
 }
 
-fn draw_debug(rnd: &mut draw::Draw, state: &State) {
+fn draw_debug(rnd: &mut draw::Draw, state: &impl StateReader) {
     state
         .select::<(Transform, Hitbox)>()
         .for_each(|(e, (trans, hitbox))| {

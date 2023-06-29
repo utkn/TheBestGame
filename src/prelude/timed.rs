@@ -29,8 +29,8 @@ impl<T: Component> Default for TimedAddSystem<T> {
     }
 }
 
-impl<T: Component, R: StateReader, W: StateWriter> System<R, W> for TimedAddSystem<T> {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<T: Component, R: StateReader> System<R> for TimedAddSystem<T> {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .select::<(TimedAdd<T>,)>()
             .for_each(|(e, (timed_add,))| {
@@ -77,8 +77,8 @@ impl<T: Component> Default for TimedRemoveSystem<T> {
     }
 }
 
-impl<T: Component, R: StateReader, W: StateWriter> System<R, W> for TimedRemoveSystem<T> {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<T: Component, R: StateReader> System<R> for TimedRemoveSystem<T> {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .select::<(TimedRemove<T>,)>()
             .for_each(|(e, (timed_remove,))| {
@@ -124,8 +124,8 @@ impl<T: Component> Default for TimedEmitSystem<T> {
     }
 }
 
-impl<T: Component, R: StateReader, W: StateWriter> System<R, W> for TimedEmitSystem<T> {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<T: Component, R: StateReader> System<R> for TimedEmitSystem<T> {
+    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .select::<(TimedEmit<T>,)>()
             .for_each(|(e, (timed_emit,))| {

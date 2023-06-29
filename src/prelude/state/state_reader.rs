@@ -1,6 +1,10 @@
-use crate::prelude::{component_tuple::ComponentTuple, EntityBundle, EntityRef, Event};
+use crate::prelude::{
+    component_tuple::ComponentTuple, EntityBundle, EntityManager, EntityRef, Event,
+};
 
-pub trait StateReader {
+use super::StateCommands;
+
+pub trait StateReader: Default + 'static {
     type EventIterator<'a, T: Event>: Iterator<Item = &'a T>
     where
         Self: 'a;
@@ -24,4 +28,11 @@ pub trait StateReader {
     ) -> Option<<S as ComponentTuple<'a>>::RefOutput>;
     /// Reads a bundle of entities from the given `primary_entity`.
     fn read_bundle<'a, B: EntityBundle<'a>>(&'a self, primary_entity: &EntityRef) -> Option<B>;
+    fn cloned_entity_manager(&self) -> EntityManager;
+    fn apply_cmds(&mut self, cmds: StateCommands);
+    /// Clears all the events in the state. Should be called at the end of an update.
+    fn clear_events(&mut self);
+    /// Converts the entities marked as invalid to eager entity removals and copies them into the given `StateCommands`.
+    fn transfer_removals(&mut self, cmds: &mut StateCommands);
+    fn reset_removal_requests(&mut self);
 }

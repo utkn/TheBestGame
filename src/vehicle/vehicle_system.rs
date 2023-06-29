@@ -9,8 +9,8 @@ use super::{Vehicle, VehicleBundle};
 #[derive(Clone, Default, Debug)]
 pub struct VehicleSystem;
 
-impl<R: StateReader, W: StateWriter> System<R, W> for VehicleSystem {
-    fn update(&mut self, ctx: &UpdateContext, state: &R, cmds: &mut W) {
+impl<R: StateReader> System<R> for VehicleSystem {
+    fn update(&mut self, _ctx: &UpdateContext, state: &R, cmds: &mut StateCommands) {
         state
             .read_events::<InteractionStartedEvt<Vehicle>>()
             .for_each(|evt| {
